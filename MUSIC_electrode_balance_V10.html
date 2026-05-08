@@ -196,10 +196,10 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-ctrl .sim-cg label{font-weight:500;color:var(--ink2)}
 .sim-ctrl .sim-cg input[type=number]{width:62px;padding:3px 6px;font-family:var(--fm);font-size:11px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
 .sim-ctrl .sim-cg .u{font-size:10px;color:var(--ink3);font-family:var(--fm)}
-.sim-ctrl .sim-tg{display:inline-flex;border:1px solid var(--rule);border-radius:5px;padding:2px;background:var(--paper)}
-.sim-ctrl .sim-tg button{padding:3px 12px;font-size:10.5px;font-weight:500;color:var(--ink2);border:none;background:none;border-radius:3px;cursor:pointer;font-family:var(--fb)}
-.sim-ctrl .sim-tg button.act{background:var(--cp);color:#fff}
-.sim-ctrl .sim-tg button.act-d{background:#7A8A9A;color:#fff}
+.sim-tg{display:inline-flex;border:1px solid var(--rule);border-radius:5px;padding:2px;background:var(--paper)}
+.sim-tg button{padding:3px 12px;font-size:10.5px;font-weight:500;color:var(--ink2);border:none;background:none;border-radius:3px;cursor:pointer;font-family:var(--fb)}
+.sim-tg button.act{background:var(--cp);color:#fff}
+.sim-tg button.act-d{background:#7A8A9A;color:#fff}
 .sim-ctrl .sim-step{padding:2px 7px;font-size:11px;border:1px solid var(--rule);background:var(--paper);color:var(--ink2);border-radius:3px;cursor:pointer;font-family:var(--fb);line-height:1}
 .sim-ctrl .sim-step:hover{background:var(--bone2)}
 .sim-ctrl .sim-step:active{background:var(--bone)}
@@ -682,12 +682,18 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 </div></div>
 </div>
 
-<!-- Target N/P ratio (Nth-cycle balance) -->
-<div style="max-width:500px;margin:0 auto 8px">
-  <div class="np-row" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--s2)">
-    <label for="np-target" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00." data-help-key="fld_np_target" style="flex:1;font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Target N/P ratio <span style="font-size:10.5px;color:var(--ink2);font-weight:400">· Nth cycle (1.00 = balanced)</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00."></button></label>
+<!-- Target N/P ratio (Nth-cycle balance) + simulation start direction -->
+<div style="max-width:720px;margin:0 auto 8px">
+  <div class="np-row" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--s2);flex-wrap:wrap">
+    <label for="np-target" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00." data-help-key="fld_np_target" style="flex:1;font-size:12px;color:var(--ink);font-weight:500;cursor:pointer;min-width:180px">Target N/P ratio <span style="font-size:10.5px;color:var(--ink2);font-weight:400">· Nth cycle (1.00 = balanced)</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00."></button></label>
     <div class="fld" style="flex:0 0 90px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
     <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:18px;height:18px;font-size:11px">↻</button>
+    <span style="border-left:1px solid var(--rule);height:24px;margin:0 4px"></span>
+    <label data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored first stroke in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). Subsequent strokes alternate naturally." data-help-key="fld_start_dir" style="font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Start in cell<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored first stroke in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). Subsequent strokes alternate naturally."></button></label>
+    <div class="sim-tg" id="startDirTg" style="margin-left:-2px">
+      <button type="button" id="startDirChg" class="act" onclick="setStartDir('charge')">Charge</button>
+      <button type="button" id="startDirDis" onclick="setStartDir('discharge')">Discharge</button>
+    </div>
   </div>
 </div>
 
@@ -830,19 +836,19 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <span><span class="sim-dot sim-dot-N"></span><strong>N<sup>th</sup> cycle:</strong> <span id="simRateNTxt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
       </div>
       <div class="sim-ctrl" id="simCtrl">
-        <div class="sim-cg" title="Direction of cycle 1's stroke. Subsequent cycles alternate (cycle 2 reverses, cycle 3 returns to this direction, etc.).">
-          <label>Cycle 1:</label>
+        <div class="sim-cg" title="Within the selected cycle, pick the charge stroke or the discharge stroke to plot. Each stroke restarts at Q=0 and is anchored at the end potential of the previous chronological stroke.">
+          <label>Show:</label>
           <div class="sim-tg" id="simDirTg">
             <button type="button" id="simDirChg" class="act" onclick="setSimDir('charge')">Charge</button>
             <button type="button" id="simDirDis" onclick="setSimDir('discharge')">Discharge</button>
           </div>
         </div>
-        <div class="sim-cg" title="Which cycle to display. Each cycle is plotted starting from Q=0; the starting potentials are inherited from the end of the previous cycle. Range 1 to 100.">
+        <div class="sim-cg" title="Which cycle pair to display. A cycle is one charge + one discharge. Range 1 to 100.">
           <label>Cycle:</label>
           <button type="button" class="sim-step" onclick="stepSimCycle(-1)" title="Previous cycle">◄</button>
           <input type="number" id="simCycleN" min="1" max="100" step="1" value="1" oninput="onSimCtrlChange()">
           <button type="button" class="sim-step" onclick="stepSimCycle(1)" title="Next cycle">►</button>
-          <span class="u" id="simCycleDir">charge · cycle 1</span>
+          <span class="u" id="simCycleDir">cycle 1 · charge stroke</span>
         </div>
         <div class="sim-cg" title="Equivalent series resistance. Produces a vertical IR step at Q=0 of the displayed cycle equal to I·R_eq, split symmetrically across cathode and anode.">
           <label>R<sub>eq</sub>:</label>
@@ -2264,12 +2270,28 @@ function simRenderAxisLabels(){
 }
 
 /* ── Simulation control state & physics ──
-   Per-electrode independent V-vs-Q model. Each cycle starts at Q=0 and
-   runs until Q reaches that electrode's own capacity (Q_c or Q_a from the
-   diagnostics). Cycle 1 uses C_1st-derived capacities/slopes, cycles 2..N
-   use C_Nth. The starting potential of cycle N inherits from the end of
-   cycle N-1. Only ONE cycle is plotted at a time, selected by the user. */
-let simDirState="charge"; // "charge" or "discharge" — direction of cycle 1
+   Per-electrode independent V-vs-Q model. Each stroke starts at Q=0 and
+   runs to that electrode's own capacity (Q_c or Q_a from the diagnostics).
+   A "cycle" is a charge + discharge pair; cycle 1 strokes use C_1st,
+   cycles 2..N use C_Nth. Cycle 1's chronologically first stroke is
+   OCV-anchored (slope = (V_extreme − V_OCV) / Q_1st instead of ΔV_th /
+   Q_1st); all later strokes traverse the full theoretical V-window.
+   `startDir` (the global "Start in cell" toggle next to N/P ratio)
+   determines which stroke comes first chronologically; `simDirState`
+   (the panel toggle) picks which stroke of the selected cycle to plot. */
+let startDir="charge";    // chronological direction of the very first stroke
+let simDirState="charge"; // which stroke of the selected cycle is on screen
+
+function setStartDir(d){
+  startDir=(d==="discharge")?"discharge":"charge";
+  const bC=$("startDirChg"),bD=$("startDirDis");
+  if(bC) bC.classList.toggle("act",startDir==="charge");
+  if(bD) bD.classList.toggle("act-d",startDir==="discharge");
+  // Default the visible stroke to whichever direction the user just picked
+  // so the first thing they see on cycle 1 is the OCV-anchored stroke.
+  if(typeof setSimDir==="function") setSimDir(startDir);
+  else if(typeof renderSimPlot==="function") renderSimPlot();
+}
 
 function setSimDir(d){
   simDirState=(d==="discharge")?"discharge":"charge";
@@ -2291,10 +2313,14 @@ function stepSimCycle(d){
   if(typeof renderSimPlot==="function") renderSimPlot();
 }
 
-// Compute the V-vs-Q traces for the single selected cycle.
-// Each electrode evolves on its own X axis: cathode line spans [0, Qc],
-// anode line spans [0, Qa]. V_cell is plotted on the overlap [0, min(Qc, Qa)].
-// Returns {ok:true, ...} or {ok:false, msg}.
+// Compute the V-vs-Q traces for ONE stroke (charge or discharge) of ONE cycle.
+// Strokes are indexed chronologically k=1,2,3,…  Stroke 1 has direction
+// `startDir`; subsequent strokes alternate. Cycle N pairs strokes (2N−1, 2N).
+//
+// Slope rule for stroke k=1 (and only k=1): the angular coefficient is
+// (V_extreme − V_OCV) / Q_1st instead of ΔV_th / Q_1st. End potential is
+// the V_th extreme reached by going `startDir` from V_OCV. All later strokes
+// traverse the full ΔV_th window (slope = ±ΔV_th / Q_cycle).
 function simComputeSeries(){
   const inp=window.lastInp,r=window.lastR;
   if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
@@ -2306,32 +2332,28 @@ function simComputeSeries(){
     return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
   }
 
-  // Per-electrode capacities (µAh) — pulled directly from the solver result so
-  // they match exactly what the diagnostics tab displays. Q_c1 = mAC·C₁ + mS·Cs1
-  // includes the salt contribution if any; for pure EDLC mS = 0.
   const Q_c_1=r.Qc1, Q_c_N=r.QcN;
   const Q_a_1=r.Qa1, Q_a_N=r.QaN;
   if(!(Q_c_1>0&&Q_c_N>0&&Q_a_1>0&&Q_a_N>0)) return {ok:false, msg:"All four electrode capacities (Q_c1, Q_cN, Q_a1, Q_aN) must be > 0 — re-run the balance."};
 
-  // Theoretical V-windows: Vth is [hi, lo]; magnitude is |hi − lo|.
-  const dVc=Math.abs(inp.cat.Vth[0]-inp.cat.Vth[1]);
-  const dVa=Math.abs(inp.an.Vth[0]-inp.an.Vth[1]);
+  // Vth extremes (hi/lo) per electrode. Vth array is [hi, lo]; sort defensively.
+  const Vth_c_hi=Math.max(inp.cat.Vth[0], inp.cat.Vth[1]);
+  const Vth_c_lo=Math.min(inp.cat.Vth[0], inp.cat.Vth[1]);
+  const Vth_a_hi=Math.max(inp.an.Vth[0],  inp.an.Vth[1]);
+  const Vth_a_lo=Math.min(inp.an.Vth[0],  inp.an.Vth[1]);
+  const dVc=Vth_c_hi-Vth_c_lo;
+  const dVa=Vth_a_hi-Vth_a_lo;
   if(!(dVc>0&&dVa>0)) return {ok:false, msg:"Theoretical V-windows (V_th) must span a non-zero range."};
 
   const Vocv_c=N("cat-ac-ocv"),Vocv_a=N("an-ocv");
   if(!Number.isFinite(Vocv_c)||!Number.isFinite(Vocv_a)) return {ok:false, msg:"Set OCV values for both electrodes."};
 
-  // Operating window — drawn as dashed annotation lines on the plot.
   const Vop_c_hi=inp.cat.Vop[0], Vop_c_lo=inp.cat.Vop[1];
   const Vop_a_hi=inp.an.Vop[0],  Vop_a_lo=inp.an.Vop[1];
 
-  // R_eq (Ω). Empty or negative → treat as zero. IR step is purely a display
-  // overlay; it does not enter the thermodynamic V at the end of each cycle.
   const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
   let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
 
-  // Currents: prefer rate selections; fall back to C/10. Cycle 1 uses I_1st,
-  // cycles ≥ 2 use I_Nth.
   const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
   const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
 
@@ -2339,49 +2361,76 @@ function simComputeSeries(){
   if(!Number.isFinite(target)||target<1) target=1;
   if(target>100) target=100;
 
-  // Walk thermodynamic state forward from Q=0 of cycle 1 to Q=0 of cycle N.
-  // Each cycle moves V_c by sign·dVc and V_a by -sign·dVa over its full
-  // electrode capacity. IR doesn't carry between cycles.
-  let V_c=Vocv_c, V_a=Vocv_a;
-  let dir=simDirState;
-  for(let n=1;n<target;n++){
-    const sign=(dir==="charge")?+1:-1;
-    V_c+=sign*dVc;
-    V_a-=sign*dVa;
-    dir=(dir==="charge")?"discharge":"charge";
-  }
-  // dir is now the direction of the cycle being plotted.
-  const sign=(dir==="charge")?+1:-1;
-  const first=(target===1);
-  const Qc=first?Q_c_1:Q_c_N;
-  const Qa=first?Q_a_1:Q_a_N;
-  const Iu=first?I1_uA:IN_uA;
+  // Map (cycle, showDir) → chronological stroke index k.
+  // Stroke 1 has direction startDir. Within each cycle, the startDir-stroke
+  // is chronologically first (odd k); the opposite-direction stroke is second (even k).
+  const showDir=simDirState;
+  const isFirstHalf=(showDir===startDir);
+  const k_target=isFirstHalf ? (2*target-1) : (2*target);
 
-  // IR offsets (V), split symmetrically so V_cell shifts by sign·I·R_eq.
-  const dV_IR=sign*(Iu*Req)*1e-6;
+  // Walk V_c, V_a from before stroke 1 (= V_OCV) to before stroke k_target.
+  // Stroke 1: V → V_th extreme set by startDir.
+  // Strokes ≥ 2: V += sign·ΔV_th (cathode) / V −= sign·ΔV_th (anode).
+  let V_c=Vocv_c, V_a=Vocv_a;
+  for(let k=1;k<k_target;k++){
+    const dir_k=(k%2===1) ? startDir : (startDir==="charge"?"discharge":"charge");
+    const sign_k=(dir_k==="charge")?+1:-1;
+    if(k===1){
+      V_c=(sign_k===+1)?Vth_c_hi:Vth_c_lo;
+      V_a=(sign_k===+1)?Vth_a_lo:Vth_a_hi;
+    } else {
+      V_c+=sign_k*dVc;
+      V_a-=sign_k*dVa;
+    }
+  }
+
+  // Stroke k_target — direction & ΔV.
+  const dir_t=(k_target%2===1) ? startDir : (startDir==="charge"?"discharge":"charge");
+  const sign_t=(dir_t==="charge")?+1:-1;
+  const isStroke1=(k_target===1);
+  const isCycle1=(target===1);
+
+  // dV per electrode (signed). Cycle-1-stroke-1 uses OCV-anchored extents;
+  // every other stroke uses the full ΔV_th window.
+  let dV_c, dV_a;
+  if(isStroke1){
+    dV_c=(sign_t===+1) ? (Vth_c_hi-Vocv_c) : (Vth_c_lo-Vocv_c);
+    dV_a=(sign_t===+1) ? (Vth_a_lo-Vocv_a) : (Vth_a_hi-Vocv_a);
+  } else {
+    dV_c= sign_t*dVc;
+    dV_a=-sign_t*dVa;
+  }
+
+  // Capacity per electrode for this stroke. Both strokes of cycle 1 use C_1st;
+  // every later stroke uses C_Nth. Currents follow the same rule.
+  const Qc=isCycle1 ? Q_c_1 : Q_c_N;
+  const Qa=isCycle1 ? Q_a_1 : Q_a_N;
+  const Iu=isCycle1 ? I1_uA : IN_uA;
+
+  // IR step (V), split symmetrically so V_cell shifts by sign·I·R_eq at Q=0.
+  const dV_IR=sign_t*(Iu*Req)*1e-6;
   const half=dV_IR/2;
 
-  // End-of-stroke thermodynamic potentials (no IR).
-  const V_c_end=V_c+sign*dVc;
-  const V_a_end=V_a-sign*dVa;
+  const V_c_end=V_c+dV_c;
+  const V_a_end=V_a+dV_a;
 
   // Cathode line: [pre-IR @0, post-IR @0, end @Qc]
   const xs_cat=[0,0,Qc];
   const vc_cat=[V_c, V_c+half, V_c_end+half];
 
-  // Anode line: opposite IR sign.
+  // Anode line — opposite IR sign so V_cell jumps by sign_t·IR.
   const xs_an =[0,0,Qa];
   const vc_an =[V_a, V_a-half, V_a_end-half];
 
-  // V_cell on the overlap [0, min(Qc,Qa)] — also linear within the cycle.
+  // V_cell on the overlap [0, min(Qc,Qa)] — linear within a stroke.
   const Qmin=Math.min(Qc,Qa);
-  const v_c_at_Qmin=(V_c+half) + sign*dVc*(Qmin/Qc);
-  const v_a_at_Qmin=(V_a-half) - sign*dVa*(Qmin/Qa);
+  const v_c_at_Qmin=(V_c+half)+dV_c*(Qmin/Qc);
+  const v_a_at_Qmin=(V_a-half)+dV_a*(Qmin/Qa);
   const xs_cell=[0,0,Qmin];
   const v_cell=[V_c-V_a, (V_c+half)-(V_a-half), v_c_at_Qmin-v_a_at_Qmin];
 
   return {ok:true,
-    cycleN:target, dir,
+    cycleN:target, dir:dir_t, strokeK:k_target,
     xs_cat, vc_cat,
     xs_an,  vc_an,
     xs_cell, v_cell,
@@ -2416,11 +2465,13 @@ function renderSimPlot(){
   const series=simComputeSeries();
   let traces;
 
-  // Update the small "→ stroke direction: …" label next to the cycle picker.
+  // Update the small status label next to the cycle picker.
   const lbl=$("simCycleDir");
   if(lbl){
-    if(series.ok) lbl.textContent=series.dir+" · cycle "+series.cycleN;
-    else lbl.textContent="—";
+    if(series.ok){
+      const ocvNote=(series.strokeK===1)?" · OCV-anchored":"";
+      lbl.textContent="cycle "+series.cycleN+" · "+series.dir+" stroke"+ocvNote;
+    } else lbl.textContent="—";
   }
 
   if(!series.ok){
