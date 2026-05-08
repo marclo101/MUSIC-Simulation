@@ -203,6 +203,17 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-ctrl .sim-step{padding:2px 7px;font-size:11px;border:1px solid var(--rule);background:var(--paper);color:var(--ink2);border-radius:3px;cursor:pointer;font-family:var(--fb);line-height:1}
 .sim-ctrl .sim-step:hover{background:var(--bone2)}
 .sim-ctrl .sim-step:active{background:var(--bone)}
+.sim-ctrl-cons{padding-top:6px;padding-bottom:6px}
+.sim-ctrl-cons .sim-cg-h{font-weight:600;color:var(--ink);font-size:11px;letter-spacing:.02em;text-transform:uppercase}
+.sim-cons{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border:1px solid var(--rule);border-radius:5px;background:var(--paper)}
+.sim-cons.off{opacity:.55;background:var(--bone)}
+.sim-cons-tg{padding:2px 9px;font-size:10.5px;font-weight:500;color:var(--ink2);border:1px solid var(--rule);background:var(--paper);border-radius:3px;cursor:pointer;font-family:var(--fb);line-height:1}
+.sim-cons-tg.act{background:#6B46C1;color:#fff;border-color:#553C9A}
+.sim-cons-tg:hover:not(.act){background:var(--bone2)}
+.sim-cons input[type=number]{width:54px;padding:3px 5px;font-family:var(--fm);font-size:11px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);color:var(--ink)}
+.sim-cons input[type=number]:disabled{color:var(--ink3);background:var(--bone)}
+.sim-cons .lab{font-size:10.5px;color:var(--ink2);font-family:var(--fm);white-space:nowrap}
+.sim-cons .u{font-size:10px;color:var(--ink3);font-family:var(--fm)}
 .sim-msg{font-size:11px;color:var(--ink3);font-style:italic;margin:6px 0 4px;padding:0 4px;line-height:1.45}
 .sim-msg.warn{color:#B7791F}
 .sim-msg.err{color:#C53030}
@@ -854,6 +865,27 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
           <label>R<sub>eq</sub>:</label>
           <input type="number" id="simReq" min="0" step="0.5" value="10" oninput="onSimCtrlChange()">
           <span class="u">Ω</span>
+        </div>
+      </div>
+      <div class="sim-ctrl sim-ctrl-cons" id="simConsCtrl" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding inequality is violated (in addition to the V_th / capacity stops). Constraints only fire when the electrode (or cell voltage) is moving toward the limit; if a previous stroke already left a value past the limit, the constraint is silent for the current stroke." data-help-key="fld_sim_constraints">
+        <div class="sim-cg sim-cg-h"><label>Constraints:</label><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding inequality is violated (in addition to the V_th / capacity stops). Constraints only fire when the electrode (or cell voltage) is moving toward the limit; if a previous stroke already left a value past the limit, the constraint is silent for the current stroke."></button></div>
+        <div class="sim-cons off" id="simConsCellWrap" title="Stop when |V_cat − V_an| reaches the cell-voltage limit. Analogue of EC-Lab's E_M.">
+          <button type="button" id="simConsCellEn" class="sim-cons-tg" onclick="toggleSimCons('cell')">off</button>
+          <span class="lab">V<sub>cell</sub> ≤</span>
+          <input type="number" id="simConsCellV" min="0" step="0.01" value="3.000" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+        </div>
+        <div class="sim-cons off" id="simConsCatWrap" title="Stop when V_cat (cathode potential vs reference) reaches its upper limit. Analogue of EC-Lab's E_Lw on the working electrode.">
+          <button type="button" id="simConsCatEn" class="sim-cons-tg" onclick="toggleSimCons('cat')">off</button>
+          <span class="lab">V<sub>cat</sub> ≤</span>
+          <input type="number" id="simConsCatV" step="0.01" value="3.400" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+        </div>
+        <div class="sim-cons off" id="simConsAnWrap" title="Stop when V_an (anode potential vs reference) drops to its lower limit. Analogue of EC-Lab's E_Lc on the counter electrode.">
+          <button type="button" id="simConsAnEn" class="sim-cons-tg" onclick="toggleSimCons('an')">off</button>
+          <span class="lab">V<sub>an</sub> ≥</span>
+          <input type="number" id="simConsAnV" step="0.01" value="0.000" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
         </div>
       </div>
       <div id="simMsg" class="sim-msg" style="display:none"></div>
@@ -2297,6 +2329,44 @@ function simRenderAxisLabels(){
 let startDir="charge";    // chronological direction of the very first stroke
 let simDirState="charge"; // which stroke of the selected cycle is on screen
 
+// Optional GCPL2-style stop conditions (renamed to MUSIC's electrode terms).
+// Each entry: enabled flag + value. Only fire when the cell is moving toward
+// the limit — a previous stroke that already pushed past the limit is left
+// alone, otherwise re-enabling a constraint mid-run would freeze the plot.
+let simConstraints={
+  cell:{en:false, V:3.0},  // V_cell ≤  (analogue of EC-Lab E_M)
+  cat:{en:false,  V:3.4},  // V_cat ≤  (analogue of EC-Lab E_Lw on cathode)
+  an: {en:false,  V:0.0}   // V_an  ≥  (analogue of EC-Lab E_Lc on anode)
+};
+function toggleSimCons(which){
+  const c=simConstraints[which]; if(!c) return;
+  c.en=!c.en;
+  const ids={cell:["simConsCellEn","simConsCellV","simConsCellWrap"],
+             cat: ["simConsCatEn", "simConsCatV", "simConsCatWrap"],
+             an:  ["simConsAnEn",  "simConsAnV",  "simConsAnWrap"]};
+  const [bId,vId,wId]=ids[which];
+  const b=$(bId), v=$(vId), w=$(wId);
+  if(b){ b.classList.toggle("act",c.en); b.textContent=c.en?"on":"off"; }
+  if(v){ v.disabled=!c.en; }
+  if(w){ w.classList.toggle("off",!c.en); }
+  if(typeof renderSimPlot==="function") renderSimPlot();
+}
+// Read the live constraint values from the DOM (so user edits are picked up
+// without us having to wire oninput → state for every keystroke).
+function _simReadConstraints(){
+  const out={};
+  const _v=(id,fb)=>{const el=$(id); if(!el||el.value==="") return fb;
+                     const x=parseFloat(el.value); return Number.isFinite(x)?x:fb;};
+  out.cell={en:simConstraints.cell.en, V:_v("simConsCellV",simConstraints.cell.V)};
+  out.cat ={en:simConstraints.cat.en,  V:_v("simConsCatV", simConstraints.cat.V)};
+  out.an  ={en:simConstraints.an.en,   V:_v("simConsAnV",  simConstraints.an.V)};
+  // Keep state in sync so the next toggle starts from the displayed value.
+  simConstraints.cell.V=out.cell.V;
+  simConstraints.cat.V =out.cat.V;
+  simConstraints.an.V  =out.an.V;
+  return out;
+}
+
 function setStartDir(d){
   startDir=(d==="discharge")?"discharge":"charge";
   const bC=$("startDirChg"),bD=$("startDirDis");
@@ -2413,6 +2483,37 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   else if(Qa_max + tol < Qc_max){ Q_stop = Qa_max; limiting = "anode"; }
   else { Q_stop = Math.min(Qc_max, Qa_max); limiting = null; }
 
+  // Optional GCPL2-style constraints. Each only fires if the cell is moving
+  // INTO the limit during this stroke (slope sign matches, current value is
+  // still on the legal side). If a constraint hits earlier than the V_th
+  // limit it overrides the limiter, and we record the constraint name so the
+  // plot can quote it instead of an electrode V_th.
+  const cons = ctx.constraints || {cell:{en:false},cat:{en:false},an:{en:false}};
+  const _qcons = (cur, lim, slope, sign) => {
+    // sign = +1 means "stop when cur reaches lim from below" (cur <= lim);
+    // sign = -1 means "stop when cur reaches lim from above" (cur >= lim).
+    if(!Number.isFinite(slope) || slope === 0) return Infinity;
+    if(sign>0 && (cur >= lim || slope <= 0)) return Infinity;
+    if(sign<0 && (cur <= lim || slope >= 0)) return Infinity;
+    const q = (lim - cur) / slope;
+    return q > 0 ? q : Infinity;
+  };
+  let consHit = null;
+  if(cons.cat.en){
+    const q = _qcons(V_c_in, cons.cat.V, slope_c, +1);
+    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "cat"; }
+  }
+  if(cons.an.en){
+    const q = _qcons(V_a_in, cons.an.V, slope_a, -1);
+    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "an"; }
+  }
+  if(cons.cell.en){
+    // V_cell(Q) = (V_c_in − V_a_in) + (slope_c − slope_a)·Q
+    const dSlope = slope_c - slope_a;
+    const q = _qcons(V_c_in - V_a_in, cons.cell.V, dSlope, +1);
+    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "cell"; }
+  }
+
   const V_c_end = V_c_in + slope_c * Q_stop;
   const V_a_end = V_a_in + slope_a * Q_stop;
 
@@ -2427,6 +2528,7 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
     dV_c: V_c_end - V_c_in,
     dV_a: V_a_end - V_a_in,
     limiting,
+    consHit,
   };
 }
 
@@ -2477,9 +2579,11 @@ function simComputeSeries(){
   const isFirstHalf=(showDir===startDir);
   const k_target=isFirstHalf ? (2*target-1) : (2*target);
 
+  const constraints=_simReadConstraints();
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
-             Q_c_1, Q_c_N, Q_a_1, Q_a_N, I1_uA, IN_uA};
+             Q_c_1, Q_c_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+             constraints};
 
   // Walk through every stroke from k=1 up to k_target, advancing the
   // cumulative (V_c, V_a) state. The walk has to be galvanostatic — i.e.
@@ -2534,6 +2638,8 @@ function simComputeSeries(){
     V_c_target:stroke.V_c_target, V_a_target:stroke.V_a_target,
     irHalf:half,  // signed IR half-shift; cathode trace is offset +half, anode −half.
     limiting:stroke.limiting,
+    consHit:stroke.consHit,
+    constraints,
     Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo
   };
 }
@@ -2663,6 +2769,34 @@ function renderSimPlot(){
       dashShape('y',  series.Vop_a_lo, colA)
     ];
 
+    // Constraint lines (GCPL2-style stops). Drawn in purple, solid, on top of
+    // the V_op grid lines so they're easy to distinguish from the operating
+    // window. Cathode + anode constraints sit on y1; the V_cell constraint
+    // sits on y2 (cell-voltage axis).
+    const colCons="#6B46C1";
+    const consShape=(yref,y)=>({
+      type:'line', xref:'paper', x0:0, x1:1,
+      yref, y0:y, y1:y,
+      line:{color:colCons, width:1.4, dash:'dash'}, layer:'below'
+    });
+    if(series.constraints){
+      if(series.constraints.cat.en) layout.shapes.push(consShape('y',  series.constraints.cat.V));
+      if(series.constraints.an.en)  layout.shapes.push(consShape('y',  series.constraints.an.V));
+      if(series.constraints.cell.en)layout.shapes.push(consShape('y2', series.constraints.cell.V));
+    }
+
+    // Vertical marker at the constraint-driven stop point (mirrors the V_th
+    // limiter's red dashed vertical, but in purple to keep it visually
+    // distinct from "an electrode hit V_th first").
+    if(series.consHit){
+      layout.shapes.push({
+        type:'line', xref:'x', yref:'paper',
+        x0:conv(series.Qmin), x1:conv(series.Qmin),
+        y0:0, y1:1,
+        line:{color:colCons, width:1.2, dash:'dash'}, layer:'below'
+      });
+    }
+
     // Red shaded zone over the unused-capacity tail (Qmin → natural reach
     // of the limited electrode), plus a dashed vertical at Qmin marking
     // where the cell was forced to stop.
@@ -2688,12 +2822,19 @@ function renderSimPlot(){
 
     // X range — 0 to whichever endpoint is farther. Use the limited
     // electrode's natural reach when finite; fall back to Qmin / nominal Q.
+    // For constraint-driven stops both electrodes truncate together at Qmin,
+    // so the plot box should hug that instead of the full V_th stroke length.
     const _finiteOr=(v,fallback)=>Number.isFinite(v)?v:fallback;
-    const xMaxQ=series.limiting
-      ? Math.max(_finiteOr(series.Qc_natural, series.Qmin),
-                 _finiteOr(series.Qa_natural, series.Qmin),
-                 series.Qmin)
-      : Math.max(series.Qc, series.Qa);
+    let xMaxQ;
+    if(series.limiting){
+      xMaxQ=Math.max(_finiteOr(series.Qc_natural, series.Qmin),
+                     _finiteOr(series.Qa_natural, series.Qmin),
+                     series.Qmin);
+    } else if(series.consHit){
+      xMaxQ=series.Qmin;
+    } else {
+      xMaxQ=Math.max(series.Qc, series.Qa);
+    }
     layout.xaxis.range=[0, conv(xMaxQ)*1.04];
 
     // Y1 range — span all electrode potentials and the V_op annotations,
@@ -2701,6 +2842,10 @@ function renderSimPlot(){
     // when one electrode is limiting and its natural reach is finite, so
     // the unused-capacity tail stays on screen. Padded.
     const yV1=series.vc_cat.concat(series.vc_an,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
+    if(series.constraints){
+      if(series.constraints.cat.en) yV1.push(series.constraints.cat.V);
+      if(series.constraints.an.en)  yV1.push(series.constraints.an.V);
+    }
     if(series.limiting){
       const irHalf = series.irHalf || 0;
       const limCat = (series.limiting==="cathode");
@@ -2717,8 +2862,10 @@ function renderSimPlot(){
     const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
     layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
 
-    // Y2 range — V_cell only.
-    let y2lo=Math.min.apply(null,series.v_cell), y2hi=Math.max.apply(null,series.v_cell);
+    // Y2 range — V_cell, plus the V_cell constraint line if active.
+    const yV2=series.v_cell.slice();
+    if(series.constraints && series.constraints.cell.en) yV2.push(series.constraints.cell.V);
+    let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
     const y2pad=Math.max(0.1,(y2hi-y2lo)*0.10);
     layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
 
@@ -2727,7 +2874,26 @@ function renderSimPlot(){
                    bgcolor:'rgba(255,255,255,0.85)', bordercolor:'#CBD2DA', borderwidth:1,
                    font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
 
-    if(series.limiting){
+    const _fmtV=v=>{
+      if(!Number.isFinite(v)) return "—";
+      const a=Math.abs(v);
+      if(a>=10) return v.toFixed(2);
+      if(a>=1)  return v.toFixed(2);
+      return v.toFixed(3);
+    };
+    if(series.consHit){
+      const capLab = _simCapUnit(simAxisState.capUnit).label;
+      const stop_disp = conv(series.Qmin);
+      const lab={cell:"V_cell", cat:"V_cat", an:"V_an"}[series.consHit];
+      const op ={cell:"≤", cat:"≤", an:"≥"}[series.consHit];
+      const limV=series.constraints[series.consHit].V;
+      _simSetMsg(
+        `Stroke stopped by user constraint ${lab} ${op} ${_fmtV(limV)} V `+
+        `at ${stop_disp.toFixed(3)} ${capLab} — both electrodes truncated. `+
+        `Subsequent strokes start from these partial voltages.`,
+        "warn"
+      );
+    } else if(series.limiting){
       const limCat   = (series.limiting==="cathode"); // cathode = limiter
       const limiter  = limCat ? "cathode" : "anode";
       const limited  = limCat ? "anode"   : "cathode";
