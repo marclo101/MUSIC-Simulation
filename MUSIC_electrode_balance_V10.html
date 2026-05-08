@@ -4797,30 +4797,44 @@ const DEV_DEFAULTS_ON = true;
 function applyDevDefaults(){
   if(!DEV_DEFAULTS_ON) return;
   try{
-    // Cathode AM — Custom preset, Activated carbon (YP50) values
-    const catPs=$("cat-ac-ps"); if(catPs) catPs.value="";
+    // Cathode AM — Custom preset, Activated carbon (YP50), EDLC.
+    if($("cat-ac-ps"))   $("cat-ac-ps").value="";
     if($("cat-ac-name")) $("cat-ac-name").value="Activated carbon (YP50)";
     if($("cat-label"))   $("cat-label").value="Activated carbon (YP50)";
-    if($("cat-ac-c1"))   $("cat-ac-c1").value="45";
-    if($("cat-ac-cN"))   $("cat-ac-cN").value="70";
+    if($("cat-ac-st"))   $("cat-ac-st").value="capacitive";
+    if($("cat-ac-ocv"))  $("cat-ac-ocv").value="3";
+    if($("cat-ac-ref"))  $("cat-ac-ref").value="Na/Na+";
+    // V_th already 4.2/2.0 from HTML defaults; align V_op with it.
+    if($("cat-Vop-hi"))  $("cat-Vop-hi").value="4.2";
+    if($("cat-Vop-lo"))  $("cat-Vop-lo").value="2";
+    if($("cat-ac-c1"))   $("cat-ac-c1").value="25";
+    if($("cat-ac-cN"))   $("cat-ac-cN").value="50";
     setRateValue("cat-ac","c1",100,"mA/g","100 mA/g");
     setRateValue("cat-ac","cN",100,"mA/g","100 mA/g");
 
-    // Salt — toggle on, mark Na₂C₄O₄ preset, use the screenshot's C₁/rate
-    if(typeof saltOn!=="undefined" && !saltOn && typeof tgSalt==="function") tgSalt();
-    const sPs=$("cat-s-ps"); if(sPs) sPs.value="na2c4o4";
-    if($("cat-s-name")) $("cat-s-name").value="Na₂C₄O₄ (squarate)";
-    if($("cat-s-c1"))   $("cat-s-c1").value="309";
-    setRateValue("cat-s","c1",0.1,"C","C/10");
+    // No sacrificial salt — saltOn defaults to false after silentResetAll().
 
-    // Anode — Custom preset, PAN Vapo 6h - MAA values
-    const anPs=$("an-ps"); if(anPs) anPs.value="";
+    // Anode — Custom preset, PAN Vapo 6h - MAA, capacitive.
+    if($("an-ps"))    $("an-ps").value="";
     if($("an-name"))  $("an-name").value="PAN Vapo 6h - MAA";
     if($("an-label")) $("an-label").value="PAN Vapo 6h - MAA";
-    if($("an-c1"))    $("an-c1").value="430";
-    if($("an-cN"))    $("an-cN").value="200";
+    if($("an-st"))    $("an-st").value="capacitive";
+    if($("an-ocv"))   $("an-ocv").value="3";
+    if($("an-ref"))   $("an-ref").value="Na/Na+";
+    // V_th already 2.0/0.05; widen V_op_hi to match (default is 1.7).
+    if($("an-Vop-hi")) $("an-Vop-hi").value="2";
+    if($("an-Vop-lo")) $("an-Vop-lo").value="0.05";
+    if($("an-c1"))    $("an-c1").value="200";
+    if($("an-cN"))    $("an-cN").value="100";
     setRateValue("an","c1",0.02,"A/g","0.02 A/g");
     setRateValue("an","cN",0.02,"A/g","0.02 A/g");
+
+    // Anode mass — switch to Loading mode, 1 mg/cm² over 1 cm² (⌀11.28 mm).
+    const loadBtn=document.querySelector("#an-mmb .mmb:nth-child(2)");
+    if(loadBtn && typeof sMM==="function") sMM("an","l",loadBtn);
+    if($("an-ld"))  $("an-ld").value="1";
+    if($("an-ar"))  $("an-ar").value="1";
+    if($("an-dia")) $("an-dia").value="11.28";
 
     if(typeof recalc==="function") recalc();
   }catch(e){
