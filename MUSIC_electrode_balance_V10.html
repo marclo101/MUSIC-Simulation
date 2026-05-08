@@ -171,8 +171,21 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 /* Ratio table */
 .rtg{border:1px solid var(--ruleS);border-radius:6px;overflow:hidden;margin-bottom:16px}
 .rtg-h{display:grid;grid-template-columns:1.2fr 1fr .8fr .7fr;background:var(--bone);padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink2);font-weight:600;border-bottom:1px solid var(--ruleS)}
-.rtg-r{display:grid;grid-template-columns:1.2fr 1fr .8fr .7fr;padding:7px 10px;font-size:12px;border-bottom:1px solid var(--ruleS);align-items:center}.rtg-r:last-child{border-bottom:none}.rtg-r:hover{background:rgba(28,184,139,.03)}
+.rtg-r{display:grid;grid-template-columns:1.2fr 1fr .8fr .7fr;padding:7px 10px;font-size:12px;border-bottom:1px solid var(--ruleS);align-items:center;cursor:pointer;transition:background .12s}.rtg-r:last-child{border-bottom:none}.rtg-r:hover{background:rgba(28,184,139,.03)}
+.rtg-r.sel-1{background:rgba(56,132,255,.12)}.rtg-r.sel-1:hover{background:rgba(56,132,255,.18)}
+.rtg-r.sel-N{background:rgba(245,158,11,.14)}.rtg-r.sel-N:hover{background:rgba(245,158,11,.20)}
 .rtg-r .k{color:var(--ink2);font-size:11px}.rtg-r .v{font-family:var(--fm);font-weight:500;text-align:center;font-size:12px}.rtg-r .v.gd{color:var(--ok)}.rtg-r .v.ct{color:var(--wn)}.rtg-r .v.bd{color:var(--er)}
+.rtg-modebar{display:flex;align-items:center;gap:14px;padding:8px 10px;background:var(--bone);border:1px solid var(--ruleS);border-bottom:none;border-top-left-radius:6px;border-top-right-radius:6px;font-size:11px;color:var(--ink2)}
+.rtg-modebar .lbl{font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:10px;color:var(--ink2)}
+.rtg-modebar label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid transparent}
+.rtg-modebar label.act-1{background:rgba(56,132,255,.10);border-color:rgba(56,132,255,.45);color:var(--ink)}
+.rtg-modebar label.act-N{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.50);color:var(--ink)}
+.rtg-modebar input[type=radio]{margin:0}
+.rtg-modebar .rtg-modeclr{margin-left:auto;font-size:10.5px;color:var(--ink3);background:none;border:1px solid var(--ruleS);padding:3px 8px;border-radius:4px;cursor:pointer}
+.rtg-modebar .rtg-modeclr:hover{color:var(--ink);border-color:var(--ink2)}
+.sim-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.sim-dot-1{background:rgb(56,132,255)}
+.sim-dot-N{background:rgb(245,158,11)}
 /* Current density detail */
 .cd-box{border:1px solid var(--ruleS);border-radius:8px;padding:14px;margin-bottom:16px}
 .cd-box h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink2);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
@@ -658,8 +671,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <!-- Top-level results tabs -->
 <div class="rtab-bar">
   <button class="rtab-btn act" onclick="setResultsTab('balance',this)">Balance</button>
-  <button class="rtab-btn" onclick="setResultsTab('rates',this)">Rates &amp; current densities</button>
   <button class="rtab-btn" onclick="setResultsTab('diag',this)">Diagnostics</button>
+  <button class="rtab-btn" onclick="setResultsTab('rates',this)">Rates &amp; current densities</button>
+  <button class="rtab-btn" onclick="setResultsTab('sim',this)">Simulation</button>
 </div>
 
 <!-- ── TAB 1 — BALANCE ── -->
@@ -744,7 +758,13 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st">1st</button><button data-p="Nth">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg></div>
     <!-- Ratio table -->
     <div class="cd-box">
-      <h4 data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red."></button></h4>
+      <h4 data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red. Click any row in &quot;Assigning&quot; mode to feed its rate into the Simulation tab as the 1st-cycle or N&lt;sup&gt;th&lt;/sup&gt;-cycle current." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red. Click any row in &quot;Assigning&quot; mode to feed its rate into the Simulation tab as the 1st-cycle or N&lt;sup&gt;th&lt;/sup&gt;-cycle current."></button></h4>
+      <div class="rtg-modebar" data-help="Choose which cycle a click is currently assigning, then click a row in the table below. Click the same row a second time in the same mode to clear that selection." data-help-key="diag_ratio_assign_mode">
+        <span class="lbl">Assigning:</span>
+        <label class="act-1" id="simAssignLbl-1"><input type="radio" name="simAssign" value="1st" checked onchange="setSimAssignMode('1st')"><span class="sim-dot sim-dot-1"></span>1<sup>st</sup> cycle rate</label>
+        <label id="simAssignLbl-N"><input type="radio" name="simAssign" value="Nth" onchange="setSimAssignMode('Nth')"><span class="sim-dot sim-dot-N"></span>N<sup>th</sup> cycle rate</label>
+        <button type="button" class="rtg-modeclr" onclick="clearSimRateSel()">Clear both</button>
+      </div>
       <div class="rtg" id="rGrid"></div>
     </div>
     <!-- Potential window -->
@@ -756,6 +776,22 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         The <span style="font-style:italic">dashed</span> outline is the <em>theoretical</em> window <em>V</em><sub>th</sub> taken from the library (the material's full-capacity limits).
         The <span style="font-weight:600">solid fill</span> is the <em>operating</em> window <em>V</em><sub>op</sub> the user has set.
         For capacitive / pseudocapacitive materials the accessible capacity is scaled by <em>V</em><sub>op</sub>/<em>V</em><sub>th</sub>; faradaic capacities are not scaled.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4 — SIMULATION ── -->
+<div class="rtab-pane" id="rtab-sim">
+  <div class="rtab-pad">
+    <div class="cd-box">
+      <h4 data-help="Galvanostatic simulation of the full cell built from the Single-mode inputs. The 1st-cycle and Nth-cycle currents are read from the rates you select in the Diagnostics ratio table (click a row in &quot;Assigning&quot; mode); without those, the simulation has no current to apply." data-help-key="tab_sim_heading" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Galvanostatic simulation<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Galvanostatic simulation of the full cell built from the Single-mode inputs. The 1st-cycle and Nth-cycle currents are read from the rates you select in the Diagnostics ratio table (click a row in &quot;Assigning&quot; mode); without those, the simulation has no current to apply."></button></h4>
+      <div id="simRateStatus" style="font-size:11px;color:var(--ink2);margin-bottom:10px;display:flex;gap:18px;flex-wrap:wrap">
+        <span><span class="sim-dot sim-dot-1"></span><strong>1st cycle:</strong> <span id="simRate1Txt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
+        <span><span class="sim-dot sim-dot-N"></span><strong>N<sup>th</sup> cycle:</strong> <span id="simRateNTxt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
+      </div>
+      <div id="simPlot" style="width:100%;height:520px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;font-style:italic">
+        Plot area — physics not wired yet. Pick a 1st-cycle and N<sup>th</sup>-cycle rate in the Diagnostics tab to anchor the simulation currents.
       </div>
     </div>
   </div>
@@ -893,6 +929,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <script type="application/json" id="embedded-lib">{}</script>
 <script src="materials-library.js"></script>
+<script src="plotly.min.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════ */
 /*  LIBRARY — now with rates array, storageType, ocv, ocvRef    */
@@ -1952,6 +1989,78 @@ function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").for
 function setResultsTab(t,btn){
   document.querySelectorAll(".rtab-btn").forEach(b=>b.classList.toggle("act",b===btn));
   document.querySelectorAll(".rtab-pane").forEach(p=>p.classList.toggle("act",p.id==="rtab-"+t));
+  if(t==="sim" && typeof renderSimPlot==="function") renderSimPlot();
+}
+
+/* ── Simulation rate selection state ──
+   The Simulation tab pulls its 1st- and Nth-cycle currents from rows the user picks
+   in the Diagnostics ratio table (rGrid). Each selection is stored as a snapshot of
+   the row's identifying metadata (label + rate strings) so highlighting survives a
+   recalc that rebuilds the rows.
+   simAssignMode is which cycle the next click writes to: "1st" or "Nth". */
+let simAssignMode="1st";
+let simRateSel={"1st":null,"Nth":null}; // each: {lb, ri} or null
+
+function setSimAssignMode(m){
+  simAssignMode=(m==="Nth")?"Nth":"1st";
+  const l1=$("simAssignLbl-1"),lN=$("simAssignLbl-N");
+  if(l1) l1.classList.toggle("act-1",simAssignMode==="1st");
+  if(lN) lN.classList.toggle("act-N",simAssignMode==="Nth");
+}
+
+function _rowKey(lb,ri){return (lb||"")+"|"+(ri||"")}
+
+function pickSimRateRow(lb,ri){
+  const key=_rowKey(lb,ri),cur=simRateSel[simAssignMode];
+  // Toggle off if clicking the same row in the same assigning mode
+  if(cur && _rowKey(cur.lb,cur.ri)===key){
+    simRateSel[simAssignMode]=null;
+  } else {
+    // Don't let one row hold both selections — clear the other slot if it matches
+    const otherMode=simAssignMode==="1st"?"Nth":"1st";
+    const oth=simRateSel[otherMode];
+    if(oth && _rowKey(oth.lb,oth.ri)===key) simRateSel[otherMode]=null;
+    simRateSel[simAssignMode]={lb,ri};
+  }
+  applyRGridSelHighlight();
+  updateSimStatus();
+  if(document.getElementById("rtab-sim")?.classList.contains("act") && typeof renderSimPlot==="function") renderSimPlot();
+}
+
+function clearSimRateSel(){
+  simRateSel={"1st":null,"Nth":null};
+  applyRGridSelHighlight();
+  updateSimStatus();
+  if(document.getElementById("rtab-sim")?.classList.contains("act") && typeof renderSimPlot==="function") renderSimPlot();
+}
+
+function applyRGridSelHighlight(){
+  const g=$("rGrid"); if(!g) return;
+  const k1=simRateSel["1st"]?_rowKey(simRateSel["1st"].lb,simRateSel["1st"].ri):null;
+  const kN=simRateSel["Nth"]?_rowKey(simRateSel["Nth"].lb,simRateSel["Nth"].ri):null;
+  g.querySelectorAll(".rtg-r").forEach(r=>{
+    const k=_rowKey(r.dataset.simLb,r.dataset.simRi);
+    r.classList.toggle("sel-1",k===k1);
+    r.classList.toggle("sel-N",k===kN);
+  });
+}
+
+function updateSimStatus(){
+  const t1=$("simRate1Txt"),tN=$("simRateNTxt");
+  if(t1){
+    if(simRateSel["1st"]){t1.textContent=simRateSel["1st"].lb+" — "+simRateSel["1st"].ri;t1.style.color="";t1.style.fontStyle="";}
+    else{t1.textContent="no row selected";t1.style.color="var(--ink3)";t1.style.fontStyle="italic";}
+  }
+  if(tN){
+    if(simRateSel["Nth"]){tN.textContent=simRateSel["Nth"].lb+" — "+simRateSel["Nth"].ri;tN.style.color="";tN.style.fontStyle="";}
+    else{tN.textContent="no row selected";tN.style.color="var(--ink3)";tN.style.fontStyle="italic";}
+  }
+}
+
+/* Placeholder — physics + Plotly traces will land here in a later step. For now this
+   only lets us confirm the plot div is reachable and that Plotly is loaded. */
+function renderSimPlot(){
+  // Intentionally a no-op until the galvanostatic model is implemented.
 }
 
 /* ══════════════════════════════════════════════════════════════ */
@@ -3612,7 +3721,13 @@ function buildRT(inp,r){const g=$("rGrid"),es=[];
     const Qc=r.mAC*inp.cat.ac.cN*r.kc+(saltOn?r.mS*inp.cat.salt.cN*r.kc:0);const Qa=r.mAn*inp.an.wAM*ar.cN;const ratio=Qc>0?Qa/Qc:0;
     if(ar.cN>0)es.push({lb:"An@"+fRtU(arRv,arRu),ri:fmtR(inp.cat.ac.rN,ruCN)+"/"+fRtU(arRv,arRu),ratio,over:dev(ratio)})});
   let h=`<div class="rtg-h"><span>Condition</span><span style="text-align:center">Rate</span><span style="text-align:center">Q<sub>a</sub>/Q<sub>c</sub></span><span style="text-align:center">Excess vs 1.00</span></div>`;
-  es.forEach(e=>{const cl=rC(e.over);h+=`<div class="rtg-r"><span class="k">${e.lb}</span><span class="v" style="font-size:10px;color:var(--ink3)">${e.ri}</span><span class="v ${cl}">${fR(e.ratio)}</span><span class="v ${cl}">${fE(e.over)}</span></div>`});g.innerHTML=h}
+  es.forEach(e=>{const cl=rC(e.over);
+    const lbAttr=String(e.lb).replace(/"/g,"&quot;");
+    const riAttr=String(e.ri).replace(/"/g,"&quot;");
+    h+=`<div class="rtg-r" data-sim-lb="${lbAttr}" data-sim-ri="${riAttr}" onclick="pickSimRateRow(this.dataset.simLb,this.dataset.simRi)" title="Click to assign this rate to the simulation"><span class="k">${e.lb}</span><span class="v" style="font-size:10px;color:var(--ink3)">${e.ri}</span><span class="v ${cl}">${fR(e.ratio)}</span><span class="v ${cl}">${fE(e.over)}</span></div>`});
+  g.innerHTML=h;
+  applyRGridSelHighlight();
+  updateSimStatus();}
 
 function valF(){[["cat-wAM","cat-wC","cat-wB","cat-fs"],["an-wAM","an-wC","an-wB","an-fs"]].forEach(p=>{const s=N(p[0])+N(p[1])+N(p[2]);const el=$(p[3]);if(!el)return;el.textContent="Σ="+s.toFixed(0)+"%";el.style.color=Math.abs(s-100)<1?"var(--ink3)":Math.abs(s-100)<5?"var(--wn)":"var(--er)"})}
 
