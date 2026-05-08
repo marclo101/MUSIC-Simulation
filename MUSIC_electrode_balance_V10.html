@@ -602,7 +602,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="row w2"><label data-help="The operating voltage window the cell is actually cycled in. For capacitive/pseudocapacitive AM, narrowing Vₒₚ below Vₜₕ triggers a confirm dialog that proportionally rescales C₁ and Cₙ; for faradaic AM the values are unchanged because intercalation capacity doesn't shrink linearly with the window." data-help-key="fld_cat_ac_vop">V<sub>op</sub> window<button type="button" class="help-icon hi-field" aria-label="Help" data-help="The operating voltage window the cell is actually cycled in. For capacitive/pseudocapacitive AM, narrowing Vₒₚ below Vₜₕ triggers a confirm dialog that proportionally rescales C₁ and Cₙ; for faradaic AM the values are unchanged because intercalation capacity doesn't shrink linearly with the window."></button></label><div class="fld"><input type="number" id="cat-Vop-hi" step="0.01" value="4.2" onchange="scaleVW('cat')"><span class="u">V hi</span></div><div class="fld"><input type="number" id="cat-Vop-lo" step="0.01" value="1.5" onchange="scaleVW('cat')"><span class="u">V lo</span></div></div>
     <div id="cat-vw-note" style="font-size:10px;color:var(--cp);font-family:var(--fm);margin-top:2px;display:none"></div>
     </div></div>
-    <div class="rate-row" id="cat-ac-c1-row"><label data-help="First-cycle specific capacity of the cathode AM (mAh/g) — the charge delivered on the very first half-cycle that injects the working ion into the full cell. A larger C₁ inflates Qc1, lowering the 1st-cycle ratio r₁ = Qa1/Qc1." data-help-key="fld_cat_ac_c1"><em>C</em><sub>1st</sub> <span class="su">first cycle</span> <span id="cat-c1-orig" style="font-size:9px;color:var(--ink3);font-family:var(--fm)"></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle specific capacity of the cathode AM (mAh/g) — the charge delivered on the very first half-cycle that injects the working ion into the full cell. A larger C₁ inflates Qc1, lowering the 1st-cycle ratio r₁ = Qa1/Qc1."></button></label>
+    <div class="rate-row" id="cat-ac-c1-row"><label data-help="First-cycle (formation) specific capacity of the cathode AM (mAh/g) — the charge delivered on the very first half-cycle (the &quot;formation&quot; stroke) that injects the working ion into the full cell. Used only for that first stroke; from the reverse half of cycle 1 onward the simulation switches to Cₙ. A larger C₁ inflates Qc1, lowering the 1st-cycle ratio r₁ = Qa1/Qc1." data-help-key="fld_cat_ac_c1"><em>C</em><sub>1st</sub> <span class="su">first cycle</span> <span id="cat-c1-orig" style="font-size:9px;color:var(--ink3);font-family:var(--fm)"></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle (formation) specific capacity of the cathode AM (mAh/g) — the charge delivered on the very first half-cycle (the &quot;formation&quot; stroke) that injects the working ion into the full cell. Used only for that first stroke; from the reverse half of cycle 1 onward the simulation switches to Cₙ. A larger C₁ inflates Qc1, lowering the 1st-cycle ratio r₁ = Qa1/Qc1."></button></label>
       <div class="fld"><input type="number" id="cat-ac-c1" step="1" value="" placeholder="mAh/g" oninput="onCapManual('cat-ac','c1')"><span class="u">mAh/g</span></div>
       <div class="rate-pick unset" onclick="openRatePicker('cat-ac','c1')"><span id="cat-ac-r1-lbl">—</span></div>
       <span class="rate-eq" id="cat-ac-r1-eq"></span>
@@ -620,7 +620,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div id="salt-flds" style="display:none">
     <div class="row"><label data-help="Pick a pre-validated sacrificial salt (Na₂C₄O₄ squarate, Na₂C₂O₄ oxalate, NaCl, Li-salt analogues…). Auto-fills the salt name, available rates, and rate-paired C₁; Cₙ is essentially zero by definition." data-help-key="fld_salt_preset">Preset<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Pick a pre-validated sacrificial salt (Na₂C₄O₄ squarate, Na₂C₂O₄ oxalate, NaCl, Li-salt analogues…). Auto-fills the salt name, available rates, and rate-paired C₁; Cₙ is essentially zero by definition."></button></label><div class="fld"><select id="cat-s-ps" onchange="applyPS('cat-s')"><option value="">Custom</option><option value="na2c4o4">Na₂C₄O₄ (squarate)</option><option value="u_morf502a">Na₂C₅O₅ (croconate)</option><option value="li2c4o4">Li₂C₄O₄ (squarate)</option></select></div></div>
     <div class="row"><label data-help="Free-text salt name. Independent of the preset choice — used for labelling only." data-help-key="fld_salt_name">Material<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Free-text salt name. Independent of the preset choice — used for labelling only."></button></label><div class="fld"><input type="text" id="cat-s-name" value=""></div></div>
-    <div class="rate-row"><label data-help="First-cycle specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss." data-help-key="fld_salt_c1"><em>C</em><sub>1st</sub><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss."></button></label>
+    <div class="rate-row"><label data-help="First-cycle (formation) specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation, consumed entirely during the formation half-cycle. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss." data-help-key="fld_salt_c1"><em>C</em><sub>1st</sub><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle (formation) specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation, consumed entirely during the formation half-cycle. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss."></button></label>
       <div class="fld"><input type="number" id="cat-s-c1" step="1" value="" placeholder="mAh/g" oninput="onCapManual('cat-s','c1')"><span class="u">mAh/g</span></div>
       <div class="rate-pick unset" onclick="openRatePicker('cat-s','c1')"><span id="cat-s-r1-lbl">—</span></div>
       <span class="rate-eq" id="cat-s-r1-eq"></span>
@@ -659,7 +659,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="row w2"><label data-help="Operating voltage window the anode actually sees in the assembled cell. For capacitive/pseudocapacitive AM, narrowing it triggers a confirm dialog that proportionally rescales C₁ and Cₙ." data-help-key="fld_an_vop">V<sub>op</sub> window<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Operating voltage window the anode actually sees in the assembled cell. For capacitive/pseudocapacitive AM, narrowing it triggers a confirm dialog that proportionally rescales C₁ and Cₙ."></button></label><div class="fld"><input type="number" id="an-Vop-hi" step="0.01" value="1.7" onchange="scaleVW('an')"><span class="u">V hi</span></div><div class="fld"><input type="number" id="an-Vop-lo" step="0.01" value="0.05" onchange="scaleVW('an')"><span class="u">V lo</span></div></div>
     <div id="an-vw-note" style="font-size:10px;color:var(--ap);font-family:var(--fm);margin-top:2px;display:none"></div>
     </div></div>
-    <div class="rate-row"><label data-help="First-cycle specific capacity of the anode AM (mAh/g). It includes the irreversible SEI / formation loss, so for most anodes (especially hard carbon, Si, conversion materials) C₁ &gt; Cₙ; the gap (C₁ − Cₙ) is what the sacrificial salt is sized to compensate." data-help-key="fld_an_c1"><em>C</em><sub>1st</sub> <span class="su">first cycle</span> <span id="an-c1-orig" style="font-size:9px;color:var(--ink3);font-family:var(--fm)"></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle specific capacity of the anode AM (mAh/g). It includes the irreversible SEI / formation loss, so for most anodes (especially hard carbon, Si, conversion materials) C₁ &gt; Cₙ; the gap (C₁ − Cₙ) is what the sacrificial salt is sized to compensate."></button></label>
+    <div class="rate-row"><label data-help="First-cycle (formation) specific capacity of the anode AM (mAh/g). It includes the irreversible SEI / formation loss, so for most anodes (especially hard carbon, Si, conversion materials) C₁ &gt; Cₙ; the gap (C₁ − Cₙ) is what the sacrificial salt is sized to compensate. The simulation only consumes C₁ during the very first half-cycle (the formation stroke) — every later stroke uses Cₙ." data-help-key="fld_an_c1"><em>C</em><sub>1st</sub> <span class="su">first cycle</span> <span id="an-c1-orig" style="font-size:9px;color:var(--ink3);font-family:var(--fm)"></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle (formation) specific capacity of the anode AM (mAh/g). It includes the irreversible SEI / formation loss, so for most anodes (especially hard carbon, Si, conversion materials) C₁ &gt; Cₙ; the gap (C₁ − Cₙ) is what the sacrificial salt is sized to compensate. The simulation only consumes C₁ during the very first half-cycle (the formation stroke) — every later stroke uses Cₙ."></button></label>
       <div class="fld"><input type="number" id="an-c1" step="1" value="" placeholder="mAh/g" oninput="onCapManual('an','c1')"><span class="u">mAh/g</span></div>
       <div class="rate-pick unset" onclick="openRatePicker('an','c1')"><span id="an-r1-lbl">—</span></div>
       <span class="rate-eq" id="an-r1-eq"></span>
@@ -689,7 +689,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="fld" style="flex:0 0 90px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
     <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:18px;height:18px;font-size:11px">↻</button>
     <span style="border-left:1px solid var(--rule);height:24px;margin:0 4px"></span>
-    <label data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored first stroke in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). Subsequent strokes alternate naturally." data-help-key="fld_start_dir" style="font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Start in cell<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored first stroke in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). Subsequent strokes alternate naturally."></button></label>
+    <label data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ." data-help-key="fld_start_dir" style="font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Start in cell<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ."></button></label>
     <div class="sim-tg" id="startDirTg" style="margin-left:-2px">
       <button type="button" id="startDirChg" class="act" onclick="setStartDir('charge')">Charge</button>
       <button type="button" id="startDirDis" onclick="setStartDir('discharge')">Discharge</button>
@@ -2207,8 +2207,13 @@ function simBuildLayout(){
   // Default ranges chosen so an empty plot still looks sensible: typical full-cell
   // window (0–4.5 V) on both Y axes, 0–1 capacity unit on X. Real ranges will be
   // overridden once traces land.
+  // autosize=true + no explicit width/height so the plot tracks the host's
+  // CSS box (.sim-wrap is 100% × 560 px). Without this, Plotly latches onto
+  // whatever pixel size the host had at first paint and stops following it,
+  // which is what produced the off-size graph.
   const tickFont={family:'JetBrains Mono, ui-monospace, monospace',size:11,color:'#3A4A5C'};
   return {
+    autosize:true,
     margin:{t:20,b:60,l:80,r:80},
     showlegend:false,
     paper_bgcolor:'rgba(0,0,0,0)',
@@ -2272,10 +2277,10 @@ function simRenderAxisLabels(){
 /* ── Simulation control state & physics ──
    Per-electrode independent V-vs-Q model. Each stroke starts at Q=0 and
    runs to that electrode's own capacity (Q_c or Q_a from the diagnostics).
-   A "cycle" is a charge + discharge pair; cycle 1 strokes use C_1st,
-   cycles 2..N use C_Nth. Cycle 1's chronologically first stroke is
-   OCV-anchored (slope = (V_extreme − V_OCV) / Q_1st instead of ΔV_th /
-   Q_1st); all later strokes traverse the full theoretical V-window.
+   Only the chronologically first stroke (the formation half-cycle) uses
+   C_1st and is OCV-anchored (slope = (V_extreme − V_OCV) / Q_1st). Every
+   later stroke — including the reverse half of cycle 1 — uses C_Nth and
+   traverses the full theoretical V-window (slope = ±ΔV_th / Q_Nth).
    `startDir` (the global "Start in cell" toggle next to N/P ratio)
    determines which stroke comes first chronologically; `simDirState`
    (the panel toggle) picks which stroke of the selected cycle to plot. */
@@ -2319,8 +2324,10 @@ function stepSimCycle(d){
 //
 // Slope rule for stroke k=1 (and only k=1): the angular coefficient is
 // (V_extreme − V_OCV) / Q_1st instead of ΔV_th / Q_1st. End potential is
-// the V_th extreme reached by going `startDir` from V_OCV. All later strokes
-// traverse the full ΔV_th window (slope = ±ΔV_th / Q_cycle).
+// the V_th extreme reached by going `startDir` from V_OCV. All later
+// strokes — including cycle 1's reverse half (k=2) — traverse the full
+// ΔV_th window over Q_Nth (slope = ±ΔV_th / Q_Nth) because the formation
+// loss is captured entirely by the first half-stroke.
 function simComputeSeries(){
   const inp=window.lastInp,r=window.lastR;
   if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
@@ -2388,10 +2395,9 @@ function simComputeSeries(){
   const dir_t=(k_target%2===1) ? startDir : (startDir==="charge"?"discharge":"charge");
   const sign_t=(dir_t==="charge")?+1:-1;
   const isStroke1=(k_target===1);
-  const isCycle1=(target===1);
 
-  // dV per electrode (signed). Cycle-1-stroke-1 uses OCV-anchored extents;
-  // every other stroke uses the full ΔV_th window.
+  // dV per electrode (signed). The chronologically first stroke (formation
+  // half-cycle) is OCV-anchored; every later stroke spans the full ΔV_th.
   let dV_c, dV_a;
   if(isStroke1){
     dV_c=(sign_t===+1) ? (Vth_c_hi-Vocv_c) : (Vth_c_lo-Vocv_c);
@@ -2401,11 +2407,13 @@ function simComputeSeries(){
     dV_a=-sign_t*dVa;
   }
 
-  // Capacity per electrode for this stroke. Both strokes of cycle 1 use C_1st;
-  // every later stroke uses C_Nth. Currents follow the same rule.
-  const Qc=isCycle1 ? Q_c_1 : Q_c_N;
-  const Qa=isCycle1 ? Q_a_1 : Q_a_N;
-  const Iu=isCycle1 ? I1_uA : IN_uA;
+  // Capacity per electrode for this stroke. Only the formation stroke
+  // (k=1) uses C_1st; every later stroke — including cycle 1's reverse
+  // half — uses C_Nth, since the first-cycle irreversible loss is entirely
+  // expended during the formation half-cycle. Currents follow the same rule.
+  const Qc=isStroke1 ? Q_c_1 : Q_c_N;
+  const Qa=isStroke1 ? Q_a_1 : Q_a_N;
+  const Iu=isStroke1 ? I1_uA : IN_uA;
 
   // IR step (V), split symmetrically so V_cell shifts by sign·I·R_eq at Q=0.
   const dV_IR=sign_t*(Iu*Req)*1e-6;
@@ -2469,7 +2477,7 @@ function renderSimPlot(){
   const lbl=$("simCycleDir");
   if(lbl){
     if(series.ok){
-      const ocvNote=(series.strokeK===1)?" · OCV-anchored":"";
+      const ocvNote=(series.strokeK===1)?" · formation · OCV-anchored":"";
       lbl.textContent="cycle "+series.cycleN+" · "+series.dir+" stroke"+ocvNote;
     } else lbl.textContent="—";
   }
@@ -2540,10 +2548,40 @@ function renderSimPlot(){
   if(!simPlotInitialised){
     Plotly.newPlot(host,traces,layout,config);
     simPlotInitialised=true;
+    simInstallResizeWatcher(host);
   } else {
     Plotly.react(host,traces,layout,config);
   }
+  // Force a resize pass after every (re-)render: covers the case where the
+  // sim tab was display:none when Plotly first measured the host (it then
+  // baked in a stale width/height that Plotly.react alone won't refresh).
+  try{ Plotly.Plots.resize(host); }catch(_){}
   simRenderAxisLabels();
+}
+
+// One-shot watcher that re-runs Plotly.Plots.resize whenever the sim plot's
+// container changes size. ResizeObserver fires on the actual box (tab show,
+// sidebar collapse, window resize, devtools open …); Plotly's built-in
+// responsive:true only listens to window resize, which misses tab switches.
+let _simResizeObs=null;
+function simInstallResizeWatcher(host){
+  if(_simResizeObs || typeof ResizeObserver==="undefined") return;
+  const wrap=document.getElementById("simWrap")||host;
+  let pending=false;
+  _simResizeObs=new ResizeObserver(()=>{
+    if(pending) return;
+    pending=true;
+    requestAnimationFrame(()=>{
+      pending=false;
+      if(!host.isConnected) return;
+      try{ Plotly.Plots.resize(host); }catch(_){}
+    });
+  });
+  _simResizeObs.observe(wrap);
+  window.addEventListener("resize",()=>{
+    if(!host.isConnected) return;
+    try{ Plotly.Plots.resize(host); }catch(_){}
+  });
 }
 
 function openSimUnitMenu(ev,kind){
