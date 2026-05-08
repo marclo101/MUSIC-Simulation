@@ -190,6 +190,25 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
 .sim-dot-1{background:rgb(56,132,255)}
 .sim-dot-N{background:rgb(245,158,11)}
+/* ── Simulation plot template (EC-Lab-inspired axes with click-to-edit units) ── */
+.sim-wrap{position:relative;width:100%;height:560px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);overflow:visible}
+#simPlot{position:absolute;inset:0}
+.sim-ax{position:absolute;font-family:var(--fb);font-size:12px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2}
+.sim-ax > *{pointer-events:auto}
+.sim-ax-x{left:80px;right:80px;bottom:6px;height:22px;font-weight:500}
+.sim-ax-y{left:0;top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:500}
+.sim-ax-y2{right:0;top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;font-weight:500}
+.sim-ax .ax-pre{color:var(--ink2)}
+.sim-ax .ax-pill{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;font:inherit;color:var(--ink);background:var(--bone);border:1px solid var(--rule);border-radius:4px;cursor:pointer;transition:background .12s,border-color .12s;line-height:1.4}
+.sim-ax .ax-pill:hover{background:var(--bone2);border-color:var(--ink3)}
+.sim-ax .ax-pill.ax-pill-static{background:transparent;border-color:transparent;cursor:default;color:var(--ink2);padding:1px 4px}
+.sim-ax .ax-pill .ax-pill-arrow{font-size:9px;color:var(--ink3);margin-left:1px}
+.sim-empty{position:absolute;left:80px;right:80px;top:20px;bottom:60px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--ink3);font-size:12px;font-style:italic;padding:0 24px;pointer-events:none}
+.sim-empty.hidden{display:none}
+.sim-unit-menu{position:absolute;display:none;z-index:1000;background:var(--paper);border:1px solid var(--rule);border-radius:6px;box-shadow:var(--s2);padding:4px;font-family:var(--fb);font-size:12px;min-width:120px}
+.sim-unit-menu .sim-unit-opt{display:block;width:100%;text-align:left;padding:6px 10px;background:none;border:none;color:var(--ink);border-radius:4px;cursor:pointer;font:inherit}
+.sim-unit-menu .sim-unit-opt:hover{background:var(--bone)}
+.sim-unit-menu .sim-unit-opt.act{background:var(--cl);color:var(--cp);font-weight:600}
 /* Current density detail */
 .cd-box{border:1px solid var(--ruleS);border-radius:8px;padding:14px;margin-bottom:16px}
 .cd-box h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink2);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
@@ -794,9 +813,14 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <span><span class="sim-dot sim-dot-1"></span><strong>1<sup>st</sup> cycle:</strong> <span id="simRate1Txt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
         <span><span class="sim-dot sim-dot-N"></span><strong>N<sup>th</sup> cycle:</strong> <span id="simRateNTxt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
       </div>
-      <div id="simPlot" style="width:100%;height:520px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;font-style:italic;text-align:center;padding:0 24px">
-        Plot area — physics not wired yet. Pick a 1<sup>st</sup>-cycle and N<sup>th</sup>-cycle rate in the Rates &amp; current densities tab to anchor the simulation currents.
+      <div class="sim-wrap" id="simWrap">
+        <div class="sim-ax sim-ax-y" id="simAxisY"></div>
+        <div class="sim-ax sim-ax-y2" id="simAxisY2"></div>
+        <div id="simPlot"></div>
+        <div class="sim-ax sim-ax-x" id="simAxisX"></div>
+        <div class="sim-empty" id="simEmpty">Plot template ready — physics not wired yet. Pick a 1<sup>st</sup>-cycle and N<sup>th</sup>-cycle rate in the Rates &amp; current densities tab to anchor the simulation currents.</div>
       </div>
+      <div class="sim-unit-menu" id="simUnitMenu" role="menu"></div>
     </div>
   </div>
 </div>
@@ -2077,10 +2101,166 @@ function updateSimStatus(){
   }
 }
 
-/* Placeholder — physics + Plotly traces will land here in a later step. For now this
-   only lets us confirm the plot div is reachable and that Plotly is loaded. */
+/* ── Simulation plot template ──
+   EC-Lab-inspired layout. Plotly draws the chart frame; HTML overlays handle the
+   editable axis titles. Each editable unit is a clickable pill (.ax-pill) that
+   opens a small unit menu. Traces are added in a later step — this function only
+   wires the layout, axes, and interactivity. */
+const SIM_CAP_UNITS=[
+  {id:"uAh",label:"µA·h"},
+  {id:"mAh",label:"mA·h"},
+  {id:"Ah", label:"A·h"},
+  {id:"C",  label:"C"}
+];
+const SIM_M_OPTIONS=[
+  {id:"Li",label:"Li/Li⁺"},
+  {id:"Na",label:"Na/Na⁺"},
+  {id:"K", label:"K/K⁺"}
+];
+const simAxisState={M:"Li",capUnit:"mAh"};
+let simUserOverrodeM=false; // stop auto-syncing M from inputs once user picks one
+let simPlotInitialised=false;
+
+function _simCapUnit(id){return SIM_CAP_UNITS.find(u=>u.id===id)||SIM_CAP_UNITS[1];}
+function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];}
+
+function syncSimAxisFromInputs(){
+  if(simUserOverrodeM) return;
+  const sys=window.lastInp?.cat?.ac?.sys;
+  if(sys && SIM_M_OPTIONS.some(o=>o.id===sys)) simAxisState.M=sys;
+}
+
+function simBuildLayout(){
+  // Default ranges chosen so an empty plot still looks sensible: typical full-cell
+  // window (0–4.5 V) on both Y axes, 0–1 capacity unit on X. Real ranges will be
+  // overridden once traces land.
+  const tickFont={family:'JetBrains Mono, ui-monospace, monospace',size:11,color:'#3A4A5C'};
+  return {
+    margin:{t:20,b:60,l:80,r:80},
+    showlegend:false,
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'#FFFFFF',
+    dragmode:'pan',
+    hovermode:'closest',
+    xaxis:{
+      title:'',
+      range:[0,1],
+      showgrid:true,gridcolor:'#E4EAF0',gridwidth:1,
+      zeroline:false,
+      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      tickfont:tickFont,
+      linecolor:'#7A8A9A',linewidth:1,
+      automargin:false,
+      mirror:false
+    },
+    yaxis:{
+      title:'',
+      range:[0,4.5],
+      showgrid:true,gridcolor:'#E4EAF0',gridwidth:1,
+      zeroline:false,
+      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      tickfont:tickFont,
+      linecolor:'#7A8A9A',linewidth:1,
+      side:'left',
+      automargin:false
+    },
+    yaxis2:{
+      title:'',
+      range:[0,4.5],
+      overlaying:'y',
+      side:'right',
+      showgrid:false,
+      zeroline:false,
+      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      tickfont:tickFont,
+      linecolor:'#7A8A9A',linewidth:1,
+      automargin:false
+    }
+  };
+}
+
+function simRenderAxisLabels(){
+  const m=_simMOpt(simAxisState.M).label;
+  const cap=_simCapUnit(simAxisState.capUnit).label;
+  const ax=$("simAxisX"),ay=$("simAxisY"),ay2=$("simAxisY2");
+  if(ax) ax.innerHTML=
+    `<span class="ax-pre">Capacity</span>`+
+    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to change capacity unit">${cap}<span class="ax-pill-arrow">▾</span></button>`;
+  if(ay) ay.innerHTML=
+    `<span class="ax-pre">Potential (V vs</span>`+
+    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'mRef')" title="Click to change reference electrode">${m}<span class="ax-pill-arrow">▾</span></button>`+
+    `<span class="ax-pre">)</span>`;
+  if(ay2) ay2.innerHTML=
+    `<span class="ax-pre">Cell Voltage</span>`+
+    `<span class="ax-pill ax-pill-static">V</span>`;
+}
+
 function renderSimPlot(){
-  // Intentionally a no-op until the galvanostatic model is implemented.
+  const host=$("simPlot");
+  if(!host || typeof Plotly==="undefined") return;
+  syncSimAxisFromInputs();
+  const layout=simBuildLayout();
+  const config={
+    displayModeBar:true,
+    displaylogo:false,
+    responsive:true,
+    scrollZoom:true,
+    modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
+    toImageButtonOptions:{format:'png',filename:'MUSIC_simulation',scale:2}
+  };
+  // newPlot on first entry, react after that — react preserves zoom/pan state
+  if(!simPlotInitialised){
+    Plotly.newPlot(host,[],layout,config);
+    simPlotInitialised=true;
+  } else {
+    Plotly.react(host,[],layout,config);
+  }
+  simRenderAxisLabels();
+  // Empty-state caption is hidden once any traces are drawn (later)
+  const empty=$("simEmpty"); if(empty) empty.classList.toggle("hidden",false);
+}
+
+function openSimUnitMenu(ev,kind){
+  ev.stopPropagation();
+  const menu=$("simUnitMenu"); if(!menu) return;
+  const opts=kind==="capUnit"?SIM_CAP_UNITS:SIM_M_OPTIONS;
+  const cur =kind==="capUnit"?simAxisState.capUnit:simAxisState.M;
+  menu.innerHTML=opts.map(o=>
+    `<button type="button" class="sim-unit-opt${o.id===cur?" act":""}" onclick="pickSimUnit('${kind}','${o.id}')">${o.label}</button>`
+  ).join("");
+  // Position the menu near the click point. Using event coords (page-relative)
+  // sidesteps the rotated-bounding-box weirdness on the vertical Y-axis pills.
+  const wrap=$("simWrap"); if(!wrap) return;
+  const wr=wrap.getBoundingClientRect();
+  const x=ev.clientX-wr.left, y=ev.clientY-wr.top;
+  // Show first to measure, then clamp inside the wrapper
+  menu.style.display="block";
+  menu.style.left="0px"; menu.style.top="0px";
+  const mw=menu.offsetWidth, mh=menu.offsetHeight;
+  const maxL=wr.width-mw-4, maxT=wr.height-mh-4;
+  menu.style.left=Math.max(4,Math.min(maxL,x+6))+"px";
+  menu.style.top =Math.max(4,Math.min(maxT,y+6))+"px";
+  // Make the wrapper the positioning context for the menu
+  if(menu.parentElement!==wrap) wrap.appendChild(menu);
+  // Close on next outside click / Escape / scroll
+  setTimeout(()=>{
+    document.addEventListener("mousedown",_simMenuClose,{capture:true,once:true});
+    document.addEventListener("keydown",_simMenuKey,{once:true});
+  },0);
+}
+function _simMenuClose(ev){
+  const menu=$("simUnitMenu");
+  if(menu && !menu.contains(ev.target)) menu.style.display="none";
+}
+function _simMenuKey(ev){
+  if(ev.key==="Escape"){const menu=$("simUnitMenu"); if(menu) menu.style.display="none";}
+}
+function pickSimUnit(kind,id){
+  if(kind==="capUnit") simAxisState.capUnit=id;
+  else if(kind==="mRef"){ simAxisState.M=id; simUserOverrodeM=true; }
+  const menu=$("simUnitMenu"); if(menu) menu.style.display="none";
+  simRenderAxisLabels();
+  // No data yet — when traces exist we'll rescale x and relayout here.
 }
 
 /* ══════════════════════════════════════════════════════════════ */
