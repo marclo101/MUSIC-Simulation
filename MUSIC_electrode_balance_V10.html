@@ -193,7 +193,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 /* ── Simulation plot template (EC-Lab-inspired axes with click-to-edit units) ── */
 .sim-wrap{position:relative;width:100%;height:560px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);overflow:visible}
 #simPlot{position:absolute;inset:0}
-.sim-ax{position:absolute;font-family:var(--fb);font-size:12px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2}
+.sim-ax{position:absolute;font-family:var(--fb);font-size:12px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;z-index:5}
 .sim-ax > *{pointer-events:auto}
 .sim-ax-x{left:80px;right:80px;bottom:6px;height:22px;font-weight:500}
 .sim-ax-y{left:0;top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:500}
@@ -2106,11 +2106,15 @@ function updateSimStatus(){
    editable axis titles. Each editable unit is a clickable pill (.ax-pill) that
    opens a small unit menu. Traces are added in a later step — this function only
    wires the layout, axes, and interactivity. */
+// `toC` = how many Coulombs are in one unit. Use this to convert any value
+// from one unit to another: vB = vA * (toC[A] / toC[B]).
+// 1 A·h = 3600 C; metric prefixes apply the usual ×1000 ladder.
 const SIM_CAP_UNITS=[
-  {id:"uAh",label:"µA·h"},
-  {id:"mAh",label:"mA·h"},
-  {id:"Ah", label:"A·h"},
-  {id:"C",  label:"C"}
+  {id:"uAh",label:"µA·h",toC:0.0036},
+  {id:"mAh",label:"mA·h",toC:3.6},
+  {id:"Ah", label:"A·h", toC:3600},
+  {id:"mC", label:"mC",  toC:0.001},
+  {id:"C",  label:"C",   toC:1}
 ];
 const SIM_M_OPTIONS=[
   {id:"Li",label:"Li/Li⁺"},
@@ -2123,6 +2127,15 @@ let simPlotInitialised=false;
 
 function _simCapUnit(id){return SIM_CAP_UNITS.find(u=>u.id===id)||SIM_CAP_UNITS[1];}
 function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];}
+
+// Convert a capacity value between any two SIM_CAP_UNITS ids. Pivot through
+// Coulombs: vB = vA · (toC[A] / toC[B]). Handles both the ×1000 prefix ladder
+// (µA·h ↔ mA·h ↔ A·h, mC ↔ C) and the physical A·h ↔ C conversion (×3600).
+function simConvertCapacity(value,fromId,toId){
+  if(fromId===toId) return value;
+  const a=_simCapUnit(fromId), b=_simCapUnit(toId);
+  return value*(a.toC/b.toC);
+}
 
 function syncSimAxisFromInputs(){
   if(simUserOverrodeM) return;
@@ -2225,10 +2238,12 @@ function renderSimPlot(){
     modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
     toImageButtonOptions:{format:'png',filename:'MUSIC_simulation',scale:2}
   };
-  // Plotly only renders an overlaying axis when at least one trace is bound to it.
-  // Without traces the right Y axis would never appear, so we ship one transparent
-  // marker on yaxis2. Replaced/removed when real traces land.
+  // Plotly only draws an axis once a trace is bound to it. Both Y axes are part
+  // of the EC-Lab-style frame, so we ship one transparent marker per axis. These
+  // are replaced/removed once real traces land.
   const placeholderTraces=[
+    {x:[0],y:[0],yaxis:'y', mode:'markers',marker:{opacity:0,size:1},
+     showlegend:false,hoverinfo:'skip'},
     {x:[0],y:[0],yaxis:'y2',mode:'markers',marker:{opacity:0,size:1},
      showlegend:false,hoverinfo:'skip'}
   ];
