@@ -2183,9 +2183,11 @@ function simConvertCapacity(value,fromId,toId){
 
 function syncSimAxisFromInputs(){
   if(simUserOverrodeM) return;
-  // The form fields don't carry `sys` (it lives on the library entry), so we look up
-  // the currently selected preset id in the library to find the working ion.
-  // Order: cathode AM → anode AM → salt (saltNa/saltLi imply the system).
+  // Look up the working ion from (in order): cathode AM library entry,
+  // anode AM library entry, salt library family, then — for Custom presets
+  // that have no library row — the OCV-reference text inputs (e.g.
+  // "Na/Na+", "Li/Li⁺", "K/K+"). The free-text fallback is what makes
+  // dev-defaults / hand-typed configs render with the right axis label.
   let sys=null;
   const catId=$("cat-ac-ps")?.value;
   if(catId && lib?.ac){const m=lib.ac.find(x=>x.id===catId);if(m?.sys) sys=m.sys}
@@ -2199,6 +2201,14 @@ function syncSimAxisFromInputs(){
       if(lib.saltNa?.some(x=>x.id===sId)) sys="Na";
       else if(lib.saltLi?.some(x=>x.id===sId)) sys="Li";
     }
+  }
+  if(!sys){
+    const refTxt = ($("cat-ac-ref")?.value || "") + " " + ($("an-ref")?.value || "");
+    // Match the metal symbol immediately followed by `/`, `⁺`, `+` or
+    // whitespace — keeps us from mis-firing on words that happen to start
+    // with one of the letters.
+    const m = refTxt.match(/\b(Na|Li|K)(?=\s*[\/+⁺]|\b)/);
+    if(m) sys = m[1];
   }
   if(sys && SIM_M_OPTIONS.some(o=>o.id===sys)) simAxisState.M=sys;
 }
@@ -2370,16 +2380,32 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
     : (-sign * ctx.dVa) / Qa_full;
 
   // Q each electrode can pass before hitting its own V_th target.
-  // Negative or zero → electrode is already at/past its target → 0.
+  //  • slope is intrinsic to the electrode and constant within a stroke.
+  //  • If the electrode is moving AWAY from V_target (q < 0), this stroke
+  //    has no V_th cutoff on that side — return Infinity so the OTHER
+  //    electrode determines the stop. This is what makes the simulation
+  //    keep advancing when a previous stroke left the electrode past its
+  //    in-spec window (e.g. anode pushed beyond V_th_a_hi during a
+  //    cathode-limited charge): the next discharge stroke now naturally
+  //    runs to the cathode's V_th, exposing the imbalance.
   const _qmax = (V_in, V_t, slope) => {
     if(!Number.isFinite(slope) || slope === 0) return Infinity;
     const q = (V_t - V_in) / slope;
-    return q > 0 ? q : 0;
+    return q > 0 ? q : Infinity;
   };
-  const Qc_max = _qmax(V_c_in, V_c_target, slope_c);
-  const Qa_max = _qmax(V_a_in, V_a_target, slope_a);
+  const Qc_max_raw = _qmax(V_c_in, V_c_target, slope_c);
+  const Qa_max_raw = _qmax(V_a_in, V_a_target, slope_a);
+  // If neither electrode is heading into a V_th cutoff (both Infinity),
+  // bound the stroke by the smaller nominal capacity — the cell's "natural"
+  // galvanostatic length when balanced. Without this fallback the stroke
+  // would have no defined endpoint.
+  const bothFree = !Number.isFinite(Qc_max_raw) && !Number.isFinite(Qa_max_raw);
+  const Qc_max = bothFree ? Math.min(Qc_full, Qa_full) : Qc_max_raw;
+  const Qa_max = bothFree ? Math.min(Qc_full, Qa_full) : Qa_max_raw;
 
-  // Stroke stops at the smaller of the two — that electrode is the limiter.
+  // Stroke stops at the smaller of the two — that electrode is the LIMITER
+  // (it hits its V_th first and forces the cell to halt). The other
+  // electrode is the LIMITED one — held back from its full window.
   // Equality (within float tol) → both saturate together, no single limiter.
   const tol = 1e-9 * Math.max(Qc_full, Qa_full, 1);
   let Q_stop, limiting;
@@ -2543,7 +2569,7 @@ function renderSimPlot(){
   if(lbl){
     if(series.ok){
       const ocvNote=(series.strokeK===1)?" · formation · OCV-anchored":"";
-      const limNote=series.limiting?(" · "+series.limiting+"-limited"):"";
+      const limNote=series.limiting?(" · limiter: "+series.limiting):"";
       lbl.textContent="cycle "+series.cycleN+" · "+series.dir+" stroke"+ocvNote+limNote;
     } else lbl.textContent="—";
   }
@@ -2577,42 +2603,52 @@ function renderSimPlot(){
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
 
-    // Dashed "ghost" extension on the LIMITED (non-limiting) electrode,
-    // showing the capacity it could have delivered if the other electrode
-    // weren't capping the stroke. Drawn from (Qmin, V_partial) to
-    // (Q_natural, V_th_target). This is the visual cue for the unbalance.
+    // Limiter visualisation. Two electrodes, two roles:
+    //  • LIMITER  — hits its own V_th first and ends the stroke (lands ON
+    //    its V_th naturally, no extra marker needed).
+    //  • LIMITED  — held back by the limiter, ends on a PARTIAL voltage
+    //    short of its own V_th. The red dot goes here, marking the point
+    //    where this electrode was forced to stop.
     if(series.limiting){
-      const limCat = (series.limiting==="cathode");
+      const limCat = (series.limiting==="cathode"); // cathode is the limiter
       const irHalf = series.irHalf || 0;
-      // The non-limited electrode is the one whose own V_th wasn't reached.
       if(limCat){
-        // Anode is the underutilised one — extend its line at the same slope
-        // out to Qa_natural, where it would have hit its own V_th. Anode IR
-        // shift is −irHalf, so the ghost endpoint sits at V_target − irHalf.
-        const xExt=[conv(series.Qmin), conv(series.Qa_natural)];
-        const yExt=[series.vc_an[2], series.V_a_target - irHalf];
-        traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
-          line:{color:colA, width:1.2, dash:'dot'},
-          name:'Anode (unused)', showlegend:false,
-          hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V (unused)<extra></extra>'});
+        // Anode is the LIMITED one — partial endpoint at (Qmin, vc_an[2]),
+        // would have continued to (Qa_natural, V_a_target − irHalf).
+        if(Number.isFinite(series.Qa_natural)){
+          const xExt=[conv(series.Qmin), conv(series.Qa_natural)];
+          const yExt=[series.vc_an[2], series.V_a_target - irHalf];
+          traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
+            line:{color:colA, width:1.2, dash:'dot'},
+            name:'Anode (unused)', showlegend:false,
+            hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V (unused)<extra></extra>'});
+        }
+        // Red dot on the LIMITED (anode) electrode at its forced-stop point.
+        traces.push({x:[conv(series.Qmin)], y:[series.vc_an[2]], yaxis:'y',
+          mode:'markers',
+          marker:{color:colLim, size:10, symbol:'circle',
+                  line:{color:'#7F1D1D', width:1.5}},
+          name:'Anode (forced stop)', showlegend:false,
+          hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<br>'+
+                        '(forced to stop · cathode hit V_th first)<extra></extra>'});
       } else {
-        const xExt=[conv(series.Qmin), conv(series.Qc_natural)];
-        const yExt=[series.vc_cat[2], series.V_c_target + irHalf];
-        traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
-          line:{color:colC, width:1.2, dash:'dot'},
-          name:'Cathode (unused)', showlegend:false,
-          hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V (unused)<extra></extra>'});
+        // Cathode is the LIMITED one.
+        if(Number.isFinite(series.Qc_natural)){
+          const xExt=[conv(series.Qmin), conv(series.Qc_natural)];
+          const yExt=[series.vc_cat[2], series.V_c_target + irHalf];
+          traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
+            line:{color:colC, width:1.2, dash:'dot'},
+            name:'Cathode (unused)', showlegend:false,
+            hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V (unused)<extra></extra>'});
+        }
+        traces.push({x:[conv(series.Qmin)], y:[series.vc_cat[2]], yaxis:'y',
+          mode:'markers',
+          marker:{color:colLim, size:10, symbol:'circle',
+                  line:{color:'#7F1D1D', width:1.5}},
+          name:'Cathode (forced stop)', showlegend:false,
+          hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<br>'+
+                        '(forced to stop · anode hit V_th first)<extra></extra>'});
       }
-      // Red marker on the LIMITING electrode at the stop point — the
-      // electrode that hit its V_th first and forced the cell to halt.
-      const xMark=conv(series.Qmin);
-      const yMark=limCat ? series.vc_cat[2] : series.vc_an[2];
-      traces.push({x:[xMark], y:[yMark], yaxis:'y', mode:'markers',
-        marker:{color:colLim, size:10, symbol:'circle',
-                line:{color:'#7F1D1D', width:1.5}},
-        name:(limCat?'Cathode':'Anode')+' limit hit', showlegend:false,
-        hovertemplate:'Q=%{x:.3g}<br>'+(limCat?'V<sub>cat</sub>':'V<sub>an</sub>')+
-                      ' = %{y:.3f} V<br>(stroke stopped here)<extra></extra>'});
     }
 
     const dashShape=(yref,y,color)=>({
@@ -2627,20 +2663,21 @@ function renderSimPlot(){
       dashShape('y',  series.Vop_a_lo, colA)
     ];
 
-    // Red shaded zone behind the limiter's line, from Qmin out to the
-    // unused-capacity tail end. Highlights the capacity the cell *would*
-    // have delivered if both electrodes were balanced — i.e. how much
-    // capacity is being thrown away because of the imbalance.
+    // Red shaded zone over the unused-capacity tail (Qmin → natural reach
+    // of the limited electrode), plus a dashed vertical at Qmin marking
+    // where the cell was forced to stop.
     if(series.limiting){
       const limCat = (series.limiting==="cathode");
-      const xEnd   = conv(limCat ? series.Qa_natural : series.Qc_natural);
-      layout.shapes.push({
-        type:'rect', xref:'x', yref:'paper',
-        x0:conv(series.Qmin), x1:xEnd,
-        y0:0, y1:1,
-        fillcolor:'rgba(229,57,53,0.07)',
-        line:{width:0}, layer:'below'
-      });
+      const limitedNatural = limCat ? series.Qa_natural : series.Qc_natural;
+      if(Number.isFinite(limitedNatural) && limitedNatural > series.Qmin){
+        layout.shapes.push({
+          type:'rect', xref:'x', yref:'paper',
+          x0:conv(series.Qmin), x1:conv(limitedNatural),
+          y0:0, y1:1,
+          fillcolor:'rgba(229,57,53,0.07)',
+          line:{width:0}, layer:'below'
+        });
+      }
       layout.shapes.push({
         type:'line', xref:'x', yref:'paper',
         x0:conv(series.Qmin), x1:conv(series.Qmin),
@@ -2649,22 +2686,32 @@ function renderSimPlot(){
       });
     }
 
-    // X range — 0 to whichever endpoint is farther (the natural reach of
-    // the underutilised electrode, when limited; otherwise the bigger of
-    // Qc / Qa). Padded.
+    // X range — 0 to whichever endpoint is farther. Use the limited
+    // electrode's natural reach when finite; fall back to Qmin / nominal Q.
+    const _finiteOr=(v,fallback)=>Number.isFinite(v)?v:fallback;
     const xMaxQ=series.limiting
-      ? Math.max(series.Qc_natural, series.Qa_natural, series.Qmin)
+      ? Math.max(_finiteOr(series.Qc_natural, series.Qmin),
+                 _finiteOr(series.Qa_natural, series.Qmin),
+                 series.Qmin)
       : Math.max(series.Qc, series.Qa);
     layout.xaxis.range=[0, conv(xMaxQ)*1.04];
 
     // Y1 range — span all electrode potentials and the V_op annotations,
     // plus the ghost-extension endpoint (V_th of the underutilised electrode)
-    // when one electrode is limiting, so the unused-capacity tail stays on
-    // screen. Padded.
+    // when one electrode is limiting and its natural reach is finite, so
+    // the unused-capacity tail stays on screen. Padded.
     const yV1=series.vc_cat.concat(series.vc_an,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
     if(series.limiting){
       const irHalf = series.irHalf || 0;
-      yV1.push(series.V_c_target + irHalf, series.V_a_target - irHalf);
+      const limCat = (series.limiting==="cathode");
+      // Only push the ghost endpoint of the LIMITED electrode (the one
+      // whose natural reach is drawn). The limiter already lands on its
+      // V_th (already in vc_cat / vc_an).
+      if(limCat && Number.isFinite(series.Qa_natural)){
+        yV1.push(series.V_a_target - irHalf);
+      } else if(!limCat && Number.isFinite(series.Qc_natural)){
+        yV1.push(series.V_c_target + irHalf);
+      }
     }
     let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
     const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
@@ -2681,14 +2728,21 @@ function renderSimPlot(){
                    font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
 
     if(series.limiting){
-      const limCat = (series.limiting==="cathode");
-      const otherFull = limCat ? series.Qa_natural : series.Qc_natural;
-      const stoppedAt = series.Qmin;
-      const fracUsed = otherFull>0 ? (stoppedAt/otherFull) : 0;
+      const limCat   = (series.limiting==="cathode"); // cathode = limiter
+      const limiter  = limCat ? "cathode" : "anode";
+      const limited  = limCat ? "anode"   : "cathode";
+      const limitedNatural = limCat ? series.Qa_natural : series.Qc_natural;
+      const limitedV       = limCat ? series.vc_an[2]   : series.vc_cat[2];
+      const limitedTargetV = limCat ? series.V_a_target : series.V_c_target;
+      const irHalf = series.irHalf || 0;
+      // Strip the IR offset back off the displayed end-voltage of the
+      // limited electrode so the message quotes the physical V (not the
+      // visual line value).
+      const limitedV_phys = limCat ? (limitedV + irHalf) : (limitedV - irHalf);
       const capLab = _simCapUnit(simAxisState.capUnit).label;
-      const stop_disp  = conv(stoppedAt);
-      const other_disp = conv(otherFull);
+      const stop_disp = conv(series.Qmin);
       const fmt=v=>{
+        if(!Number.isFinite(v)) return "—";
         const a=Math.abs(v);
         if(a===0) return "0";
         if(a>=100) return v.toFixed(0);
@@ -2696,15 +2750,26 @@ function renderSimPlot(){
         if(a>=1)   return v.toFixed(2);
         return v.toPrecision(2);
       };
-      const limLabel = limCat?"Cathode":"Anode";
-      const otherLab = limCat?"anode":"cathode";
+      const Lcap = s=>s.charAt(0).toUpperCase()+s.slice(1);
+      let tail;
+      if(Number.isFinite(limitedNatural) && limitedNatural > series.Qmin + 1e-12){
+        const other_disp = conv(limitedNatural);
+        const fracUsed = (series.Qmin/limitedNatural);
+        tail = `the ${limited} only reached ${fmt(limitedV_phys)} V — `+
+               `${(fracUsed*100).toFixed(0)}% of its V_th window — and would have `+
+               `delivered ${fmt(other_disp)} ${capLab} on its own.`;
+      } else {
+        // Limited electrode is moving away from its own V_th this stroke
+        // (started outside its window — the imbalance from a previous
+        // stroke is now showing through).
+        tail = `the ${limited} ended at ${fmt(limitedV_phys)} V, outside its V_th window — `+
+               `the imbalance from earlier strokes is still propagating.`;
+      }
       _simSetMsg(
-        `${limLabel}-limited: stroke stopped at ${fmt(stop_disp)} ${capLab} `+
-        `(${limLabel.toLowerCase()} hit its V_th first). The ${otherLab} only `+
-        `delivered ${(fracUsed*100).toFixed(0)}% of its window — would have `+
-        `reached ${fmt(other_disp)} ${capLab} on its own. The next stroke `+
-        `starts from these partial voltages, which is how the unbalance `+
-        `propagates through later cycles.`,
+        `${Lcap(limiter)} hit its V_th first at ${fmt(stop_disp)} ${capLab} — `+
+        `${limited} forced to stop short. ${Lcap(tail)} `+
+        `The next stroke starts from these partial voltages, which is how `+
+        `the unbalance propagates through later cycles.`,
         "warn"
       );
     } else {
