@@ -4525,7 +4525,55 @@ window.addEventListener("load",()=>{
   // it's ready as soon as the user toggles.
   document.body.classList.add("mode-single");
   if(typeof renderStackPresetSelect==="function") renderStackPresetSelect();
+  // ── Dev-only: prefill the form with a known scenario for fast iteration.
+  // Flip DEV_DEFAULTS_ON to false (or delete this call) to remove. ──
+  if(typeof applyDevDefaults==="function") applyDevDefaults();
 });
+
+/* ══════════════════════════════════════════════════════════════
+   DEV DEFAULTS — flip the flag below to disable.
+   Pre-fills the Single-mode form with a scenario taken from a screenshot
+   so the developer doesn't have to re-enter values every reload. Runs
+   AFTER silentResetAll() inside the load listener, so it always wins.
+   To remove for production: set DEV_DEFAULTS_ON=false (one-line undo) or
+   delete this whole block plus the applyDevDefaults() call above.
+   ══════════════════════════════════════════════════════════════ */
+const DEV_DEFAULTS_ON = true;
+
+function applyDevDefaults(){
+  if(!DEV_DEFAULTS_ON) return;
+  try{
+    // Cathode AM — Custom preset, Activated carbon (YP50) values
+    const catPs=$("cat-ac-ps"); if(catPs) catPs.value="";
+    if($("cat-ac-name")) $("cat-ac-name").value="Activated carbon (YP50)";
+    if($("cat-label"))   $("cat-label").value="Activated carbon (YP50)";
+    if($("cat-ac-c1"))   $("cat-ac-c1").value="45";
+    if($("cat-ac-cN"))   $("cat-ac-cN").value="70";
+    setRateValue("cat-ac","c1",100,"mA/g","100 mA/g");
+    setRateValue("cat-ac","cN",100,"mA/g","100 mA/g");
+
+    // Salt — toggle on, mark Na₂C₄O₄ preset, use the screenshot's C₁/rate
+    if(typeof saltOn!=="undefined" && !saltOn && typeof tgSalt==="function") tgSalt();
+    const sPs=$("cat-s-ps"); if(sPs) sPs.value="na2c4o4";
+    if($("cat-s-name")) $("cat-s-name").value="Na₂C₄O₄ (squarate)";
+    if($("cat-s-c1"))   $("cat-s-c1").value="309";
+    setRateValue("cat-s","c1",0.1,"C","C/10");
+
+    // Anode — Custom preset, PAN Vapo 6h - MAA values
+    const anPs=$("an-ps"); if(anPs) anPs.value="";
+    if($("an-name"))  $("an-name").value="PAN Vapo 6h - MAA";
+    if($("an-label")) $("an-label").value="PAN Vapo 6h - MAA";
+    if($("an-c1"))    $("an-c1").value="430";
+    if($("an-cN"))    $("an-cN").value="200";
+    setRateValue("an","c1",0.02,"A/g","0.02 A/g");
+    setRateValue("an","cN",0.02,"A/g","0.02 A/g");
+
+    if(typeof recalc==="function") recalc();
+  }catch(e){
+    // Don't take the page down if a field id is missing after a refactor.
+    console.warn("[dev defaults] skipped:",e);
+  }
+}
 
 function silentResetAll(){
   const _c = window.confirm;
