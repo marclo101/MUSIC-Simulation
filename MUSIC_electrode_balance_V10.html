@@ -190,6 +190,19 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
 .sim-dot-1{background:rgb(56,132,255)}
 .sim-dot-N{background:rgb(245,158,11)}
+/* ── Simulation controls (charge/discharge, cycle count, IR, V_cell window) ── */
+.sim-ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:10px;padding:8px 10px;border:1px solid var(--ruleS);border-radius:6px;background:var(--bone)}
+.sim-ctrl .sim-cg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
+.sim-ctrl .sim-cg label{font-weight:500;color:var(--ink2)}
+.sim-ctrl .sim-cg input[type=number]{width:62px;padding:3px 6px;font-family:var(--fm);font-size:11px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
+.sim-ctrl .sim-cg .u{font-size:10px;color:var(--ink3);font-family:var(--fm)}
+.sim-ctrl .sim-tg{display:inline-flex;border:1px solid var(--rule);border-radius:5px;padding:2px;background:var(--paper)}
+.sim-ctrl .sim-tg button{padding:3px 12px;font-size:10.5px;font-weight:500;color:var(--ink2);border:none;background:none;border-radius:3px;cursor:pointer;font-family:var(--fb)}
+.sim-ctrl .sim-tg button.act{background:var(--cp);color:#fff}
+.sim-ctrl .sim-tg button.act-d{background:#7A8A9A;color:#fff}
+.sim-msg{font-size:11px;color:var(--ink3);font-style:italic;margin:6px 0 4px;padding:0 4px;line-height:1.45}
+.sim-msg.warn{color:#B7791F}
+.sim-msg.err{color:#C53030}
 /* ── Simulation plot template (EC-Lab-inspired axes with click-to-edit units) ── */
 .sim-wrap{position:relative;width:100%;height:560px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);overflow:visible}
 #simPlot{position:absolute;inset:0}
@@ -813,6 +826,34 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <span><span class="sim-dot sim-dot-1"></span><strong>1<sup>st</sup> cycle:</strong> <span id="simRate1Txt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
         <span><span class="sim-dot sim-dot-N"></span><strong>N<sup>th</sup> cycle:</strong> <span id="simRateNTxt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
       </div>
+      <div class="sim-ctrl" id="simCtrl">
+        <div class="sim-cg" title="Direction of the first stroke. Subsequent cycles alternate.">
+          <label>Cycle 1:</label>
+          <div class="sim-tg" id="simDirTg">
+            <button type="button" id="simDirChg" class="act" onclick="setSimDir('charge')">Charge</button>
+            <button type="button" id="simDirDis" onclick="setSimDir('discharge')">Discharge</button>
+          </div>
+        </div>
+        <div class="sim-cg" title="Number of half-cycles to simulate. Each cycle is one stroke (charge or discharge); they alternate starting from the direction set above.">
+          <label>Cycles:</label>
+          <input type="number" id="simNcyc" min="1" max="100" step="1" value="10" oninput="onSimCtrlChange()">
+          <span class="u">half-cycles (max 100)</span>
+        </div>
+        <div class="sim-cg" title="Equivalent series resistance. Produces a vertical IR step at the start of each stroke equal to I·R_eq.">
+          <label>R<sub>eq</sub>:</label>
+          <input type="number" id="simReq" min="0" step="0.5" value="10" oninput="onSimCtrlChange()">
+          <span class="u">Ω</span>
+        </div>
+        <div class="sim-cg" title="Cell-voltage cutoffs that bound each stroke. Charge ends when V_cell reaches V_max; discharge ends when V_cell reaches V_min. Defaults are auto-derived from the operating windows.">
+          <label>V<sub>cell</sub>:</label>
+          <input type="number" id="simVcellMin" step="0.05" placeholder="min" oninput="onSimCtrlChange()">
+          <span class="u">to</span>
+          <input type="number" id="simVcellMax" step="0.05" placeholder="max" oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+          <button type="button" class="rst-btn" onclick="resetSimVcell()" title="Auto-derive from V_op windows" style="width:18px;height:18px;font-size:11px;margin-left:2px">↻</button>
+        </div>
+      </div>
+      <div id="simMsg" class="sim-msg" style="display:none"></div>
       <div class="sim-wrap" id="simWrap">
         <div class="sim-ax sim-ax-y" id="simAxisY"></div>
         <div class="sim-ax sim-ax-y2" id="simAxisY2"></div>
@@ -2225,10 +2266,200 @@ function simRenderAxisLabels(){
     `<span class="ax-pill ax-pill-static">V</span>`;
 }
 
+/* ── Simulation control state & physics ──
+   Direction toggle, V_cell defaults, and the coupled full-cell stroke solver
+   that produces the V-vs-Q traces drawn by renderSimPlot. */
+let simDirState="charge"; // "charge" or "discharge" — direction of cycle 1
+
+function setSimDir(d){
+  simDirState=(d==="discharge")?"discharge":"charge";
+  const bC=$("simDirChg"),bD=$("simDirDis");
+  if(bC) bC.classList.toggle("act",simDirState==="charge");
+  if(bD) bD.classList.toggle("act-d",simDirState==="discharge");
+  if(typeof renderSimPlot==="function") renderSimPlot();
+}
+
+function onSimCtrlChange(){
+  if(typeof renderSimPlot==="function") renderSimPlot();
+}
+
+// Auto-derive V_cell defaults from the operating windows of both electrodes.
+// V_cell_max ≈ V_op_hi_cat − V_op_lo_an (cell at top of charge)
+// V_cell_min ≈ V_op_lo_cat − V_op_hi_an (cell at bottom of discharge)
+function simDefaultVcell(){
+  const Vch=N("cat-Vop-hi"),Vcl=N("cat-Vop-lo"),Vah=N("an-Vop-hi"),Val=N("an-Vop-lo");
+  if(![Vch,Vcl,Vah,Val].every(Number.isFinite)) return null;
+  return {min:Vcl-Vah, max:Vch-Val};
+}
+
+function resetSimVcell(){
+  const d=simDefaultVcell();
+  const elMin=$("simVcellMin"),elMax=$("simVcellMax");
+  if(d && elMin && elMax){
+    elMin.value=d.min.toFixed(2);
+    elMax.value=d.max.toFixed(2);
+  } else {
+    if(elMin) elMin.value="";
+    if(elMax) elMax.value="";
+  }
+  if(typeof renderSimPlot==="function") renderSimPlot();
+}
+
+// Build the cycle-by-cycle V-vs-Q series for cathode, anode, and the cell.
+// Coupled full-cell physics: same Q flows through both electrodes per stroke;
+// each stroke ends when V_cell hits its cutoff. Cycle 1 uses C_1st-derived
+// slopes, cycles 2..N use C_Nth-derived slopes. IR step at the start of each
+// stroke is split symmetrically across the two electrodes so V_cell shifts by
+// I·R_eq.
+//
+// Returns {ok, msg?, ...series}. When ok=false, msg is the user-facing reason.
+function simComputeSeries(){
+  const inp=window.lastInp,r=window.lastR;
+  if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
+  if(!r.sane||!(r.mCat>0)||!(r.mAn>0)) return {ok:false, msg:"Balance result is not valid — check the Single-mode inputs."};
+
+  // EDLC-only gate (both electrodes must be capacitive)
+  const stCat=inp.cat.ac.st,stAn=inp.an.st;
+  if(stCat!=="capacitive"||stAn!=="capacitive"){
+    const lab=s=>s==="capacitive"?"EDLC":s==="pseudocapacitive"?"pseudocapacitive":"faradaic";
+    return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
+  }
+
+  // Active-material masses (mg). r.mAC = cathode AM; anode AM = r.mAn × wAM.
+  const mC=r.mAC, mA=r.mAn*inp.an.wAM;
+  if(!(mC>0&&mA>0)) return {ok:false, msg:"Active-material masses are zero — re-run the balance."};
+
+  const Cc1=inp.cat.ac.c1, CcN=inp.cat.ac.cN;
+  const Ca1=inp.an.c1,     CaN=inp.an.cN;
+  if(!(Cc1>0&&CcN>0&&Ca1>0&&CaN>0)) return {ok:false, msg:"All four C₁/Cₙ values must be > 0."};
+
+  // Theoretical V-windows (the windows the C values were measured over).
+  // Vth is stored as [hi, lo]; magnitude is |hi − lo|.
+  const dVc=Math.abs(inp.cat.Vth[0]-inp.cat.Vth[1]);
+  const dVa=Math.abs(inp.an.Vth[0]-inp.an.Vth[1]);
+  if(!(dVc>0&&dVa>0)) return {ok:false, msg:"Theoretical V-windows (V_th) must span a non-zero range."};
+
+  const Vocv_c=N("cat-ac-ocv"),Vocv_a=N("an-ocv");
+  if(!Number.isFinite(Vocv_c)||!Number.isFinite(Vocv_a)) return {ok:false, msg:"Set OCV values for both electrodes."};
+
+  // Operating window — used only as dashed annotation lines on the plot.
+  const Vop_c_hi=inp.cat.Vop[0], Vop_c_lo=inp.cat.Vop[1];
+  const Vop_a_hi=inp.an.Vop[0],  Vop_a_lo=inp.an.Vop[1];
+
+  // Cell-voltage cutoffs: read controls; fall back to V_op-derived defaults.
+  // Read raw values so that an empty box doesn't get silently coerced to 0.
+  const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
+  const def=simDefaultVcell();
+  let Vcm_min=_rawNum("simVcellMin"); if(Vcm_min===null && def) Vcm_min=def.min;
+  let Vcm_max=_rawNum("simVcellMax"); if(Vcm_max===null && def) Vcm_max=def.max;
+  if(!(Number.isFinite(Vcm_min)&&Number.isFinite(Vcm_max)&&Vcm_max>Vcm_min)){
+    return {ok:false, msg:"Cell-voltage cutoffs are invalid (need V_max > V_min). Click ↻ to auto-derive from V_op."};
+  }
+
+  // R_eq (Ω). Empty or negative → treat as zero.
+  let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
+
+  // Currents (µA): prefer the rate selections from the Rates tab; fall back to
+  // C/10 from the balance result so the simulation can run before a rate is picked.
+  const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
+  const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
+
+  let Ncyc=parseInt($("simNcyc")?.value);
+  if(!Number.isFinite(Ncyc)||Ncyc<1) Ncyc=10;
+  if(Ncyc>100) Ncyc=100;
+
+  // Per-electrode capacities (µAh): mg × mAh/g = µAh.
+  const Q_c_1=mC*Cc1, Q_c_N=mC*CcN;
+  const Q_a_1=mA*Ca1, Q_a_N=mA*CaN;
+
+  // Slope magnitudes (V/µAh). Direction-signed slopes are applied per stroke.
+  const sc1=dVc/Q_c_1, scN=dVc/Q_c_N;
+  const sa1=dVa/Q_a_1, saN=dVa/Q_a_N;
+
+  // Build the trajectory. Vertical IR step at each stroke start gets two
+  // points sharing the same Q (creates the visible jump on the plot).
+  const xs=[],vc=[],va=[],vcell=[],cycleEnd=[];
+  let V_c=Vocv_c, V_a=Vocv_a, Q_cum=0;
+  xs.push(0); vc.push(V_c); va.push(V_a); vcell.push(V_c-V_a);
+
+  let dir=simDirState; // "charge" or "discharge"
+  let degenerate=false;
+
+  for(let n=1;n<=Ncyc;n++){
+    const first=(n===1);
+    const sc=first?sc1:scN, sa=first?sa1:saN;
+    const Iu=first?I1_uA:IN_uA;
+    const sign=(dir==="charge")?+1:-1;
+
+    // Direction-signed per-electrode dV/dQ. Cathode rises on charge; anode falls.
+    const slope_c=+sign*sc;
+    const slope_a=-sign*sa;
+    const slope_cell=slope_c-slope_a; // d(V_cat − V_an)/dQ
+
+    // IR step (V): split symmetrically so V_cell shifts by sign·I·R_eq at Q=0
+    // of this stroke. I is in µA, R in Ω → I·R in µV; ÷1e6 → V.
+    const dV_IR=sign*(Iu*Req)*1e-6;
+    const half=dV_IR/2;
+    V_c+=half; V_a-=half;
+    xs.push(Q_cum); vc.push(V_c); va.push(V_a); vcell.push(V_c-V_a);
+
+    // Stroke length: solve V_cell(Q_cum + Q_stroke) = target cutoff.
+    const target=(dir==="charge")?Vcm_max:Vcm_min;
+    const Vc_now=V_c-V_a;
+    let Qs=(target-Vc_now)/slope_cell;
+    if(!(Number.isFinite(Qs)&&Qs>0)){
+      // Already past cutoff (e.g., huge IR step) → emit a zero-length stroke
+      // so the next direction can recover the plot.
+      Qs=0; degenerate=true;
+    } else {
+      // Cap at 10× the larger electrode capacity to prevent runaway from a
+      // near-zero slope_cell (would only happen with pathological inputs).
+      const cap=10*Math.max(first?Q_c_1:Q_c_N, first?Q_a_1:Q_a_N);
+      if(Qs>cap){ Qs=cap; degenerate=true; }
+    }
+
+    V_c+=slope_c*Qs;
+    V_a+=slope_a*Qs;
+    Q_cum+=Qs;
+    xs.push(Q_cum); vc.push(V_c); va.push(V_a); vcell.push(V_c-V_a);
+    cycleEnd.push(Q_cum);
+
+    dir=(dir==="charge")?"discharge":"charge";
+  }
+
+  return {ok:true,
+    xs:xs, vc:vc, va:va, vcell:vcell, cycleEnd:cycleEnd,
+    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo,
+    Vcm_min, Vcm_max,
+    Q_total:Q_cum, degenerate,
+    Ncyc
+  };
+}
+
+function _simSetMsg(text,kind){
+  const el=$("simMsg"); if(!el) return;
+  if(!text){ el.style.display="none"; el.textContent=""; el.className="sim-msg"; return; }
+  el.textContent=text;
+  el.className="sim-msg"+(kind?(" "+kind):"");
+  el.style.display="block";
+}
+
 function renderSimPlot(){
   const host=$("simPlot");
   if(!host || typeof Plotly==="undefined") return;
   syncSimAxisFromInputs();
+
+  // Pre-fill V_cell defaults from V_op windows on first render (or whenever
+  // the user has cleared the inputs) so the controls don't sit empty.
+  const elMin=$("simVcellMin"), elMax=$("simVcellMax");
+  if(elMin && elMax && (elMin.value===""||elMax.value==="")){
+    const d=simDefaultVcell();
+    if(d){
+      if(elMin.value==="") elMin.value=d.min.toFixed(2);
+      if(elMax.value==="") elMax.value=d.max.toFixed(2);
+    }
+  }
+
   const layout=simBuildLayout();
   const config={
     displayModeBar:true,
@@ -2238,25 +2469,85 @@ function renderSimPlot(){
     modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
     toImageButtonOptions:{format:'png',filename:'MUSIC_simulation',scale:2}
   };
-  // Plotly only draws an axis once a trace is bound to it. Both Y axes are part
-  // of the EC-Lab-style frame, so we ship one transparent marker per axis. These
-  // are replaced/removed once real traces land.
-  const placeholderTraces=[
-    {x:[0],y:[0],yaxis:'y', mode:'markers',marker:{opacity:0,size:1},
-     showlegend:false,hoverinfo:'skip'},
-    {x:[0],y:[0],yaxis:'y2',mode:'markers',marker:{opacity:0,size:1},
-     showlegend:false,hoverinfo:'skip'}
-  ];
-  // newPlot on first entry, react after that — react preserves zoom/pan state
+
+  const series=simComputeSeries();
+  let traces;
+
+  if(!series.ok){
+    // Keep the EC-Lab frame visible by shipping transparent placeholders.
+    traces=[
+      {x:[0],y:[0],yaxis:'y', mode:'markers',marker:{opacity:0,size:1},showlegend:false,hoverinfo:'skip'},
+      {x:[0],y:[0],yaxis:'y2',mode:'markers',marker:{opacity:0,size:1},showlegend:false,hoverinfo:'skip'}
+    ];
+    _simSetMsg(series.msg, "warn");
+    const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",false);
+  } else {
+    // Convert cumulative Q from internal µAh to the user's chosen capacity unit.
+    const xConv=series.xs.map(q=>simConvertCapacity(q,"uAh",simAxisState.capUnit));
+
+    const colC="#C0392B", colA="#2980B9", colCell="#2D3748";
+
+    traces=[
+      {x:xConv, y:series.vc, yaxis:'y', mode:'lines',
+       line:{color:colC,width:1.6}, name:'Cathode',
+       hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<extra></extra>'},
+      {x:xConv, y:series.va, yaxis:'y', mode:'lines',
+       line:{color:colA,width:1.6}, name:'Anode',
+       hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<extra></extra>'},
+      {x:xConv, y:series.vcell, yaxis:'y2', mode:'lines',
+       line:{color:colCell,width:1.2,dash:'dot'}, name:'Cell V',
+       hovertemplate:'Q=%{x:.3g}<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
+    ];
+
+    // Operating-window (Y1) and cell-voltage cutoff (Y2) annotations.
+    const dashShape=(yref,y,color)=>({
+      type:'line', xref:'paper', x0:0, x1:1,
+      yref, y0:y, y1:y,
+      line:{color, width:1, dash:'dash'}, layer:'below'
+    });
+    layout.shapes=[
+      dashShape('y',  series.Vop_c_hi, colC),
+      dashShape('y',  series.Vop_c_lo, colC),
+      dashShape('y',  series.Vop_a_hi, colA),
+      dashShape('y',  series.Vop_a_lo, colA),
+      dashShape('y2', series.Vcm_max,  colCell),
+      dashShape('y2', series.Vcm_min,  colCell)
+    ];
+
+    // X range — 0 to total Q, in display units, with a small right pad.
+    const xMax=simConvertCapacity(series.Q_total||1,"uAh",simAxisState.capUnit);
+    layout.xaxis.range=[0, xMax*1.02];
+
+    // Y1 range — span all electrode potentials and the V_op annotations, padded.
+    const yV1=series.vc.concat(series.va,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
+    let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
+    const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
+    layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
+
+    // Y2 range — span V_cell and its cutoffs, padded.
+    const yV2=series.vcell.concat([series.Vcm_min,series.Vcm_max]);
+    let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
+    const y2pad=Math.max(0.1,(y2hi-y2lo)*0.08);
+    layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
+
+    layout.showlegend=true;
+    layout.legend={x:0.01, y:0.99, xanchor:'left', yanchor:'top',
+                   bgcolor:'rgba(255,255,255,0.85)', bordercolor:'#CBD2DA', borderwidth:1,
+                   font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
+
+    let msg="";
+    if(series.degenerate) msg="Some strokes hit a degenerate solver state (very small or near-zero slope). Check inputs if the plot looks wrong.";
+    _simSetMsg(msg, msg?"warn":"");
+    const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",true);
+  }
+
   if(!simPlotInitialised){
-    Plotly.newPlot(host,placeholderTraces,layout,config);
+    Plotly.newPlot(host,traces,layout,config);
     simPlotInitialised=true;
   } else {
-    Plotly.react(host,placeholderTraces,layout,config);
+    Plotly.react(host,traces,layout,config);
   }
   simRenderAxisLabels();
-  // Empty-state caption is hidden once any traces are drawn (later)
-  const empty=$("simEmpty"); if(empty) empty.classList.toggle("hidden",false);
 }
 
 function openSimUnitMenu(ev,kind){
@@ -2299,7 +2590,8 @@ function pickSimUnit(kind,id){
   else if(kind==="mRef"){ simAxisState.M=id; simUserOverrodeM=true; }
   const menu=$("simUnitMenu"); if(menu) menu.style.display="none";
   simRenderAxisLabels();
-  // No data yet — when traces exist we'll rescale x and relayout here.
+  // Re-render so cumulative-Q axis values rescale to the chosen unit.
+  if(typeof renderSimPlot==="function") renderSimPlot();
 }
 
 /* ══════════════════════════════════════════════════════════════ */
@@ -3673,6 +3965,8 @@ else if(mode==="anode") lastSolvedRefSide='cat';
   // Expose to export module
   window.lastInp=inp;window.lastR=r;window.lastMode=mode;
   enableExportBtn(true);
+  // Refresh the simulation plot when the balance changes and the sim tab is visible.
+  if(typeof renderSimPlot==="function" && document.getElementById("rtab-sim")?.classList.contains("act")) renderSimPlot();
 }
 
 function renderRatio(inp){
