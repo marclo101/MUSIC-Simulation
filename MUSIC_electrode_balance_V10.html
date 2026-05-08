@@ -2126,7 +2126,23 @@ function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];
 
 function syncSimAxisFromInputs(){
   if(simUserOverrodeM) return;
-  const sys=window.lastInp?.cat?.ac?.sys;
+  // The form fields don't carry `sys` (it lives on the library entry), so we look up
+  // the currently selected preset id in the library to find the working ion.
+  // Order: cathode AM → anode AM → salt (saltNa/saltLi imply the system).
+  let sys=null;
+  const catId=$("cat-ac-ps")?.value;
+  if(catId && lib?.ac){const m=lib.ac.find(x=>x.id===catId);if(m?.sys) sys=m.sys}
+  if(!sys){
+    const anId=$("an-ps")?.value;
+    if(anId && lib?.anode){const m=lib.anode.find(x=>x.id===anId);if(m?.sys) sys=m.sys}
+  }
+  if(!sys){
+    const sId=$("cat-s-ps")?.value;
+    if(sId && lib){
+      if(lib.saltNa?.some(x=>x.id===sId)) sys="Na";
+      else if(lib.saltLi?.some(x=>x.id===sId)) sys="Li";
+    }
+  }
   if(sys && SIM_M_OPTIONS.some(o=>o.id===sys)) simAxisState.M=sys;
 }
 
@@ -2149,9 +2165,10 @@ function simBuildLayout(){
       zeroline:false,
       ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
       tickfont:tickFont,
-      linecolor:'#7A8A9A',linewidth:1,
-      automargin:false,
-      mirror:false
+      showline:true,linecolor:'#7A8A9A',linewidth:1,
+      // mirror=true draws a matching top line (no ticks) → closes the plot frame.
+      mirror:true,
+      automargin:false
     },
     yaxis:{
       title:'',
@@ -2160,7 +2177,7 @@ function simBuildLayout(){
       zeroline:false,
       ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
       tickfont:tickFont,
-      linecolor:'#7A8A9A',linewidth:1,
+      showline:true,linecolor:'#7A8A9A',linewidth:1,
       side:'left',
       automargin:false
     },
@@ -2173,7 +2190,7 @@ function simBuildLayout(){
       zeroline:false,
       ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
       tickfont:tickFont,
-      linecolor:'#7A8A9A',linewidth:1,
+      showline:true,linecolor:'#7A8A9A',linewidth:1,
       automargin:false
     }
   };
@@ -2208,12 +2225,19 @@ function renderSimPlot(){
     modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
     toImageButtonOptions:{format:'png',filename:'MUSIC_simulation',scale:2}
   };
+  // Plotly only renders an overlaying axis when at least one trace is bound to it.
+  // Without traces the right Y axis would never appear, so we ship one transparent
+  // marker on yaxis2. Replaced/removed when real traces land.
+  const placeholderTraces=[
+    {x:[0],y:[0],yaxis:'y2',mode:'markers',marker:{opacity:0,size:1},
+     showlegend:false,hoverinfo:'skip'}
+  ];
   // newPlot on first entry, react after that — react preserves zoom/pan state
   if(!simPlotInitialised){
-    Plotly.newPlot(host,[],layout,config);
+    Plotly.newPlot(host,placeholderTraces,layout,config);
     simPlotInitialised=true;
   } else {
-    Plotly.react(host,[],layout,config);
+    Plotly.react(host,placeholderTraces,layout,config);
   }
   simRenderAxisLabels();
   // Empty-state caption is hidden once any traces are drawn (later)
@@ -3308,6 +3332,9 @@ function applyPS(prefix){
     if(r0.cN!=null && r0.cN>0)setRateValue("cat-s","cN",r0.rv,r0.ru,lbl);
     else resetRate("cat-s","cN");
   }
+  // Refresh the simulation axis labels so the working ion (M) updates immediately
+  // when the user changes a preset, without waiting for the user to open the tab.
+  if(typeof syncSimAxisFromInputs==="function"){syncSimAxisFromInputs();simRenderAxisLabels();}
   recalc();
 }
 
