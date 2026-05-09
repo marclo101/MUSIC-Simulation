@@ -233,6 +233,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-unit-menu .sim-unit-opt{display:block;width:100%;text-align:left;padding:6px 10px;background:none;border:none;color:var(--ink);border-radius:4px;cursor:pointer;font:inherit}
 .sim-unit-menu .sim-unit-opt:hover{background:var(--bone)}
 .sim-unit-menu .sim-unit-opt.act{background:var(--cl);color:var(--cp);font-weight:600}
+.sim-unit-menu .sim-unit-hdr{padding:6px 10px 2px;font-size:9.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.sim-unit-menu .sim-unit-hdr:not(:first-child){border-top:1px solid var(--ruleS);margin-top:4px}
 /* Current density detail */
 .cd-box{border:1px solid var(--ruleS);border-radius:8px;padding:14px;margin-bottom:16px}
 .cd-box h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink2);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
@@ -844,15 +846,15 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <span><span class="sim-dot sim-dot-N"></span><strong>N<sup>th</sup> cycle:</strong> <span id="simRateNTxt" style="color:var(--ink3);font-style:italic">no row selected</span></span>
       </div>
       <div class="sim-ctrl" id="simCtrl">
-        <div class="sim-cg" title="Within the selected cycle, pick the charge stroke or the discharge stroke to plot. Each stroke restarts at Q=0 and is anchored at the end potential of the previous chronological stroke.">
+        <div class="sim-cg" id="simShowDirGrp" title="Within the selected cycle, pick the charge stroke or the discharge stroke to plot. Each stroke restarts at Q=0 and is anchored at the end potential of the previous chronological stroke. (Hidden in Time mode — every stroke is shown.)">
           <label>Show:</label>
           <div class="sim-tg" id="simDirTg">
             <button type="button" id="simDirChg" class="act" onclick="setSimDir('charge')">Charge</button>
             <button type="button" id="simDirDis" onclick="setSimDir('discharge')">Discharge</button>
           </div>
         </div>
-        <div class="sim-cg" title="Which cycle pair to display. A cycle is one charge + one discharge. Range 1 to 100.">
-          <label>Cycle:</label>
+        <div class="sim-cg" id="simCycleGrp" title="Which cycle pair to display. A cycle is one charge + one discharge. Range 1 to 100. In Time mode this is the number of cycles shown continuously (1..N).">
+          <label id="simCycleLbl">Cycle:</label>
           <button type="button" class="sim-step" onclick="stepSimCycle(-1)" title="Previous cycle">◄</button>
           <input type="number" id="simCycleN" min="1" max="100" step="1" value="1" oninput="onSimCtrlChange()">
           <button type="button" class="sim-step" onclick="stepSimCycle(1)" title="Next cycle">►</button>
@@ -2194,13 +2196,21 @@ function updateSimStatus(){
 // `toC` = how many Coulombs are in one unit. Use this to convert any value
 // from one unit to another: vB = vA * (toC[A] / toC[B]).
 // 1 A·h = 3600 C; metric prefixes apply the usual ×1000 ladder.
-const SIM_CAP_UNITS=[
-  {id:"uAh",label:"µA·h",toC:0.0036},
-  {id:"mAh",label:"mA·h",toC:3.6},
-  {id:"Ah", label:"A·h", toC:3600},
-  {id:"mC", label:"mC",  toC:0.001},
-  {id:"C",  label:"C",   toC:1}
+// Capacity units (kind:'capacity') and time units (kind:'time') — both share
+// the X-axis pill picker. Capacity units pivot through Coulombs (toC); time
+// units pivot through seconds (toS). 1 A·h = 3600 C; 1 µA·h = 3600/1e6 s of
+// 1 µA, etc.
+const SIM_X_UNITS=[
+  {id:"uAh",label:"µA·h",kind:"capacity",toC:0.0036},
+  {id:"mAh",label:"mA·h",kind:"capacity",toC:3.6},
+  {id:"Ah", label:"A·h", kind:"capacity",toC:3600},
+  {id:"mC", label:"mC",  kind:"capacity",toC:0.001},
+  {id:"C",  label:"C",   kind:"capacity",toC:1},
+  {id:"s",  label:"s",   kind:"time",    toS:1},
+  {id:"min",label:"min", kind:"time",    toS:60},
+  {id:"h",  label:"h",   kind:"time",    toS:3600}
 ];
+const SIM_CAP_UNITS=SIM_X_UNITS.filter(u=>u.kind==='capacity');
 const SIM_M_OPTIONS=[
   {id:"Li",label:"Li/Li⁺"},
   {id:"Na",label:"Na/Na⁺"},
@@ -2210,7 +2220,8 @@ const simAxisState={M:"Li",capUnit:"mAh"};
 let simUserOverrodeM=false; // stop auto-syncing M from inputs once user picks one
 let simPlotInitialised=false;
 
-function _simCapUnit(id){return SIM_CAP_UNITS.find(u=>u.id===id)||SIM_CAP_UNITS[1];}
+function _simXUnit(id){return SIM_X_UNITS.find(u=>u.id===id)||SIM_X_UNITS[1];}
+function _simCapUnit(id){return _simXUnit(id);} // alias for back-compat
 function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];}
 
 // Convert a capacity value between any two SIM_CAP_UNITS ids. Pivot through
@@ -2311,11 +2322,12 @@ function simBuildLayout(){
 
 function simRenderAxisLabels(){
   const m=_simMOpt(simAxisState.M).label;
-  const cap=_simCapUnit(simAxisState.capUnit).label;
+  const xu=_simXUnit(simAxisState.capUnit);
+  const xLabel=xu.kind==='time'?"Time":"Capacity";
   const ax=$("simAxisX"),ay=$("simAxisY"),ay2=$("simAxisY2");
   if(ax) ax.innerHTML=
-    `<span class="ax-pre">Capacity</span>`+
-    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to change capacity unit">${cap}<span class="ax-pill-arrow">▾</span></button>`;
+    `<span class="ax-pre">${xLabel}</span>`+
+    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to switch X axis (Capacity ↔ Time)">${xu.label}<span class="ax-pill-arrow">▾</span></button>`;
   if(ay) ay.innerHTML=
     `<span class="ax-pre">Potential (V vs</span>`+
     `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'mRef')" title="Click to change reference electrode">${m}<span class="ax-pill-arrow">▾</span></button>`+
@@ -2686,6 +2698,100 @@ function simComputeSeries(){
   };
 }
 
+// Multi-cycle continuous time-series. Walks strokes 1 .. 2·N (N = simCycleN
+// in time mode) end-to-end, accumulating physical time per stroke from
+// Δt = Q_min / I (units: µA·h / µA = h, so multiply by 3600 → seconds), and
+// emits sample arrays the time-domain renderer can plot directly. Each
+// stroke contributes an instantaneous IR jump at its start (vertical
+// segment at the boundary) and a linear ramp to its physical end voltage.
+function simComputeTimeSeries(){
+  const inp=window.lastInp,r=window.lastR;
+  if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
+  if(!r.sane||!(r.mCat>0)||!(r.mAn>0)) return {ok:false, msg:"Balance result is not valid — check the Single-mode inputs."};
+
+  const stCat=inp.cat.ac.st,stAn=inp.an.st;
+  if(stCat!=="capacitive"||stAn!=="capacitive"){
+    const lab=s=>s==="capacitive"?"EDLC":s==="pseudocapacitive"?"pseudocapacitive":"faradaic";
+    return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
+  }
+
+  const Q_c_1=r.Qc1, Q_c_N=r.QcN, Q_a_1=r.Qa1, Q_a_N=r.QaN;
+  if(!(Q_c_1>0&&Q_c_N>0&&Q_a_1>0&&Q_a_N>0)) return {ok:false, msg:"All four electrode capacities (Q_c1, Q_cN, Q_a1, Q_aN) must be > 0 — re-run the balance."};
+
+  const Vth_c_hi=Math.max(inp.cat.Vth[0], inp.cat.Vth[1]);
+  const Vth_c_lo=Math.min(inp.cat.Vth[0], inp.cat.Vth[1]);
+  const Vth_a_hi=Math.max(inp.an.Vth[0],  inp.an.Vth[1]);
+  const Vth_a_lo=Math.min(inp.an.Vth[0],  inp.an.Vth[1]);
+  const dVc=Vth_c_hi-Vth_c_lo, dVa=Vth_a_hi-Vth_a_lo;
+  if(!(dVc>0&&dVa>0)) return {ok:false, msg:"Theoretical V-windows (V_th) must span a non-zero range."};
+
+  const Vocv_c=N("cat-ac-ocv"),Vocv_a=N("an-ocv");
+  if(!Number.isFinite(Vocv_c)||!Number.isFinite(Vocv_a)) return {ok:false, msg:"Set OCV values for both electrodes."};
+
+  const Vop_c_hi=inp.cat.Vop[0], Vop_c_lo=inp.cat.Vop[1];
+  const Vop_a_hi=inp.an.Vop[0],  Vop_a_lo=inp.an.Vop[1];
+
+  const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
+  let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
+
+  const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
+  const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
+  if(!(I1_uA>0)||!(IN_uA>0)) return {ok:false, msg:"Pick a current rate (1st-cycle and N-th cycle rows in the Rates table) so the time series has a non-zero current."};
+
+  let Ncyc=parseInt($("simCycleN")?.value);
+  if(!Number.isFinite(Ncyc)||Ncyc<1) Ncyc=1;
+  if(Ncyc>100) Ncyc=100;
+
+  const constraints=_simReadConstraints();
+  const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
+             Vocv_c, Vocv_a, startDir,
+             Q_c_1, Q_c_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+             constraints};
+
+  const k_total=2*Ncyc;
+  const ts=[0], vc=[Vocv_c], va=[Vocv_a], vcell=[Vocv_c-Vocv_a];
+  const strokes=[];
+
+  let V_c=Vocv_c, V_a=Vocv_a, t=0; // t in seconds
+  let frozen=false;
+  for(let k=1; k<=k_total; k++){
+    const stroke=_simAdvanceOneStroke(k, V_c, V_a, ctx);
+    const Iu=stroke.Iu, Qmin=stroke.Qmin;
+    if(!Number.isFinite(Qmin) || Qmin<=0){
+      // Stroke can't advance — current can't push the cell anywhere this
+      // direction (every cutoff was already past). Stop the walk.
+      strokes.push({k, t_start:t, t_end:t, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, frozen:true});
+      frozen=true; break;
+    }
+    // dt (s) = Q (µA·h) × 3600 / I (µA)
+    const dt = Qmin * 3600 / Iu;
+    const t_end = t + dt;
+
+    // IR jump at stroke boundary — sign·I·R/2, split symmetrically across
+    // electrodes. Pushing two samples at the same t produces a clean
+    // vertical step (no spurious zero-IR intermediate).
+    const dV_IR = stroke.sign * (Iu*Req)*1e-6;
+    const half = dV_IR/2;
+
+    ts.push(t,        t_end);
+    vc.push(V_c+half, stroke.V_c_end+half);
+    va.push(V_a-half, stroke.V_a_end-half);
+    vcell.push((V_c+half)-(V_a-half), (stroke.V_c_end+half)-(stroke.V_a_end-half));
+
+    strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, V_c_end:stroke.V_c_end, V_a_end:stroke.V_a_end});
+
+    V_c=stroke.V_c_end; V_a=stroke.V_a_end; t=t_end;
+  }
+
+  return {ok:true, mode:'time',
+    Ncyc, ts, vc, va, vcell, strokes,
+    totalTime:t, frozen,
+    I1_uA, IN_uA,
+    constraints,
+    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo
+  };
+}
+
 function _simSetMsg(text,kind){
   const el=$("simMsg"); if(!el) return;
   if(!text){ el.style.display="none"; el.textContent=""; el.className="sim-msg"; return; }
@@ -2694,11 +2800,169 @@ function _simSetMsg(text,kind){
   el.style.display="block";
 }
 
+// Show / hide and re-label the simulation controls based on the active
+// X-axis mode. In Time mode the Charge/Discharge stroke picker is hidden
+// (every stroke is shown) and the cycle picker is re-labelled "Cycles".
+function _simApplyAxisMode(isTime){
+  const showGrp=$("simShowDirGrp"); if(showGrp) showGrp.style.display=isTime?"none":"";
+  const lbl=$("simCycleLbl"); if(lbl) lbl.textContent=isTime?"Cycles:":"Cycle:";
+}
+
+// Time-domain renderer — multi-cycle continuous V(t) for both electrodes
+// and the cell. Re-uses the existing layout / V_op grid lines / V_cell
+// constraint dashes; only the X coordinates and the trace shape change.
+function _renderSimPlotTime(host, xUnit){
+  const layout=simBuildLayout();
+  const config={
+    displayModeBar:true, displaylogo:false, responsive:true, scrollZoom:true,
+    modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
+    toImageButtonOptions:{format:'png',filename:'MUSIC_simulation',scale:2},
+    edits:{legendPosition:true}
+  };
+  const series=simComputeTimeSeries();
+  const lblEl=$("simCycleDir");
+  const colC="#C0392B", colA="#2980B9", colCell="#2D3748", colCons="#6B46C1";
+  let traces;
+
+  if(!series.ok){
+    traces=[
+      {x:[0],y:[0],yaxis:'y', mode:'markers',marker:{opacity:0,size:1},showlegend:false,hoverinfo:'skip'},
+      {x:[0],y:[0],yaxis:'y2',mode:'markers',marker:{opacity:0,size:1},showlegend:false,hoverinfo:'skip'}
+    ];
+    _simSetMsg(series.msg, "warn");
+    if(lblEl) lblEl.textContent="—";
+    const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",false);
+  } else {
+    // Convert seconds → display unit.
+    const conv = t_s => t_s / xUnit.toS;
+    const xs = series.ts.map(conv);
+
+    traces=[
+      {x:xs, y:series.vc, yaxis:'y', mode:'lines',
+       line:{color:colC,width:1.6}, name:'Cathode',
+       hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cat</sub>=%{y:.3f} V<extra></extra>'},
+      {x:xs, y:series.va, yaxis:'y', mode:'lines',
+       line:{color:colA,width:1.6}, name:'Anode',
+       hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>an</sub>=%{y:.3f} V<extra></extra>'},
+      {x:xs, y:series.vcell, yaxis:'y2', mode:'lines',
+       line:{color:colCell,width:1.0,dash:'dot'}, name:'Cell V',
+       hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
+    ];
+
+    // Dashed shapes — V_op grid (electrode-coloured, on y1) and V_cell
+    // constraint bounds (purple, on y2). Cathode/anode constraint lines are
+    // intentionally omitted to keep the graph readable.
+    const dashShape=(yref,y,color)=>({
+      type:'line', xref:'paper', x0:0, x1:1,
+      yref, y0:y, y1:y,
+      line:{color, width:1, dash:'dash'}, layer:'below'
+    });
+    layout.shapes=[
+      dashShape('y',  series.Vop_c_hi, colC),
+      dashShape('y',  series.Vop_c_lo, colC),
+      dashShape('y',  series.Vop_a_hi, colA),
+      dashShape('y',  series.Vop_a_lo, colA)
+    ];
+    if(series.constraints){
+      for(const key in series.constraints){
+        const c=series.constraints[key];
+        if(c && c.def.target==='cell' && Number.isFinite(c.V)){
+          layout.shapes.push(dashShape('y2', c.V, colCons));
+        }
+      }
+    }
+    // Faint vertical at every stroke boundary so the user can pick out
+    // individual half-cycles in a long run.
+    if(series.strokes && series.strokes.length>1){
+      for(const s of series.strokes){
+        if(s.t_end<=0) continue;
+        layout.shapes.push({
+          type:'line', xref:'x', yref:'paper',
+          x0:conv(s.t_end), x1:conv(s.t_end),
+          y0:0, y1:1,
+          line:{color:'#CBD2DA', width:1, dash:'dot'}, layer:'below'
+        });
+      }
+    }
+
+    // Axis ranges.
+    const xMax=conv(series.totalTime);
+    layout.xaxis.range=[0, xMax>0 ? xMax*1.02 : 1];
+
+    const yV1=series.vc.concat(series.va,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
+    let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
+    const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
+    layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
+
+    const yV2=series.vcell.slice();
+    if(series.constraints){
+      for(const key in series.constraints){
+        const c=series.constraints[key];
+        if(c && c.def.target==='cell' && Number.isFinite(c.V)) yV2.push(c.V);
+      }
+    }
+    let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
+    const y2pad=Math.max(0.1,(y2hi-y2lo)*0.10);
+    layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
+
+    layout.showlegend=true;
+    layout.legend={x:0.01, y:0.99, xanchor:'left', yanchor:'top',
+                   bgcolor:'rgba(255,255,255,0.85)', bordercolor:'#CBD2DA', borderwidth:1,
+                   font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
+
+    // Status text — cycle count, current density(ies), total time.
+    const _fmtCur=uA=>{
+      if(!Number.isFinite(uA)||uA<=0) return "—";
+      if(uA>=1000) return (uA/1000).toFixed(2)+" mA";
+      if(uA>=1)    return uA.toFixed(2)+" µA";
+      return uA.toFixed(3)+" µA";
+    };
+    const sameI = Math.abs(series.I1_uA - series.IN_uA) < 1e-9;
+    const Itxt = sameI ? `I = ${_fmtCur(series.I1_uA)}`
+                       : `I_1st = ${_fmtCur(series.I1_uA)} · I_Nth = ${_fmtCur(series.IN_uA)}`;
+    if(lblEl){
+      const tDisp=conv(series.totalTime);
+      lblEl.textContent = `${series.Ncyc} cycle${series.Ncyc>1?"s":""} (${series.strokes.length} stroke${series.strokes.length===1?"":"s"})`+
+                          ` · ${Itxt} · total ${tDisp.toPrecision(3)} ${xUnit.label}`+
+                          (series.frozen?" · cell froze (no advance possible)":"");
+    }
+
+    // Surface any per-stroke stop messages (constraints / V_th) summarised.
+    const last = series.strokes[series.strokes.length-1];
+    if(last && last.consHit && series.constraints[last.consHit]){
+      const c=series.constraints[last.consHit];
+      _simSetMsg(`Last stroke (k=${last.k}, ${last.dir}) ended on user constraint ${c.def.label} (${c.V.toFixed(3)} V). Earlier strokes may have hit other limits — switch to a Capacity unit and step through cycles to inspect.`, "warn");
+    } else if(last && last.limiting){
+      _simSetMsg(`Last stroke (k=${last.k}, ${last.dir}) ended at V_th of the ${last.limiting}. Switch to a Capacity unit and step through cycles to inspect any imbalance propagation.`, "warn");
+    } else {
+      _simSetMsg("","");
+    }
+    const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",true);
+  }
+
+  if(!simPlotInitialised){
+    Plotly.newPlot(host,traces,layout,config);
+    simPlotInitialised=true;
+    simInstallResizeWatcher(host);
+  } else {
+    Plotly.react(host,traces,layout,config);
+  }
+  try{ Plotly.Plots.resize(host); }catch(_){}
+  simRenderAxisLabels();
+}
+
 function renderSimPlot(){
   const host=$("simPlot");
   if(!host || typeof Plotly==="undefined") return;
   syncSimAxisFromInputs();
   _simSyncConsDefaults();
+
+  // Show / hide and re-label controls based on the X-axis mode.
+  const xUnit=_simXUnit(simAxisState.capUnit);
+  const isTime = xUnit.kind==='time';
+  _simApplyAxisMode(isTime);
+
+  if(isTime){ return _renderSimPlotTime(host, xUnit); }
 
   const layout=simBuildLayout();
   const config={
@@ -3035,11 +3299,20 @@ function simInstallResizeWatcher(host){
 function openSimUnitMenu(ev,kind){
   ev.stopPropagation();
   const menu=$("simUnitMenu"); if(!menu) return;
-  const opts=kind==="capUnit"?SIM_CAP_UNITS:SIM_M_OPTIONS;
   const cur =kind==="capUnit"?simAxisState.capUnit:simAxisState.M;
-  menu.innerHTML=opts.map(o=>
-    `<button type="button" class="sim-unit-opt${o.id===cur?" act":""}" onclick="pickSimUnit('${kind}','${o.id}')">${o.label}</button>`
-  ).join("");
+  const _btn=o=>`<button type="button" class="sim-unit-opt${o.id===cur?" act":""}" onclick="pickSimUnit('${kind}','${o.id}')">${o.label}</button>`;
+  let html="";
+  if(kind==="capUnit"){
+    // Two sections — Capacity (default) and Time. Picking a time unit
+    // switches the simulation to multi-cycle continuous time-series mode.
+    html += `<div class="sim-unit-hdr">Capacity</div>`;
+    html += SIM_X_UNITS.filter(o=>o.kind==='capacity').map(_btn).join("");
+    html += `<div class="sim-unit-hdr">Time</div>`;
+    html += SIM_X_UNITS.filter(o=>o.kind==='time').map(_btn).join("");
+  } else {
+    html = SIM_M_OPTIONS.map(_btn).join("");
+  }
+  menu.innerHTML=html;
   // Position the menu near the click point. Using event coords (page-relative)
   // sidesteps the rotated-bounding-box weirdness on the vertical Y-axis pills.
   const wrap=$("simWrap"); if(!wrap) return;
