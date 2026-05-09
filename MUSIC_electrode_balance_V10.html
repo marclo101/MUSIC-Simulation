@@ -867,24 +867,42 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
           <span class="u">Ω</span>
         </div>
       </div>
-      <div class="sim-ctrl sim-ctrl-cons" id="simConsCtrl" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding inequality is violated (in addition to the V_th / capacity stops). Constraints only fire when the electrode (or cell voltage) is moving toward the limit; if a previous stroke already left a value past the limit, the constraint is silent for the current stroke." data-help-key="fld_sim_constraints">
-        <div class="sim-cg sim-cg-h"><label>Constraints:</label><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding inequality is violated (in addition to the V_th / capacity stops). Constraints only fire when the electrode (or cell voltage) is moving toward the limit; if a previous stroke already left a value past the limit, the constraint is silent for the current stroke."></button></div>
-        <div class="sim-cons off" id="simConsCellWrap" title="Stop when |V_cat − V_an| reaches the cell-voltage limit. Analogue of EC-Lab's E_M.">
-          <button type="button" id="simConsCellEn" class="sim-cons-tg" onclick="toggleSimCons('cell')">off</button>
-          <span class="lab">V<sub>cell</sub> ≤</span>
-          <input type="number" id="simConsCellV" min="0" step="0.01" value="3.000" disabled oninput="onSimCtrlChange()">
+      <div class="sim-ctrl sim-ctrl-cons" id="simConsCtrl" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding bound is crossed — that point becomes the maximum capacity for the stroke. Six bounds are available: upper / lower limits on V_cat (cathode), V_an (anode), and V_cell. Constraints only fire when the value is moving toward the bound; if a previous stroke already crossed the bound the constraint stays silent so the imbalance can keep propagating." data-help-key="fld_sim_constraints">
+        <div class="sim-cg sim-cg-h"><label>Constraints:</label><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Optional galvanostatic stop conditions inspired by EC-Lab's GCPL2 limits, in MUSIC's electrode notation. Each toggle is independent: when enabled, a dashed line is drawn on the plot and the stroke ends as soon as the corresponding bound is crossed — that point becomes the maximum capacity for the stroke. Six bounds are available: upper / lower limits on V_cat (cathode), V_an (anode), and V_cell. Constraints only fire when the value is moving toward the bound; if a previous stroke already crossed the bound the constraint stays silent so the imbalance can keep propagating."></button></div>
+        <div class="sim-cons off" id="simCons_catMax_wrap" title="Stop when V_cat (cathode potential vs reference) crosses its upper bound during a stroke. The stroke ends at the crossing point and that capacity becomes the stroke's Q_max.">
+          <button type="button" id="simCons_catMax_en" class="sim-cons-tg" onclick="toggleSimCons('catMax')">off</button>
+          <span class="lab">Cat_Vmax</span>
+          <input type="number" id="simCons_catMax_v" step="0.01" value="3.400" disabled oninput="onSimCtrlChange()">
           <span class="u">V</span>
         </div>
-        <div class="sim-cons off" id="simConsCatWrap" title="Stop when V_cat (cathode potential vs reference) reaches its upper limit. Analogue of EC-Lab's E_Lw on the working electrode.">
-          <button type="button" id="simConsCatEn" class="sim-cons-tg" onclick="toggleSimCons('cat')">off</button>
-          <span class="lab">V<sub>cat</sub> ≤</span>
-          <input type="number" id="simConsCatV" step="0.01" value="3.400" disabled oninput="onSimCtrlChange()">
+        <div class="sim-cons off" id="simCons_catMin_wrap" title="Stop when V_cat falls to its lower bound during a stroke.">
+          <button type="button" id="simCons_catMin_en" class="sim-cons-tg" onclick="toggleSimCons('catMin')">off</button>
+          <span class="lab">Cat_Vmin</span>
+          <input type="number" id="simCons_catMin_v" step="0.01" value="0.000" disabled oninput="onSimCtrlChange()">
           <span class="u">V</span>
         </div>
-        <div class="sim-cons off" id="simConsAnWrap" title="Stop when V_an (anode potential vs reference) drops to its lower limit. Analogue of EC-Lab's E_Lc on the counter electrode.">
-          <button type="button" id="simConsAnEn" class="sim-cons-tg" onclick="toggleSimCons('an')">off</button>
-          <span class="lab">V<sub>an</sub> ≥</span>
-          <input type="number" id="simConsAnV" step="0.01" value="0.000" disabled oninput="onSimCtrlChange()">
+        <div class="sim-cons off" id="simCons_anoMax_wrap" title="Stop when V_an (anode potential vs reference) crosses its upper bound during a stroke.">
+          <button type="button" id="simCons_anoMax_en" class="sim-cons-tg" onclick="toggleSimCons('anoMax')">off</button>
+          <span class="lab">Ano_Vmax</span>
+          <input type="number" id="simCons_anoMax_v" step="0.01" value="1.000" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+        </div>
+        <div class="sim-cons off" id="simCons_anoMin_wrap" title="Stop when V_an falls to its lower bound during a stroke.">
+          <button type="button" id="simCons_anoMin_en" class="sim-cons-tg" onclick="toggleSimCons('anoMin')">off</button>
+          <span class="lab">Ano_Vmin</span>
+          <input type="number" id="simCons_anoMin_v" step="0.01" value="0.000" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+        </div>
+        <div class="sim-cons off" id="simCons_cellMax_wrap" title="Stop when V_cell = V_cat − V_an crosses its upper bound during a stroke.">
+          <button type="button" id="simCons_cellMax_en" class="sim-cons-tg" onclick="toggleSimCons('cellMax')">off</button>
+          <span class="lab">Cell_Vmax</span>
+          <input type="number" id="simCons_cellMax_v" step="0.01" value="3.000" disabled oninput="onSimCtrlChange()">
+          <span class="u">V</span>
+        </div>
+        <div class="sim-cons off" id="simCons_cellMin_wrap" title="Stop when V_cell = V_cat − V_an falls to its lower bound during a stroke.">
+          <button type="button" id="simCons_cellMin_en" class="sim-cons-tg" onclick="toggleSimCons('cellMin')">off</button>
+          <span class="lab">Cell_Vmin</span>
+          <input type="number" id="simCons_cellMin_v" step="0.01" value="0.000" disabled oninput="onSimCtrlChange()">
           <span class="u">V</span>
         </div>
       </div>
@@ -2330,21 +2348,41 @@ let startDir="charge";    // chronological direction of the very first stroke
 let simDirState="charge"; // which stroke of the selected cycle is on screen
 
 // Optional GCPL2-style stop conditions (renamed to MUSIC's electrode terms).
-// Each entry: enabled flag + value. Only fire when the cell is moving toward
-// the limit — a previous stroke that already pushed past the limit is left
-// alone, otherwise re-enabling a constraint mid-run would freeze the plot.
-let simConstraints={
-  cell:{en:false, V:3.0},  // V_cell ≤  (analogue of EC-Lab E_M)
-  cat:{en:false,  V:3.4},  // V_cat ≤  (analogue of EC-Lab E_Lw on cathode)
-  an: {en:false,  V:0.0}   // V_an  ≥  (analogue of EC-Lab E_Lc on anode)
+// Each entry: enabled flag + value. Six independent bounds — upper and lower
+// limits on V_cat, V_an, and V_cell. The general rule is: when the relevant
+// quantity crosses its bound during a stroke, the stroke ends at the crossing
+// point and that becomes the stroke's maximum capacity. To avoid freezing the
+// next stroke at Q=0, a constraint only fires when the quantity is moving
+// TOWARD its bound — a value that an earlier unbalanced stroke already pushed
+// across the bound is left alone for one stroke so the imbalance can keep
+// propagating.
+//
+// `target` is which signal the bound applies to (cat = V_c, an = V_a,
+// cell = V_c − V_a). `bound` is "max" (stop when crossing from below) or
+// "min" (stop when crossing from above).
+const SIM_CONS_DEFS={
+  catMax: {target:'cat',  bound:'max', label:'Cat_Vmax'},
+  catMin: {target:'cat',  bound:'min', label:'Cat_Vmin'},
+  anoMax: {target:'an',   bound:'max', label:'Ano_Vmax'},
+  anoMin: {target:'an',   bound:'min', label:'Ano_Vmin'},
+  cellMax:{target:'cell', bound:'max', label:'Cell_Vmax'},
+  cellMin:{target:'cell', bound:'min', label:'Cell_Vmin'}
 };
+let simConstraints={
+  catMax: {en:false, V:3.4},
+  catMin: {en:false, V:0.0},
+  anoMax: {en:false, V:1.0},
+  anoMin: {en:false, V:0.0},
+  cellMax:{en:false, V:3.0},
+  cellMin:{en:false, V:0.0}
+};
+function _simConsIds(key){
+  return ["simCons_"+key+"_en","simCons_"+key+"_v","simCons_"+key+"_wrap"];
+}
 function toggleSimCons(which){
   const c=simConstraints[which]; if(!c) return;
   c.en=!c.en;
-  const ids={cell:["simConsCellEn","simConsCellV","simConsCellWrap"],
-             cat: ["simConsCatEn", "simConsCatV", "simConsCatWrap"],
-             an:  ["simConsAnEn",  "simConsAnV",  "simConsAnWrap"]};
-  const [bId,vId,wId]=ids[which];
+  const [bId,vId,wId]=_simConsIds(which);
   const b=$(bId), v=$(vId), w=$(wId);
   if(b){ b.classList.toggle("act",c.en); b.textContent=c.en?"on":"off"; }
   if(v){ v.disabled=!c.en; }
@@ -2355,15 +2393,14 @@ function toggleSimCons(which){
 // without us having to wire oninput → state for every keystroke).
 function _simReadConstraints(){
   const out={};
-  const _v=(id,fb)=>{const el=$(id); if(!el||el.value==="") return fb;
-                     const x=parseFloat(el.value); return Number.isFinite(x)?x:fb;};
-  out.cell={en:simConstraints.cell.en, V:_v("simConsCellV",simConstraints.cell.V)};
-  out.cat ={en:simConstraints.cat.en,  V:_v("simConsCatV", simConstraints.cat.V)};
-  out.an  ={en:simConstraints.an.en,   V:_v("simConsAnV",  simConstraints.an.V)};
-  // Keep state in sync so the next toggle starts from the displayed value.
-  simConstraints.cell.V=out.cell.V;
-  simConstraints.cat.V =out.cat.V;
-  simConstraints.an.V  =out.an.V;
+  const _read=(id,fb)=>{const el=$(id); if(!el||el.value==="") return fb;
+                        const x=parseFloat(el.value); return Number.isFinite(x)?x:fb;};
+  for(const key in SIM_CONS_DEFS){
+    const [, vId] = _simConsIds(key);
+    const V=_read(vId, simConstraints[key].V);
+    out[key]={en:simConstraints[key].en, V, def:SIM_CONS_DEFS[key]};
+    simConstraints[key].V=V; // keep state in sync with edits
+  }
   return out;
 }
 
@@ -2483,35 +2520,33 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   else if(Qa_max + tol < Qc_max){ Q_stop = Qa_max; limiting = "anode"; }
   else { Q_stop = Math.min(Qc_max, Qa_max); limiting = null; }
 
-  // Optional GCPL2-style constraints. Each only fires if the cell is moving
-  // INTO the limit during this stroke (slope sign matches, current value is
-  // still on the legal side). If a constraint hits earlier than the V_th
-  // limit it overrides the limiter, and we record the constraint name so the
-  // plot can quote it instead of an electrode V_th.
-  const cons = ctx.constraints || {cell:{en:false},cat:{en:false},an:{en:false}};
-  const _qcons = (cur, lim, slope, sign) => {
-    // sign = +1 means "stop when cur reaches lim from below" (cur <= lim);
-    // sign = -1 means "stop when cur reaches lim from above" (cur >= lim).
+  // Optional GCPL2-style constraints. Six independent bounds (upper and lower
+  // limits on V_cat, V_an, V_cell). Each only fires when its target signal is
+  // moving INTO the bound during this stroke (slope sign matches, current
+  // value still on the legal side). If a constraint hits earlier than the
+  // V_th cutoff it overrides the limiter, and we record which one fired so
+  // the plot can quote it instead of the electrode V_th.
+  const cons = ctx.constraints || {};
+  const _qcons = (cur, lim, slope, bound) => {
+    // bound='max' → stop when cur reaches lim from below (legal: cur < lim, slope > 0)
+    // bound='min' → stop when cur reaches lim from above (legal: cur > lim, slope < 0)
     if(!Number.isFinite(slope) || slope === 0) return Infinity;
-    if(sign>0 && (cur >= lim || slope <= 0)) return Infinity;
-    if(sign<0 && (cur <= lim || slope >= 0)) return Infinity;
+    if(bound==='max' && (cur >= lim || slope <= 0)) return Infinity;
+    if(bound==='min' && (cur <= lim || slope >= 0)) return Infinity;
     const q = (lim - cur) / slope;
     return q > 0 ? q : Infinity;
   };
+  const dSlope = slope_c - slope_a;
+  const dV_now = V_c_in - V_a_in;
   let consHit = null;
-  if(cons.cat.en){
-    const q = _qcons(V_c_in, cons.cat.V, slope_c, +1);
-    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "cat"; }
-  }
-  if(cons.an.en){
-    const q = _qcons(V_a_in, cons.an.V, slope_a, -1);
-    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "an"; }
-  }
-  if(cons.cell.en){
-    // V_cell(Q) = (V_c_in − V_a_in) + (slope_c − slope_a)·Q
-    const dSlope = slope_c - slope_a;
-    const q = _qcons(V_c_in - V_a_in, cons.cell.V, dSlope, +1);
-    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = "cell"; }
+  for(const key in cons){
+    const c = cons[key]; if(!c.en) continue;
+    let cur, slope;
+    if(c.def.target==='cat')      { cur = V_c_in; slope = slope_c; }
+    else if(c.def.target==='an')  { cur = V_a_in; slope = slope_a; }
+    else                          { cur = dV_now; slope = dSlope; } // cell
+    const q = _qcons(cur, c.V, slope, c.def.bound);
+    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = key; }
   }
 
   const V_c_end = V_c_in + slope_c * Q_stop;
@@ -2769,10 +2804,10 @@ function renderSimPlot(){
       dashShape('y',  series.Vop_a_lo, colA)
     ];
 
-    // Constraint lines (GCPL2-style stops). Drawn in purple, solid, on top of
-    // the V_op grid lines so they're easy to distinguish from the operating
-    // window. Cathode + anode constraints sit on y1; the V_cell constraint
-    // sits on y2 (cell-voltage axis).
+    // Constraint lines (GCPL2-style stops). Drawn in purple to keep them
+    // visually distinct from the V_op operating-window dashed lines. Cathode
+    // and anode constraints sit on y1 (electrode-potential axis); cell
+    // constraints sit on y2 (V_cell axis).
     const colCons="#6B46C1";
     const consShape=(yref,y)=>({
       type:'line', xref:'paper', x0:0, x1:1,
@@ -2780,9 +2815,11 @@ function renderSimPlot(){
       line:{color:colCons, width:1.4, dash:'dash'}, layer:'below'
     });
     if(series.constraints){
-      if(series.constraints.cat.en) layout.shapes.push(consShape('y',  series.constraints.cat.V));
-      if(series.constraints.an.en)  layout.shapes.push(consShape('y',  series.constraints.an.V));
-      if(series.constraints.cell.en)layout.shapes.push(consShape('y2', series.constraints.cell.V));
+      for(const key in series.constraints){
+        const c=series.constraints[key]; if(!c.en) continue;
+        const yref = (c.def.target==='cell') ? 'y2' : 'y';
+        layout.shapes.push(consShape(yref, c.V));
+      }
     }
 
     // Vertical marker at the constraint-driven stop point (mirrors the V_th
@@ -2843,8 +2880,10 @@ function renderSimPlot(){
     // the unused-capacity tail stays on screen. Padded.
     const yV1=series.vc_cat.concat(series.vc_an,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
     if(series.constraints){
-      if(series.constraints.cat.en) yV1.push(series.constraints.cat.V);
-      if(series.constraints.an.en)  yV1.push(series.constraints.an.V);
+      for(const key in series.constraints){
+        const c=series.constraints[key];
+        if(c.en && c.def.target!=='cell') yV1.push(c.V);
+      }
     }
     if(series.limiting){
       const irHalf = series.irHalf || 0;
@@ -2862,9 +2901,14 @@ function renderSimPlot(){
     const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
     layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
 
-    // Y2 range — V_cell, plus the V_cell constraint line if active.
+    // Y2 range — V_cell, plus any active cell-voltage constraint lines.
     const yV2=series.v_cell.slice();
-    if(series.constraints && series.constraints.cell.en) yV2.push(series.constraints.cell.V);
+    if(series.constraints){
+      for(const key in series.constraints){
+        const c=series.constraints[key];
+        if(c.en && c.def.target==='cell') yV2.push(c.V);
+      }
+    }
     let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
     const y2pad=Math.max(0.1,(y2hi-y2lo)*0.10);
     layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
@@ -2884,13 +2928,13 @@ function renderSimPlot(){
     if(series.consHit){
       const capLab = _simCapUnit(simAxisState.capUnit).label;
       const stop_disp = conv(series.Qmin);
-      const lab={cell:"V_cell", cat:"V_cat", an:"V_an"}[series.consHit];
-      const op ={cell:"≤", cat:"≤", an:"≥"}[series.consHit];
-      const limV=series.constraints[series.consHit].V;
+      const c=series.constraints[series.consHit];
+      const op = (c.def.bound==='max') ? "≤" : "≥";
+      const sigLab = {cat:"V_cat", an:"V_an", cell:"V_cell"}[c.def.target];
       _simSetMsg(
-        `Stroke stopped by user constraint ${lab} ${op} ${_fmtV(limV)} V `+
+        `Stroke stopped by user constraint ${c.def.label} (${sigLab} ${op} ${_fmtV(c.V)} V) `+
         `at ${stop_disp.toFixed(3)} ${capLab} — both electrodes truncated. `+
-        `Subsequent strokes start from these partial voltages.`,
+        `That capacity is the stroke's Q_max; subsequent strokes start from these partial voltages.`,
         "warn"
       );
     } else if(series.limiting){
