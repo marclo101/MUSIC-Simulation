@@ -565,6 +565,19 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .stk-no-tabs strong{color:var(--ink2);display:block;font-size:14px;margin-bottom:6px}
 /* Stack mode — salt sub-section (cathode tabs only) */
 .stk-salt-wrap{margin:14px 0 4px;padding:10px 12px;background:linear-gradient(135deg,rgba(194,105,58,.06),rgba(194,105,58,.02));border:1px solid rgba(194,105,58,.18);border-radius:6px}
+.salt-ms-rows{display:flex;flex-direction:column;gap:4px;margin:6px 0 4px}
+.salt-ms-rows .ms-row{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.salt-ms-rows .ms-row .ms-num{font-family:var(--fm);font-size:10px;color:var(--ink3);min-width:18px}
+.salt-ms-rows .ms-row .fld{flex:0 0 86px;height:26px}
+.salt-ms-rows .ms-row .fld input{font-size:11px;padding:2px 6px}
+.salt-ms-rows .ms-row .ms-rm{margin-left:auto;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink2);cursor:pointer;font-size:14px;line-height:1;padding:0}
+.salt-ms-rows .ms-row .ms-rm:hover{background:var(--erB);color:var(--er);border-color:var(--er)}
+.salt-ms-foot{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--ink2);margin-top:2px}
+.salt-ms-foot .salt-ms-add{padding:3px 10px;font-size:11px;font-weight:500;color:var(--sp);background:var(--sl);border:1px solid var(--sp);border-radius:4px;cursor:pointer;font-family:var(--fb)}
+.salt-ms-foot .salt-ms-add:hover{background:var(--sp);color:#fff}
+.salt-ms-foot .salt-ms-sum{font-family:var(--fm);color:var(--ink3)}
+.salt-ms-foot .salt-ms-sum.ok{color:var(--ok)}
+.salt-ms-foot .salt-ms-sum.bad{color:var(--er)}
 .stk-salt-tog{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink)}
 .stk-salt-tog .tsw{position:relative;width:36px;height:20px;border-radius:10px;background:var(--rule);cursor:pointer;transition:background .2s;flex-shrink:0;border:none}
 .stk-salt-tog .tsw.on{background:var(--sp)}
@@ -646,7 +659,21 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
       <div class="rate-pick unset" onclick="openRatePicker('cat-s','cN')"><span id="cat-s-rN-lbl">—</span></div>
       <span class="rate-eq" id="cat-s-rN-eq"></span>
       <input type="hidden" id="cat-s-rN" value="">
-      <input type="hidden" id="cat-s-rN-ru" value=""></div></div></div></div>
+      <input type="hidden" id="cat-s-rN-ru" value=""></div>
+    <!-- Sacrificial-salt redox plateau(s). Live properties of the salt that
+         the simulator uses to draw the V_redox plateau on the cathode trace
+         during the first charge sweep that reaches it. Single-stage by
+         default; tick "Multi-stage plateau" to split the salt's capacity
+         across several V_redox values. -->
+    <div class="row" id="salt-vredox-row"><label data-help="Oxidation potential at which the sacrificial salt decomposes — the cathode V is pinned here while the salt's charge is delivered (a flat plateau in the cycle-1 charge curve). Auto-fills from the salt preset; override per cell. Cleared field falls back to the library default." data-help-key="fld_salt_vredox"><em>V</em><sub>redox</sub> <span class="su">salt plateau</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Oxidation potential at which the sacrificial salt decomposes — the cathode V is pinned here while the salt's charge is delivered (a flat plateau in the cycle-1 charge curve). Auto-fills from the salt preset; override per cell. Cleared field falls back to the library default."></button></label><div class="fld"><input type="number" id="cat-s-vredox" step="0.01" value="" placeholder="V" oninput="onSaltVRedoxEdit()"><span class="u">V</span></div></div>
+    <div class="trow" data-help="Split the salt's irreversible capacity across multiple redox plateaus. Off → one V_redox. On → list of (V_redox, %) rows; the percentages must sum to 100%." data-help-key="fld_salt_multistage"><div class="tsw" id="salt-ms-sw" onclick="toggleSaltMultiStage()"></div><span class="tlbl" id="salt-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the salt's irreversible capacity across multiple redox plateaus. Off → one V_redox. On → list of (V_redox, %) rows; the percentages must sum to 100%."></button></div>
+    <div id="salt-ms-editor" style="display:none">
+      <div id="salt-ms-rows" class="salt-ms-rows"></div>
+      <div class="salt-ms-foot">
+        <button type="button" class="salt-ms-add" onclick="addSaltStage()">+ Add stage</button>
+        <span class="salt-ms-sum" id="salt-ms-sum">Σ = 0%</span>
+      </div>
+    </div></div></div></div>
   <div class="sec cld s-pending" data-step="cat-mass"><div class="st" onclick="tgS(this)" data-help="Total cathode film mass (AM + Conductive + Binder, plus Salt if enabled). Either an explicit input (Direct or Loading) or a value the solver computes for you, depending on which inputs you fill on the other electrode." data-help-key="sec_cat_mass"><span class="sl"><span class="bg bc">m</span> Mass</span><span class="sh">electrode total</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Total cathode film mass (AM + Conductive + Binder, plus Salt if enabled). Either an explicit input (Direct or Loading) or a value the solver computes for you, depending on which inputs you fill on the other electrode."></button></div><div class="sb">
     <div class="mmbar" id="cat-mmb" data-help="Choose how you specify cathode mass: &lt;strong&gt;Direct&lt;/strong&gt; (one number, in mg) or &lt;strong&gt;Loading&lt;/strong&gt; (mg/cm² × area). Both back-calculate to the same total electrode mass that the solver uses, so the choice is just a matter of which one you measured." data-help-key="fld_cat_mass_method"><button class="mmb act" onclick="sMM('cat','d',this)">Direct</button><button class="mmb" onclick="sMM('cat','l',this)">Loading</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Choose how you specify cathode mass: &lt;strong&gt;Direct&lt;/strong&gt; (one number, in mg) or &lt;strong&gt;Loading&lt;/strong&gt; (mg/cm² × area). Both back-calculate to the same total electrode mass that the solver uses, so the choice is just a matter of which one you measured."></button></div>
     <div id="cat-md"><div class="row"><label data-help="Direct cathode mass in mg (AM + Conductive + Binder, plus Salt if enabled). Pinning it puts the solver into &lt;em&gt;cathode-fixed&lt;/em&gt; mode — the anode mass is computed to satisfy your target N/P." data-help-key="fld_cat_mass_total">Total mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Direct cathode mass in mg (AM + Conductive + Binder, plus Salt if enabled). Pinning it puts the solver into &lt;em&gt;cathode-fixed&lt;/em&gt; mode — the anode mass is computed to satisfy your target N/P."></button></label><div class="fld-with-clear"><div class="fld" id="cat-mw"><input type="number" id="cat-mass" step="0.01" value="" placeholder="mg"><span class="u">mg</span></div><button class="clr-btn" onclick="clearMassInput('cat-mass')" title="Clear">×</button></div></div></div>
@@ -1095,31 +1122,31 @@ ac:[
 ],
 saltNa:[
   {id:"na2c4o4",name:"Na₂C₄O₄ (squarate)",sys:"Na",ocv:null,ocvRef:"Na/Na+",note:"Demonstrated sacrificial salt",rates:[
-    {rv:10,ru:"mA/g",c1:315,cN:null,vhi:4.2,vlo:2.0,sType:"faradaic",ref:{authors:"Martínez De Ilarduya, J.; Otaegui, L.; López del Amo, J.M.; Armand, M.; Singh, G.",title:"Towards high energy density, low cost and safe Na-ion full-cell using P2-Na₀.₆₇[Fe₀.₅Mn₀.₅]O₂ and Na₂C₄O₄ sacrificial salt",journal:"Electrochim. Acta",year:2019,volume:"321",pages:"134693",doi:"10.1016/j.electacta.2019.134693"}},
-    {rv:10,ru:"mA/g",c1:339,cN:null,vhi:4.2,vlo:2.0,sType:"faradaic",ref:{authors:"Mathieu, Y.; Bothorel, V.; Demir-Cakan, R.",title:"Advantageous carbon deposition during the irreversible electrochemical oxidation of Na₂C₄O₄ used as presodiation source for the anode of sodium-ion systems",journal:"Energy Storage Mater.",year:2021,volume:"39",pages:"77-83",doi:"10.1016/j.ensm.2021.04.012"}}
+    {rv:10,ru:"mA/g",c1:315,cN:null,vhi:4.2,vlo:2.0,vRedox:3.7,sType:"faradaic",ref:{authors:"Martínez De Ilarduya, J.; Otaegui, L.; López del Amo, J.M.; Armand, M.; Singh, G.",title:"Towards high energy density, low cost and safe Na-ion full-cell using P2-Na₀.₆₇[Fe₀.₅Mn₀.₅]O₂ and Na₂C₄O₄ sacrificial salt",journal:"Electrochim. Acta",year:2019,volume:"321",pages:"134693",doi:"10.1016/j.electacta.2019.134693"}},
+    {rv:10,ru:"mA/g",c1:339,cN:null,vhi:4.2,vlo:2.0,vRedox:3.7,sType:"faradaic",ref:{authors:"Mathieu, Y.; Bothorel, V.; Demir-Cakan, R.",title:"Advantageous carbon deposition during the irreversible electrochemical oxidation of Na₂C₄O₄ used as presodiation source for the anode of sodium-ion systems",journal:"Energy Storage Mater.",year:2021,volume:"39",pages:"77-83",doi:"10.1016/j.ensm.2021.04.012"}}
   ]},
   {id:"na2c2o4",name:"Na₂C₂O₄ (oxalate)",sys:"Na",ocv:null,ocvRef:"Na/Na+",note:"Demonstrated sacrificial salt",rates:[
-    {rv:20,ru:"mA/g",c1:396,cN:null,vhi:4.5,vlo:2.0,sType:"faradaic",ref:{authors:"Niu, Y.-B.; Yin, Y.-X.; Wang, W.-P.; Wang, P.-F.; Ling, W.; Xiao, Y.; Guo, Y.-G.",title:"In situ copolymerizated gel polymer electrolyte with cross-linked network for sodium-ion batteries",journal:"CCS Chem.",year:2020,volume:"2",pages:"589-597",doi:"10.31635/ccschem.020.202000234"}},
-    {rv:20,ru:"mA/g",c1:399,cN:null,vhi:4.3,vlo:2.0,sType:"faradaic",ref:{authors:"Liu, M.; Zhang, S.; Li, Z.; Gao, S.; Zhang, J.",title:"A presodiation strategy to extend the cycle life of iron phosphate sodium-ion full cell",journal:"J. Power Sources",year:2024,volume:"591",pages:"233844",doi:"10.1016/j.jpowsour.2023.233844"}}
+    {rv:20,ru:"mA/g",c1:396,cN:null,vhi:4.5,vlo:2.0,vRedox:3.95,sType:"faradaic",ref:{authors:"Niu, Y.-B.; Yin, Y.-X.; Wang, W.-P.; Wang, P.-F.; Ling, W.; Xiao, Y.; Guo, Y.-G.",title:"In situ copolymerizated gel polymer electrolyte with cross-linked network for sodium-ion batteries",journal:"CCS Chem.",year:2020,volume:"2",pages:"589-597",doi:"10.31635/ccschem.020.202000234"}},
+    {rv:20,ru:"mA/g",c1:399,cN:null,vhi:4.3,vlo:2.0,vRedox:3.95,sType:"faradaic",ref:{authors:"Liu, M.; Zhang, S.; Li, Z.; Gao, S.; Zhang, J.",title:"A presodiation strategy to extend the cycle life of iron phosphate sodium-ion full cell",journal:"J. Power Sources",year:2024,volume:"591",pages:"233844",doi:"10.1016/j.jpowsour.2023.233844"}}
   ]},
   {id:"nacl",name:"NaCl (presodiation agent)",sys:"Na",ocv:null,ocvRef:"Na/Na+",note:"DOI/volume to verify",rates:[
-    {rv:50,ru:"mA/g",c1:457,cN:null,vhi:4.2,vlo:2.0,sType:"faradaic",ref:{authors:"Sun, Y.; Wei, Y.; Fang, Y.; Pan, A.; Cao, X.; et al.",title:"High-efficiency NaCl presodiation agent for sodium-ion batteries",journal:"Energy Storage Mater.",year:2025,volume:"78",pages:"104328",doi:"10.1016/j.ensm.2025.104328"}}
+    {rv:50,ru:"mA/g",c1:457,cN:null,vhi:4.2,vlo:2.0,vRedox:3.85,sType:"faradaic",ref:{authors:"Sun, Y.; Wei, Y.; Fang, Y.; Pan, A.; Cao, X.; et al.",title:"High-efficiency NaCl presodiation agent for sodium-ion batteries",journal:"Energy Storage Mater.",year:2025,volume:"78",pages:"104328",doi:"10.1016/j.ensm.2025.104328"}}
   ]}
 ],
 saltLi:[
   {id:"li2c4o4",name:"Li₂C₄O₄ (squarate)",sys:"Li",ocv:null,ocvRef:"Li/Li+",note:"Demonstrated sacrificial salt",rates:[
-    {rv:10,ru:"mA/g",c1:380,cN:null,vhi:4.6,vlo:2.0,sType:"faradaic",ref:{authors:"Shanmukaraj, D.; Grugeon, S.; Laruelle, S.; Douglade, G.; Tarascon, J.-M.; Armand, M.",title:"Sacrificial salts: compensating the initial charge irreversibility in lithium batteries",journal:"Electrochem. Commun.",year:2010,volume:"12",pages:"1344-1347",doi:"10.1016/j.elecom.2010.07.016"}},
-    {rv:10,ru:"mA/g",c1:350,cN:null,vhi:4.7,vlo:2.5,sType:"faradaic",ref:{authors:"Solchenbach, S.; Wetjen, M.; Pritzl, D.; Schwenke, K.U.; Gasteiger, H.A.",title:"Lithium oxalate as capacity and cycle-life enhancer in LNMO/graphite and LNMO/SiG full cells",journal:"J. Electrochem. Soc.",year:2018,volume:"165",pages:"A512-A524",doi:"10.1149/2.0611803jes"}}
+    {rv:10,ru:"mA/g",c1:380,cN:null,vhi:4.6,vlo:2.0,vRedox:3.95,sType:"faradaic",ref:{authors:"Shanmukaraj, D.; Grugeon, S.; Laruelle, S.; Douglade, G.; Tarascon, J.-M.; Armand, M.",title:"Sacrificial salts: compensating the initial charge irreversibility in lithium batteries",journal:"Electrochem. Commun.",year:2010,volume:"12",pages:"1344-1347",doi:"10.1016/j.elecom.2010.07.016"}},
+    {rv:10,ru:"mA/g",c1:350,cN:null,vhi:4.7,vlo:2.5,vRedox:3.95,sType:"faradaic",ref:{authors:"Solchenbach, S.; Wetjen, M.; Pritzl, D.; Schwenke, K.U.; Gasteiger, H.A.",title:"Lithium oxalate as capacity and cycle-life enhancer in LNMO/graphite and LNMO/SiG full cells",journal:"J. Electrochem. Soc.",year:2018,volume:"165",pages:"A512-A524",doi:"10.1149/2.0611803jes"}}
   ]},
   {id:"li5feo4",name:"Li₅FeO₄ (LFO)",sys:"Li",ocv:null,ocvRef:"Li/Li+",note:"Anti-fluorite Li-rich",rates:[
-    {rv:0.05,ru:"C",c1:700,cN:null,vhi:4.3,vlo:1.5,sType:"faradaic",ref:{authors:"Zhan, C.; Yao, Z.; Lu, J.; Ma, L.; Maroni, V.A.; Li, L. et al.",title:"Enabling the high capacity of lithium-rich anti-fluorite lithium iron oxide by simultaneous anionic and cationic redox",journal:"Nat. Energy",year:2017,volume:"2",pages:"963-971",doi:"10.1038/s41560-017-0043-6"}},
-    {rv:20,ru:"mA/g",c1:600,cN:null,vhi:4.5,vlo:2.5,sType:"faradaic",ref:{authors:"Su, X.; Lin, C.; Wang, X.; Maroni, V.A.; Ren, Y.; Johnson, C.S.; Lu, W.",title:"A new strategy to mitigate the initial capacity loss of lithium ion batteries",journal:"J. Power Sources",year:2016,volume:"324",pages:"150-157",doi:"10.1016/j.jpowsour.2016.05.063"}}
+    {rv:0.05,ru:"C",c1:700,cN:null,vhi:4.3,vlo:1.5,vRedox:4.05,sType:"faradaic",ref:{authors:"Zhan, C.; Yao, Z.; Lu, J.; Ma, L.; Maroni, V.A.; Li, L. et al.",title:"Enabling the high capacity of lithium-rich anti-fluorite lithium iron oxide by simultaneous anionic and cationic redox",journal:"Nat. Energy",year:2017,volume:"2",pages:"963-971",doi:"10.1038/s41560-017-0043-6"}},
+    {rv:20,ru:"mA/g",c1:600,cN:null,vhi:4.5,vlo:2.5,vRedox:4.05,sType:"faradaic",ref:{authors:"Su, X.; Lin, C.; Wang, X.; Maroni, V.A.; Ren, Y.; Johnson, C.S.; Lu, W.",title:"A new strategy to mitigate the initial capacity loss of lithium ion batteries",journal:"J. Power Sources",year:2016,volume:"324",pages:"150-157",doi:"10.1016/j.jpowsour.2016.05.063"}}
   ]},
   {id:"li2nio2",name:"Li₂NiO₂",sys:"Li",ocv:null,ocvRef:"Li/Li+",note:"Sacrificial cathode additive",rates:[
-    {rv:20,ru:"mA/g",c1:396,cN:null,vhi:4.3,vlo:3.0,sType:"faradaic",ref:{authors:"Park, H.; Yoon, T.; Kim, Y.U.; Ryu, J.H.; Oh, S.M.",title:"Li₂NiO₂ as a sacrificing positive additive for lithium-ion batteries",journal:"Electrochim. Acta",year:2013,volume:"108",pages:"591-595",doi:"10.1016/j.electacta.2013.06.117"}}
+    {rv:20,ru:"mA/g",c1:396,cN:null,vhi:4.3,vlo:3.0,vRedox:3.75,sType:"faradaic",ref:{authors:"Park, H.; Yoon, T.; Kim, Y.U.; Ryu, J.H.; Oh, S.M.",title:"Li₂NiO₂ as a sacrificing positive additive for lithium-ion batteries",journal:"Electrochim. Acta",year:2013,volume:"108",pages:"591-595",doi:"10.1016/j.electacta.2013.06.117"}}
   ]},
   {id:"li6coo4",name:"Li₆CoO₄",sys:"Li",ocv:null,ocvRef:"Li/Li+",note:"Anti-fluorite sacrificial salt",rates:[
-    {rv:20,ru:"mA/g",c1:700,cN:null,vhi:4.3,vlo:2.5,sType:"faradaic",ref:{authors:"Noh, M.; Cho, J.",title:"Role of Li₆CoO₄ cathode additive in Li-ion cells containing low coulombic efficiency anode material",journal:"J. Electrochem. Soc.",year:2012,volume:"159",pages:"A1329-A1334",doi:"10.1149/2.085208jes"}}
+    {rv:20,ru:"mA/g",c1:700,cN:null,vhi:4.3,vlo:2.5,vRedox:4.10,sType:"faradaic",ref:{authors:"Noh, M.; Cho, J.",title:"Role of Li₆CoO₄ cathode additive in Li-ion cells containing low coulombic efficiency anode material",journal:"J. Electrochem. Soc.",year:2012,volume:"159",pages:"A1329-A1334",doi:"10.1149/2.085208jes"}}
   ]}
 ],
 anode:[
@@ -1683,6 +1710,73 @@ function scaleVW(side){
   recalc();
 }
 function tgSalt(){saltOn=!saltOn;$("salt-sw").classList.toggle("on",saltOn);$("salt-flds").style.display=saltOn?"":"none";$("salt-lbl").innerHTML=saltOn?"<strong>Salt enabled</strong>":"<strong>No salt</strong>";recalc()}
+
+// V_redox / multi-stage UI state. saltVRedoxDirty marks the single-V field
+// as user-overridden so picking a preset re-applies the library value only
+// when the user hasn't touched it manually (mirrors the V_op constraint
+// dirty-flag pattern). The multi-stage editor lives in the DOM directly —
+// its rows are the source of truth, no parallel JS state needed.
+let saltVRedoxDirty = false;
+function onSaltVRedoxEdit(){
+  const el = $("cat-s-vredox");
+  saltVRedoxDirty = !!(el && el.value !== "");
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function toggleSaltMultiStage(){
+  const sw = $("salt-ms-sw"); if(!sw) return;
+  const on = !sw.classList.contains("on");
+  sw.classList.toggle("on", on);
+  $("salt-ms-lbl").innerHTML = on
+    ? "Multi-stage plateau — <strong>on</strong>"
+    : "Multi-stage plateau — <em>off</em>";
+  $("salt-vredox-row").style.display = on ? "none" : "";
+  $("salt-ms-editor").style.display = on ? "" : "none";
+  if(on){
+    // Seed the editor with one row pre-filled from the single V_redox so
+    // the user doesn't start with an empty list.
+    const rowsHost = $("salt-ms-rows");
+    if(rowsHost && !rowsHost.querySelector(".ms-row")){
+      const v = parseFloat($("cat-s-vredox")?.value);
+      addSaltStage(Number.isFinite(v) ? v : null, 100);
+    }
+  }
+  _simSaltUpdateSum();
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function addSaltStage(vDefault, pctDefault){
+  const host = $("salt-ms-rows"); if(!host) return;
+  const idx = host.querySelectorAll(".ms-row").length + 1;
+  const row = document.createElement("div");
+  row.className = "ms-row";
+  row.innerHTML =
+    `<span class="ms-num">${idx}.</span>`+
+    `<div class="fld"><input type="number" class="ms-v" step="0.01" value="${Number.isFinite(vDefault)?vDefault:""}" placeholder="V" oninput="_simSaltUpdateSum();renderSimPlot&&renderSimPlot()"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="ms-p" step="1" min="0" max="100" value="${Number.isFinite(pctDefault)?pctDefault:""}" placeholder="%" oninput="_simSaltUpdateSum();renderSimPlot&&renderSimPlot()"><span class="u">%</span></div>`+
+    `<button type="button" class="ms-rm" title="Remove stage" onclick="removeSaltStage(this)">×</button>`;
+  host.appendChild(row);
+  _simSaltUpdateSum();
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function removeSaltStage(btn){
+  const row = btn.closest(".ms-row"); if(!row) return;
+  row.remove();
+  // Renumber the remaining rows so the labels stay 1..N.
+  document.querySelectorAll("#salt-ms-rows .ms-row").forEach((r, i) => {
+    const num = r.querySelector(".ms-num"); if(num) num.textContent = (i+1) + ".";
+  });
+  _simSaltUpdateSum();
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function _simSaltUpdateSum(){
+  const sum = $("salt-ms-sum"); if(!sum) return;
+  let total = 0;
+  document.querySelectorAll("#salt-ms-rows .ms-row .ms-p").forEach(inp => {
+    const v = parseFloat(inp.value); if(Number.isFinite(v)) total += v;
+  });
+  sum.textContent = `Σ = ${total.toFixed(0)}%`;
+  sum.classList.toggle("ok", Math.abs(total - 100) < 0.5);
+  sum.classList.toggle("bad", total > 0 && Math.abs(total - 100) >= 0.5);
+}
 function sMM(s,m,btn){if(s==="cat")catMM=m;else anMM=m;$(s+"-mmb").querySelectorAll(".mmb").forEach(b=>b.classList.toggle("act",b===btn));$(s+"-md").style.display=m==="d"?"":"none";$(s+"-ml").style.display=m==="l"?"":"none";recalc()}
 
 /* Convert the user's loading input into total electrode mass.
@@ -2542,115 +2636,205 @@ function stepSimCycle(d){
 // shows up in the simulation.
 
 // Compute the geometry of stroke k starting from cumulative state (V_c_in,
-// V_a_in). Returns end voltages, signed dV traversed by each electrode,
-// the per-electrode "natural" capacities and currents, the Q at which the
-// stroke actually stopped (Qmin), and which electrode (if any) hit its
-// V_th first and forced the stop.
+// V_a_in). Builds a per-electrode ordered list of segments that make up the
+// V-vs-Q trace, applies the universal stop rule "first electrode to deliver
+// its EDLC budget Q_AM stops the cell", and surfaces the truncated segments
+// for the renderer to plot as a polyline.
+//
+// Segment kinds (functional standard for capacity-by-segment summation):
+//   {kind:'edlc',    counts:true,  Q_start, Q_end, V_start, V_end, slope}
+//     Linear EDLC ramp; Q_end-Q_start contributes to that electrode's
+//     AM-only "EDLC budget" (Q_c_AM_1st / Q_c_AM_N or Q_a_1 / Q_a_N).
+//   {kind:'plateau', counts:false, Q_start, Q_end, V_start (=V_end), slope:0, plateauRef}
+//     Faradaic plateau (sacrificial-salt redox). Charge passes through but
+//     does NOT consume the EDLC budget. plateauRef points back at the salt-
+//     stage state object so Q_remaining can be decremented across strokes.
+//
+// Galvanostatic stop rule (segment-independent): each electrode publishes a
+// Q_at_budget = total Q passed when its EDLC budget is exhausted (sum of
+// EDLC contributions = Q_AM, plus any preceding plateau Q for the cathode).
+// The cell stops at min(Q_at_budget_cat, Q_at_budget_an, Q_first_constraint)
+// — whichever runs out first limits the whole cell, which is exactly why an
+// undercapacitive anode can stop the cathode mid-plateau.
 function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   const dir = (k%2===1) ? ctx.startDir : (ctx.startDir==="charge"?"discharge":"charge");
   const sign = (dir==="charge") ? +1 : -1;
   const isFormation = (k===1);
 
-  // Capacities & current that DEFINE the slope for this stroke. Only the
-  // formation half-cycle uses C_1st; every later stroke uses C_Nth.
-  const Qc_full = isFormation ? ctx.Q_c_1 : ctx.Q_c_N;
-  const Qa_full = isFormation ? ctx.Q_a_1 : ctx.Q_a_N;
-  const Iu      = isFormation ? ctx.I1_uA : ctx.IN_uA;
+  // AM-only EDLC budgets — the per-stroke charge each electrode is allowed
+  // to deliver via its capacitive mechanism alone. Salt plateau charge is
+  // separate and does not consume this.
+  const Qc_AM_budget = isFormation ? ctx.Q_c_AM_1st : ctx.Q_c_AM_N;
+  const Qa_budget    = isFormation ? ctx.Q_a_1      : ctx.Q_a_N;
+  const Iu           = isFormation ? ctx.I1_uA      : ctx.IN_uA;
 
-  // V each electrode is heading toward this stroke. Cathode follows the
-  // stroke's sign (charge → V_th_hi); anode goes the other way.
+  // V each electrode is heading toward this stroke (charge: cathode → V_th_hi,
+  // anode → V_th_lo; flipped for discharge). Slopes are intrinsic to the
+  // electrode and constant within a stroke (anchored at OCV for formation).
   const V_c_target = (sign > 0) ? ctx.Vth_c_hi : ctx.Vth_c_lo;
   const V_a_target = (sign > 0) ? ctx.Vth_a_lo : ctx.Vth_a_hi;
+  const slope_c_AM = isFormation
+    ? (V_c_target - ctx.Vocv_c) / Qc_AM_budget
+    : ( sign * ctx.dVc) / Qc_AM_budget;
+  const slope_a    = isFormation
+    ? (V_a_target - ctx.Vocv_a) / Qa_budget
+    : (-sign * ctx.dVa) / Qa_budget;
 
-  // Slope dV/dQ — constant within a stroke and intrinsic to the electrode.
-  //   formation: (V_target − V_OCV) / Q_1st (OCV-anchored)
-  //   later:     (V_target_window_endpoint − V_target_window_other) / Q_Nth,
-  //              i.e. ±ΔV_th / Q_Nth, signed by stroke direction.
-  const slope_c = isFormation
-    ? (V_c_target - ctx.Vocv_c) / Qc_full
-    : ( sign * ctx.dVc) / Qc_full;
-  const slope_a = isFormation
-    ? (V_a_target - ctx.Vocv_a) / Qa_full
-    : (-sign * ctx.dVa) / Qa_full;
+  // Build the cathode segment list. On a charge sweep, salt plateaus that
+  // sit above V_c_in and still have Q_remaining > 0 are inserted (sorted by
+  // ascending V_redox so the lowest plateau activates first). On a discharge
+  // sweep V is moving down past V_redox — no activation, no plateau.
+  const tol = 1e-9 * Math.max(Qc_AM_budget, Qa_budget, 1);
+  const catSegs = [];
+  let Vc = V_c_in, Q_c_total = 0, Q_c_budget_used = 0;
 
-  // Q each electrode can pass before hitting its own V_th target.
-  //  • slope is intrinsic to the electrode and constant within a stroke.
-  //  • If the electrode is moving AWAY from V_target (q < 0), this stroke
-  //    has no V_th cutoff on that side — return Infinity so the OTHER
-  //    electrode determines the stop. This is what makes the simulation
-  //    keep advancing when a previous stroke left the electrode past its
-  //    in-spec window (e.g. anode pushed beyond V_th_a_hi during a
-  //    cathode-limited charge): the next discharge stroke now naturally
-  //    runs to the cathode's V_th, exposing the imbalance.
-  const _qmax = (V_in, V_t, slope) => {
-    if(!Number.isFinite(slope) || slope === 0) return Infinity;
-    const q = (V_t - V_in) / slope;
-    return q > 0 ? q : Infinity;
-  };
-  const Qc_max_raw = _qmax(V_c_in, V_c_target, slope_c);
-  const Qa_max_raw = _qmax(V_a_in, V_a_target, slope_a);
-  // If neither electrode is heading into a V_th cutoff (both Infinity),
-  // bound the stroke by the smaller nominal capacity — the cell's "natural"
-  // galvanostatic length when balanced. Without this fallback the stroke
-  // would have no defined endpoint.
-  const bothFree = !Number.isFinite(Qc_max_raw) && !Number.isFinite(Qa_max_raw);
-  const Qc_max = bothFree ? Math.min(Qc_full, Qa_full) : Qc_max_raw;
-  const Qa_max = bothFree ? Math.min(Qc_full, Qa_full) : Qa_max_raw;
+  const plateauQueue = (sign > 0 && Array.isArray(ctx.plateaus))
+    ? ctx.plateaus
+        .filter(p => p && p.Q_remaining > 1e-12 && Number.isFinite(p.V)
+                  && p.V > V_c_in + 1e-9 && slope_c_AM > 1e-15)
+        .slice()
+        .sort((a, b) => a.V - b.V)
+    : [];
 
-  // Stroke stops at the smaller of the two — that electrode is the LIMITER
-  // (it hits its V_th first and forces the cell to halt). The other
-  // electrode is the LIMITED one — held back from its full window.
-  // Equality (within float tol) → both saturate together, no single limiter.
-  const tol = 1e-9 * Math.max(Qc_full, Qa_full, 1);
+  for(const p of plateauQueue){
+    const dV = p.V - Vc;
+    const dQ = dV / slope_c_AM;
+    if(dQ <= tol) continue;
+    const left = Qc_AM_budget - Q_c_budget_used;
+    if(dQ >= left - tol){
+      // Budget exhausted before reaching this plateau — emit the truncated
+      // EDLC ramp and stop building. (Lower plateaus that we couldn't reach
+      // remain unreacted; their Q_remaining is unchanged.)
+      catSegs.push({kind:'edlc', counts:true,
+                    Q_start:Q_c_total, Q_end:Q_c_total + left,
+                    V_start:Vc, V_end:Vc + slope_c_AM*left, slope:slope_c_AM});
+      Q_c_total += left; Q_c_budget_used += left; Vc += slope_c_AM*left;
+      break;
+    }
+    catSegs.push({kind:'edlc', counts:true,
+                  Q_start:Q_c_total, Q_end:Q_c_total + dQ,
+                  V_start:Vc, V_end:p.V, slope:slope_c_AM});
+    Q_c_total += dQ; Q_c_budget_used += dQ; Vc = p.V;
+    catSegs.push({kind:'plateau', counts:false,
+                  Q_start:Q_c_total, Q_end:Q_c_total + p.Q_remaining,
+                  V_start:p.V, V_end:p.V, slope:0, plateauRef:p});
+    Q_c_total += p.Q_remaining;
+  }
+  // Final EDLC remainder (only if the budget hasn't already been spent).
+  if(Q_c_budget_used + tol < Qc_AM_budget){
+    const left = Qc_AM_budget - Q_c_budget_used;
+    catSegs.push({kind:'edlc', counts:true,
+                  Q_start:Q_c_total, Q_end:Q_c_total + left,
+                  V_start:Vc, V_end:Vc + slope_c_AM*left, slope:slope_c_AM});
+    Q_c_total += left; Q_c_budget_used += left; Vc += slope_c_AM*left;
+  }
+  const Qc_at_budget = Q_c_total;
+  const Vc_at_budget = Vc;
+
+  // Anode trace — single EDLC segment, no plateaus on this side.
+  const anSegsFull = [{
+    kind:'edlc', counts:true,
+    Q_start:0, Q_end:Qa_budget,
+    V_start:V_a_in, V_end:V_a_in + slope_a*Qa_budget, slope:slope_a
+  }];
+  const Qa_at_budget = Qa_budget;
+  const Va_at_budget = V_a_in + slope_a*Qa_budget;
+
+  // Galvanostatic stop — purely Q-based, segment-independent.
   let Q_stop, limiting;
-  if(Qc_max + tol < Qa_max){ Q_stop = Qc_max; limiting = "cathode"; }
-  else if(Qa_max + tol < Qc_max){ Q_stop = Qa_max; limiting = "anode"; }
-  else { Q_stop = Math.min(Qc_max, Qa_max); limiting = null; }
+  if(Qc_at_budget + tol < Qa_at_budget){ Q_stop = Qc_at_budget; limiting = "cathode"; }
+  else if(Qa_at_budget + tol < Qc_at_budget){ Q_stop = Qa_at_budget; limiting = "anode"; }
+  else { Q_stop = Math.min(Qc_at_budget, Qa_at_budget); limiting = null; }
 
-  // Optional GCPL2-style constraints. Six independent bounds (upper and lower
-  // limits on V_cat, V_an, V_cell). Each only fires when its target signal is
-  // moving INTO the bound during this stroke (slope sign matches, current
-  // value still on the legal side). If a constraint hits earlier than the
-  // V_th cutoff it overrides the limiter, and we record which one fired so
-  // the plot can quote it instead of the electrode V_th.
+  // Constraint check — segment-aware. For each cathode segment, V_cat is
+  // either linear (edlc) or constant (plateau); V_an is linear throughout.
+  // Walk every (segment × constraint) pair and pick the earliest crossing.
   const cons = ctx.constraints || {};
-  const _qcons = (cur, lim, slope, bound) => {
-    // bound='max' → stop when cur reaches lim from below (legal: cur < lim, slope > 0)
-    // bound='min' → stop when cur reaches lim from above (legal: cur > lim, slope < 0)
-    if(!Number.isFinite(slope) || slope === 0) return Infinity;
-    if(bound==='max' && (cur >= lim || slope <= 0)) return Infinity;
-    if(bound==='min' && (cur <= lim || slope >= 0)) return Infinity;
-    const q = (lim - cur) / slope;
-    return q > 0 ? q : Infinity;
-  };
-  const dSlope = slope_c - slope_a;
-  const dV_now = V_c_in - V_a_in;
   let consHit = null;
   for(const key in cons){
     const c = cons[key]; if(!c || !Number.isFinite(c.V)) continue;
-    let cur, slope;
-    if(c.def.target==='cat')      { cur = V_c_in; slope = slope_c; }
-    else if(c.def.target==='an')  { cur = V_a_in; slope = slope_a; }
-    else                          { cur = dV_now; slope = dSlope; } // cell
-    const q = _qcons(cur, c.V, slope, c.def.bound);
-    if(q + tol < Q_stop){ Q_stop = q; limiting = null; consHit = key; }
+    const lim = c.V, bd = c.def.bound, tgt = c.def.target;
+    for(const seg of catSegs){
+      if(seg.Q_start >= Q_stop - tol) break;
+      const V_a_seg_start = V_a_in + slope_a * seg.Q_start;
+      const slope_c_seg = (seg.kind === 'edlc') ? seg.slope : 0;
+      let V0, slope_sig;
+      if(tgt === 'cat')      { V0 = seg.V_start;                   slope_sig = slope_c_seg; }
+      else if(tgt === 'an')  { V0 = V_a_seg_start;                 slope_sig = slope_a; }
+      else                   { V0 = seg.V_start - V_a_seg_start;   slope_sig = slope_c_seg - slope_a; }
+      if(Math.abs(slope_sig) < 1e-15) continue;
+      const movingIn = (bd === 'max' && slope_sig > 0) ||
+                       (bd === 'min' && slope_sig < 0);
+      if(!movingIn) continue;
+      if(bd === 'max' && V0 >= lim - 1e-12) continue;
+      if(bd === 'min' && V0 <= lim + 1e-12) continue;
+      const dQ_to_lim = (lim - V0) / slope_sig;
+      if(dQ_to_lim <= 0) continue;
+      const segLen = seg.Q_end - seg.Q_start;
+      if(dQ_to_lim > segLen + 1e-9) continue;
+      const Q_abs = seg.Q_start + dQ_to_lim;
+      if(Q_abs + tol < Q_stop){ Q_stop = Q_abs; limiting = null; consHit = key; }
+    }
+  }
+  if(!Number.isFinite(Q_stop) || Q_stop < 0) Q_stop = 0;
+
+  // Resolve cathode V at Q_stop by walking segments.
+  let V_c_end_at_stop = V_c_in;
+  for(const seg of catSegs){
+    if(Q_stop <= seg.Q_end + tol){
+      const dq = Math.max(0, Q_stop - seg.Q_start);
+      V_c_end_at_stop = seg.V_start + (seg.kind === 'edlc' ? seg.slope * dq : 0);
+      break;
+    }
+    V_c_end_at_stop = seg.V_end;
+  }
+  if(Q_stop > Qc_at_budget + tol) V_c_end_at_stop = Vc_at_budget;
+  const V_a_end_at_stop = V_a_in + slope_a * Math.min(Q_stop, Qa_budget);
+
+  // Mutate plateau Q_remaining for the slice consumed in this stroke.
+  for(const seg of catSegs){
+    if(seg.kind !== 'plateau' || !seg.plateauRef) continue;
+    if(seg.Q_start >= Q_stop) break;
+    const consumed = Math.max(0, Math.min(seg.Q_end, Q_stop) - seg.Q_start);
+    if(consumed > 1e-12){
+      seg.plateauRef.Q_remaining = Math.max(0, seg.plateauRef.Q_remaining - consumed);
+      seg.plateauRef.everActivated = true;
+    }
   }
 
-  const V_c_end = V_c_in + slope_c * Q_stop;
-  const V_a_end = V_a_in + slope_a * Q_stop;
+  // Truncated segment lists for the renderer (everything past Q_stop is
+  // dropped; the segment crossing Q_stop is shortened).
+  const _trunc = (segs, Q) => {
+    const out = [];
+    for(const s of segs){
+      if(s.Q_start >= Q - tol) break;
+      if(s.Q_end <= Q + tol){ out.push(s); continue; }
+      const dq = Q - s.Q_start;
+      const V_end_t = s.kind === 'edlc' ? s.V_start + s.slope * dq : s.V_start;
+      out.push({...s, Q_end:Q, V_end:V_end_t});
+      break;
+    }
+    return out;
+  };
+  const catSegsTrunc = _trunc(catSegs, Q_stop);
+  const anSegsTrunc  = _trunc(anSegsFull, Q_stop);
 
   return {
     dir, sign, isFormation,
-    Qc_full, Qa_full, Iu,
-    Qc_max, Qa_max,
+    Qc_full: Qc_AM_budget, Qa_full: Qa_budget, Iu,
+    Qc_max: Qc_at_budget, Qa_max: Qa_at_budget,
     Qmin: Q_stop,
     V_c_in, V_a_in,
-    V_c_end, V_a_end,
+    V_c_end: V_c_end_at_stop, V_a_end: V_a_end_at_stop,
+    V_c_at_budget: Vc_at_budget, V_a_at_budget: Va_at_budget,
     V_c_target, V_a_target,
-    dV_c: V_c_end - V_c_in,
-    dV_a: V_a_end - V_a_in,
-    limiting,
-    consHit,
+    dV_c: V_c_end_at_stop - V_c_in,
+    dV_a: V_a_end_at_stop - V_a_in,
+    slope_c: slope_c_AM, slope_a,
+    catSegs: catSegsTrunc, anSegs: anSegsTrunc,
+    catSegsFull: catSegs,
+    anSegsFull,
+    limiting, consHit,
   };
 }
 
@@ -2665,9 +2849,16 @@ function simComputeSeries(){
     return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
   }
 
-  const Q_c_1=r.Qc1, Q_c_N=r.QcN;
+  // Split the cathode first-cycle capacity into AM-only (counts toward EDLC
+  // budget, defines the slope) and salt (delivered at fixed V_redox plateau).
+  // r.Qc1 = mAC*Cc1 + mS*Cs1 — the salt term is what the plateau eats.
+  const Q_c_AM_1st = (r.mAC||0) * (inp.cat?.ac?.c1 || 0);
+  const Q_c_AM_N   = (r.mAC||0) * (inp.cat?.ac?.cN || 0) * (r.kc || 1);
+  const Q_salt_1st = Math.max(0, (r.Qc1||0) - Q_c_AM_1st);
   const Q_a_1=r.Qa1, Q_a_N=r.QaN;
-  if(!(Q_c_1>0&&Q_c_N>0&&Q_a_1>0&&Q_a_N>0)) return {ok:false, msg:"All four electrode capacities (Q_c1, Q_cN, Q_a1, Q_aN) must be > 0 — re-run the balance."};
+  if(!(Q_c_AM_1st>0 && Q_c_AM_N>0 && Q_a_1>0 && Q_a_N>0)){
+    return {ok:false, msg:"All four electrode AM capacities must be > 0 — re-run the balance."};
+  }
 
   // Vth extremes (hi/lo) per electrode. Vth array is [hi, lo]; sort defensively.
   const Vth_c_hi=Math.max(inp.cat.Vth[0], inp.cat.Vth[1]);
@@ -2702,23 +2893,24 @@ function simComputeSeries(){
   const k_target=isFirstHalf ? (2*target-1) : (2*target);
 
   const constraints=_simReadConstraints();
+  const plateaus=_simBuildPlateauState(Q_salt_1st, Vth_c_lo, Vth_c_hi);
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
-             Q_c_1, Q_c_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints};
+             Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+             constraints, plateaus};
 
-  // Walk through every stroke from k=1 up to k_target, advancing the
-  // cumulative (V_c, V_a) state. The walk has to be galvanostatic — i.e.
-  // each previous stroke may have ended short on the non-limiting
-  // electrode — otherwise stroke 2 onward would lose the imbalance the
-  // simulation is trying to expose.
+  // Walk every stroke from k=1 up to k_target, advancing the cumulative
+  // (V_c, V_a) state and the salt's per-stage Q_remaining. The walk has to
+  // be galvanostatic — each previous stroke may have ended short on the
+  // non-limiting electrode — otherwise stroke 2 onward would lose the
+  // imbalance the simulation is trying to expose, and salt activation would
+  // not propagate correctly when the user starts in the discharge direction.
   let V_c=Vocv_c, V_a=Vocv_a;
   let stroke=null;
   for(let k=1;k<=k_target;k++){
     stroke=_simAdvanceOneStroke(k, V_c, V_a, ctx);
     if(k<k_target){ V_c=stroke.V_c_end; V_a=stroke.V_a_end; }
   }
-  // V_c, V_a now hold the START of stroke k_target; `stroke` is its geometry.
 
   const dir_t=stroke.dir;
   const sign_t=stroke.sign;
@@ -2733,39 +2925,82 @@ function simComputeSeries(){
   const dV_IR=sign_t*(Iu*Req)*1e-6;
   const half=dV_IR/2;
 
-  // Both electrodes are clipped to the cell-stop point Qmin. The non-limiting
-  // electrode keeps its slope but lands at a partial voltage; the limiting
-  // one lands exactly on its V_th extreme.
-  const xs_cat=[0,0,Qmin];
-  const vc_cat=[V_c, V_c+half, V_c_end+half];
-  const xs_an =[0,0,Qmin];
-  const vc_an =[V_a, V_a-half, V_a_end-half];
-  const xs_cell=[0,0,Qmin];
-  const v_cell=[V_c-V_a, (V_c+half)-(V_a-half), (V_c_end+half)-(V_a_end-half)];
-
-  // Where the limiting electrode "would have ended" if untruncated — used to
-  // draw a faint dashed extension showing the unused capacity.
-  const Qc_natural=stroke.Qc_max;
-  const Qa_natural=stroke.Qa_max;
-
   return {ok:true,
     cycleN:target, dir:dir_t, strokeK:k_target,
-    xs_cat, vc_cat,
-    xs_an,  vc_an,
-    xs_cell, v_cell,
+    catSegs:stroke.catSegs, anSegs:stroke.anSegs,
+    catSegsFull:stroke.catSegsFull,
     Qc, Qa, Qmin,
-    Qc_natural, Qa_natural,
+    Qc_natural:stroke.Qc_max, Qa_natural:stroke.Qa_max,
     V_c_start:V_c, V_a_start:V_a,
     V_c_end, V_a_end,
+    V_c_at_budget:stroke.V_c_at_budget, V_a_at_budget:stroke.V_a_at_budget,
     V_c_target:stroke.V_c_target, V_a_target:stroke.V_a_target,
-    irHalf:half,  // signed IR half-shift; cathode trace is offset +half, anode −half.
-    Iu,           // current actually applied this stroke (µA): I1 if k==1, else IN.
-    I1_uA, IN_uA,
-    limiting:stroke.limiting,
-    consHit:stroke.consHit,
+    slope_c:stroke.slope_c, slope_a:stroke.slope_a,
+    irHalf:half,
+    Iu, I1_uA, IN_uA,
+    limiting:stroke.limiting, consHit:stroke.consHit,
     constraints,
-    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo
+    plateaus,
+    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo,
+    Q_salt_1st
   };
+}
+
+// Build the salt-plateau state object from the cathode-side UI inputs.
+// Returns an array of stages (possibly length 1 for a single-plateau salt,
+// possibly length 0 if the salt is off / unsupported / no V_redox set).
+//
+// Each stage: {V, frac, Q_total, Q_remaining, source, label, everActivated}.
+// The walker decrements Q_remaining as charge sweeps consume each stage.
+// `Q_salt_total` is the salt's irreversible 1st-cycle capacity from the
+// balance (mS · Cs1 in µAh); the stages partition that across V_redox plateaus.
+function _simBuildPlateauState(Q_salt_total, Vth_c_lo, Vth_c_hi){
+  if(!(Q_salt_total > 1e-9)) return [];
+  if(!(typeof saltOn === 'boolean') || !saltOn) return [];
+  const stages = _simReadSaltStages();
+  if(!stages.length) return [];
+  // Validate V_redox in window; out-of-window stages just get skipped (they
+  // never trigger because V_cat won't reach them — physically correct).
+  const out = [];
+  let totalFrac = 0; for(const s of stages) totalFrac += (s.frac || 0);
+  if(totalFrac <= 0) return [];
+  for(let i=0;i<stages.length;i++){
+    const s = stages[i];
+    if(!Number.isFinite(s.V)) continue;
+    const frac = (s.frac || 0) / totalFrac; // normalize so fractions always sum to 1
+    const Q = Q_salt_total * frac;
+    if(Q <= 1e-12) continue;
+    out.push({
+      V: s.V, frac,
+      Q_total: Q, Q_remaining: Q,
+      source: 'salt-stage-' + (i+1),
+      label: stages.length === 1 ? 'salt' : ('stage ' + (i+1)),
+      everActivated: false
+    });
+  }
+  return out;
+}
+
+// Read the V_redox stage list from the cathode salt panel. If the multi-stage
+// checkbox is off, returns one stage at the single V_redox input. If on,
+// returns one stage per row in the editor (with user-supplied fractions).
+function _simReadSaltStages(){
+  const multi = $("salt-ms-sw")?.classList.contains("on");
+  if(!multi){
+    const v = parseFloat($("cat-s-vredox")?.value);
+    if(!Number.isFinite(v)) return [];
+    return [{V:v, frac:1}];
+  }
+  // Multi-stage rows live inside #salt-ms-rows with class .ms-row.
+  const rows = document.querySelectorAll("#salt-ms-rows .ms-row");
+  const out = [];
+  rows.forEach(row => {
+    const v = parseFloat(row.querySelector(".ms-v")?.value);
+    const p = parseFloat(row.querySelector(".ms-p")?.value);
+    if(!Number.isFinite(v) || !Number.isFinite(p) || p <= 0) return;
+    out.push({V:v, frac:p/100});
+  });
+  return out;
 }
 
 // Multi-cycle continuous time-series. Walks strokes 1 .. 2·N (N = simCycleN
@@ -2785,8 +3020,13 @@ function simComputeTimeSeries(){
     return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
   }
 
-  const Q_c_1=r.Qc1, Q_c_N=r.QcN, Q_a_1=r.Qa1, Q_a_N=r.QaN;
-  if(!(Q_c_1>0&&Q_c_N>0&&Q_a_1>0&&Q_a_N>0)) return {ok:false, msg:"All four electrode capacities (Q_c1, Q_cN, Q_a1, Q_aN) must be > 0 — re-run the balance."};
+  const Q_c_AM_1st = (r.mAC||0) * (inp.cat?.ac?.c1 || 0);
+  const Q_c_AM_N   = (r.mAC||0) * (inp.cat?.ac?.cN || 0) * (r.kc || 1);
+  const Q_salt_1st = Math.max(0, (r.Qc1||0) - Q_c_AM_1st);
+  const Q_a_1=r.Qa1, Q_a_N=r.QaN;
+  if(!(Q_c_AM_1st>0 && Q_c_AM_N>0 && Q_a_1>0 && Q_a_N>0)){
+    return {ok:false, msg:"All four electrode AM capacities must be > 0 — re-run the balance."};
+  }
 
   const Vth_c_hi=Math.max(inp.cat.Vth[0], inp.cat.Vth[1]);
   const Vth_c_lo=Math.min(inp.cat.Vth[0], inp.cat.Vth[1]);
@@ -2813,53 +3053,125 @@ function simComputeTimeSeries(){
   if(Ncyc>100) Ncyc=100;
 
   const constraints=_simReadConstraints();
+  const plateaus=_simBuildPlateauState(Q_salt_1st, Vth_c_lo, Vth_c_hi);
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
-             Q_c_1, Q_c_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints};
+             Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+             constraints, plateaus};
 
   const k_total=2*Ncyc;
-  const ts=[0], vc=[Vocv_c], va=[Vocv_a], vcell=[Vocv_c-Vocv_a];
   const strokes=[];
+  // Flat time-series arrays the renderer walks. Each stroke contributes:
+  //   • IR jump at t_start (two samples at the same t — V before, V after)
+  //   • one (t, V) sample per cathode-segment endpoint inside the stroke
+  // V_an is linear in Q across the whole stroke, but to keep V_cell aligned
+  // with V_cat's plateau corners we sample it at the same breakpoints.
+  const ts=[0], vc=[Vocv_c], va=[Vocv_a], vcell=[Vocv_c-Vocv_a];
 
   let V_c=Vocv_c, V_a=Vocv_a, t=0; // t in seconds
   let frozen=false;
   for(let k=1; k<=k_total; k++){
     const stroke=_simAdvanceOneStroke(k, V_c, V_a, ctx);
     const Iu=stroke.Iu, Qmin=stroke.Qmin;
-    if(!Number.isFinite(Qmin) || Qmin<=0){
-      // Stroke can't advance — current can't push the cell anywhere this
-      // direction (every cutoff was already past). Stop the walk.
-      strokes.push({k, t_start:t, t_end:t, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, frozen:true});
+    if(!Number.isFinite(Qmin) || Qmin<=1e-12){
+      strokes.push({k, t_start:t, t_end:t, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, frozen:true,
+                    catSegs:[], anSegs:[], V_c_in:V_c, V_a_in:V_a});
       frozen=true; break;
     }
-    // dt (s) = Q (µA·h) × 3600 / I (µA)
     const dt = Qmin * 3600 / Iu;
     const t_end = t + dt;
-
-    // IR jump at stroke boundary — sign·I·R/2, split symmetrically across
-    // electrodes. Pushing two samples at the same t produces a clean
-    // vertical step (no spurious zero-IR intermediate).
     const dV_IR = stroke.sign * (Iu*Req)*1e-6;
     const half = dV_IR/2;
 
-    ts.push(t,        t_end);
-    vc.push(V_c+half, stroke.V_c_end+half);
-    va.push(V_a-half, stroke.V_a_end-half);
-    vcell.push((V_c+half)-(V_a-half), (stroke.V_c_end+half)-(stroke.V_a_end-half));
+    // Q→t conversion within this stroke: t = t_start + Q*3600/Iu.
+    const _qToT = q => t + q * 3600 / Iu;
+    // IR step at the stroke boundary: append two samples at t_start with the
+    // pre- and post-jump voltages.
+    ts.push(t);
+    vc.push(V_c + half); va.push(V_a - half);
+    vcell.push((V_c+half) - (V_a-half));
+    // Walk cathode segment endpoints, sampling V_an linearly along the way.
+    const an = (stroke.anSegs && stroke.anSegs[0]) || null;
+    const _va = q => an ? (an.V_start + an.slope * Math.max(0, Math.min(q, an.Q_end))) : V_a;
+    for(const s of (stroke.catSegs||[])){
+      const tEnd = _qToT(s.Q_end);
+      ts.push(tEnd);
+      vc.push(s.V_end + half);
+      va.push(_va(s.Q_end) - half);
+      vcell.push((s.V_end + half) - (_va(s.Q_end) - half));
+    }
 
-    strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, V_c_end:stroke.V_c_end, V_a_end:stroke.V_a_end});
+    strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu,
+                  limiting:stroke.limiting, consHit:stroke.consHit,
+                  V_c_in:V_c, V_a_in:V_a,
+                  V_c_end:stroke.V_c_end, V_a_end:stroke.V_a_end,
+                  catSegs:stroke.catSegs, anSegs:stroke.anSegs,
+                  irHalf:half});
 
     V_c=stroke.V_c_end; V_a=stroke.V_a_end; t=t_end;
   }
 
   return {ok:true, mode:'time',
-    Ncyc, ts, vc, va, vcell, strokes,
+    Ncyc, strokes,
+    ts, vc, va, vcell,
     totalTime:t, frozen,
     I1_uA, IN_uA,
     constraints,
-    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo
+    plateaus,
+    Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo,
+    Q_salt_1st
   };
+}
+
+// Build a (xs, ys) polyline from an ordered segment list. Inserts the
+// classic "duplicate point at Q=0" so an IR jump appears as a vertical
+// step in the rendered trace. `vOffset` is added to every V (use +half for
+// cathode, −half for anode).
+function _simSegsToPolyline(segs, vOffset){
+  if(!segs || !segs.length) return {xs:[], ys:[]};
+  const v0 = segs[0].V_start;
+  const xs = [0, 0], ys = [v0, v0 + vOffset];
+  for(const s of segs){
+    xs.push(s.Q_end);
+    ys.push(s.V_end + vOffset);
+  }
+  return {xs, ys};
+}
+
+// V_cell(Q) breakpoints: V_cat(Q) − V_an(Q) sampled at every cathode segment
+// boundary. The anode is one linear segment (no plateaus on that side), so
+// V_an(Q) = V_a_start + slope_a · Q over the whole stroke.
+function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
+  if(!catSegs.length || !anSegs.length) return {xs:[], ys:[]};
+  const an = anSegs[0];
+  const _va = q => an.V_start + an.slope * Math.max(0, Math.min(q, an.Q_end));
+  const v0_pre  = catSegs[0].V_start - an.V_start;
+  const v0_post = (catSegs[0].V_start + halfC) - (an.V_start + halfA);
+  const xs = [0, 0], ys = [v0_pre, v0_post];
+  for(const s of catSegs){
+    xs.push(s.Q_end);
+    ys.push((s.V_end + halfC) - (_va(s.Q_end) + halfA));
+  }
+  return {xs, ys};
+}
+
+// Salt-plateau polyline (orange overlay). Emits one horizontal segment per
+// plateau in the cathode segment list, separated by NaN gaps so non-adjacent
+// plateaus don't draw a connecting line. Returns an empty trace when no
+// plateau segments are present (e.g. salt off, or V_redox not yet reached).
+function _simSaltPolylineFromSegs(catSegs, vOffset){
+  const xs=[], ys=[];
+  let prevWasPlateau=false;
+  for(const s of catSegs){
+    if(s.kind !== 'plateau'){
+      if(prevWasPlateau){ xs.push(NaN); ys.push(NaN); prevWasPlateau=false; }
+      continue;
+    }
+    xs.push(s.Q_start, s.Q_end);
+    ys.push(s.V_start + vOffset, s.V_end + vOffset);
+    prevWasPlateau=true;
+  }
+  return {xs, ys};
 }
 
 // Format a current in µA with auto-scaled units (mA above 1000 µA).
@@ -2935,7 +3247,7 @@ function _renderSimPlotTime(host, xUnit){
   const series=simComputeTimeSeries();
   _simRenderCurrentLabel(series, true);
   const lblEl=$("simCycleDir");
-  const colC="#B91C1C", colA="#1F4E79", colCell="#1A202C", colCons="#6B46C1";
+  const colC="#1A8A6E", colA="#2D7AB6", colCell="#1A202C", colCons="#6B46C1", colSalt="#C2693A";
   let traces;
 
   if(!series.ok){
@@ -2962,6 +3274,36 @@ function _renderSimPlotTime(host, xUnit){
        line:{color:colCell,width:1.8,dash:'4px,3px'}, name:'Cell V',
        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
+
+    // Salt-plateau overlay — collect all plateau segments across all strokes
+    // (each stroke has its own catSegs and t_start / Iu). Emits NaN-separated
+    // horizontal segments at each V_redox so non-adjacent plateaus don't draw
+    // a connecting line. Only added when at least one plateau actually fired.
+    const saltX=[], saltY=[];
+    for(const s of (series.strokes||[])){
+      if(!s.catSegs || !Number.isFinite(s.Iu) || s.Iu <= 0) continue;
+      const half = s.irHalf || 0;
+      const _qToT = q => s.t_start + q * 3600 / s.Iu;
+      let prev=false;
+      for(const seg of s.catSegs){
+        if(seg.kind !== 'plateau'){
+          if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
+          continue;
+        }
+        if(prev){ saltX.push(NaN); saltY.push(NaN); }
+        saltX.push(conv(_qToT(seg.Q_start)), conv(_qToT(seg.Q_end)));
+        saltY.push(seg.V_start + half, seg.V_end + half);
+        prev=true;
+      }
+    }
+    if(saltX.length){
+      traces.push({
+        x:saltX, y:saltY, yaxis:'y', mode:'lines',
+        line:{color:colSalt, width:3.0}, name:'Salt (sacrificial)',
+        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>redox</sub>=%{y:.3f} V<extra>plateau</extra>',
+        connectgaps:false
+      });
+    }
 
     // Dashed shapes — V_op grid (electrode-coloured, on y1) and V_cell
     // constraint bounds (purple, on y2). Cathode/anode constraint lines are
@@ -3052,7 +3394,7 @@ function _renderSimPlotTime(host, xUnit){
                        : `I_1st = ${_fmtCur(series.I1_uA)} · I_Nth = ${_fmtCur(series.IN_uA)}`;
     if(lblEl){
       const tDisp=conv(series.totalTime);
-      lblEl.textContent = `${series.Ncyc} cycle${series.Ncyc>1?"s":""} (${series.strokes.length} stroke${series.strokes.length===1?"":"s"})`+
+      lblEl.textContent = `${series.Ncyc} cycle${series.Ncyc>1?"s":""} (${series.strokes.length} half-cycle${series.strokes.length===1?"":"s"})`+
                           ` · ${Itxt} · total ${tDisp.toPrecision(3)} ${xUnit.label}`+
                           (series.frozen?" · cell froze (no advance possible)":"");
     }
@@ -3131,26 +3473,53 @@ function renderSimPlot(){
     const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",false);
   } else {
     const conv=q=>simConvertCapacity(q,"uAh",simAxisState.capUnit);
-    const xCat=series.xs_cat.map(conv);
-    const xAn =series.xs_an.map(conv);
-    const xCell=series.xs_cell.map(conv);
+    const half = series.irHalf || 0;
+    const catPoly = _simSegsToPolyline(series.catSegs, +half);
+    const anPoly  = _simSegsToPolyline(series.anSegs,  -half);
+    const cellPoly= _simCellPolylineFromSegs(series.catSegs, series.anSegs, +half, -half);
+    const saltPoly= _simSaltPolylineFromSegs(series.catSegs, +half);
+    const xCat = catPoly.xs.map(conv);
+    const xAn  = anPoly.xs.map(conv);
+    const xCell= cellPoly.xs.map(conv);
+    const xSalt= saltPoly.xs.map(q => Number.isFinite(q) ? conv(q) : NaN);
+    const vc_cat = catPoly.ys, vc_an = anPoly.ys, v_cell = cellPoly.ys;
 
-    const colC="#B91C1C", colA="#1F4E79", colCell="#1A202C";
-
-    const colLim="#DC2626"; // limiter highlight (red)
+    const colC="#1A8A6E", colA="#2D7AB6", colCell="#1A202C";
+    const colLim="#DC2626";
     const colLimEdge="#7F1D1D";
+    const colSalt="#C2693A"; // sacrificial-salt plateau (matches diagnostics)
 
     traces=[
-      {x:xCat, y:series.vc_cat, yaxis:'y', mode:'lines',
+      {x:xCat, y:vc_cat, yaxis:'y', mode:'lines',
        line:{color:colC,width:2.6,shape:'linear'}, name:'Cathode',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<extra></extra>'},
-      {x:xAn, y:series.vc_an, yaxis:'y', mode:'lines',
+      {x:xAn, y:vc_an, yaxis:'y', mode:'lines',
        line:{color:colA,width:2.6,shape:'linear'}, name:'Anode',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<extra></extra>'},
-      {x:xCell, y:series.v_cell, yaxis:'y2', mode:'lines',
+      {x:xCell, y:v_cell, yaxis:'y2', mode:'lines',
        line:{color:colCell,width:2.0,dash:'4px,3px'}, name:'Cell V',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
+
+    // Salt-plateau overlay — orange horizontal segments at each V_redox where
+    // the cathode trace flattens. Drawn AFTER the cathode trace so it sits on
+    // top. Only added when at least one plateau actually appears in this
+    // stroke (no salt → no segments → no overlay → no spurious legend item).
+    if(saltPoly.xs.length){
+      traces.push({
+        x:xSalt, y:saltPoly.ys, yaxis:'y', mode:'lines',
+        line:{color:colSalt, width:3.0, shape:'linear'},
+        name:'Salt (sacrificial)',
+        hovertemplate:'Q=%{x:.3g}<br>V<sub>redox</sub>=%{y:.3f} V<extra>plateau</extra>',
+        connectgaps:false
+      });
+    }
+
+    // The legacy "vc_an[2]" / "vc_cat[2]" references below mean "the V at
+    // Q=Qmin for the limited electrode". We expose those via series.V_*_end
+    // already; precompute the IR-shifted versions the renderer expects.
+    const vc_an_end_shifted  = series.V_a_end - half;
+    const vc_cat_end_shifted = series.V_c_end + half;
 
     // Limiter visualisation. Two electrodes, two roles:
     //  • LIMITER  — hits its own V_th first and ends the stroke (lands ON
@@ -3162,19 +3531,16 @@ function renderSimPlot(){
       const limCat = (series.limiting==="cathode"); // cathode is the limiter
       const irHalf = series.irHalf || 0;
       if(limCat){
-        // Anode is the LIMITED one — partial endpoint at (Qmin, vc_an[2]),
-        // would have continued to (Qa_natural, V_a_target − irHalf).
         if(Number.isFinite(series.Qa_natural)){
           const xExt=[conv(series.Qmin), conv(series.Qa_natural)];
-          const yExt=[series.vc_an[2], series.V_a_target - irHalf];
+          const yExt=[vc_an_end_shifted, series.V_a_target - irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
             line:{color:colA, width:1.6, dash:'2px,4px'},
             opacity:0.55,
             name:'Anode (unused)', showlegend:false,
             hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V (unused)<extra></extra>'});
         }
-        // Red dot on the LIMITED (anode) electrode at its forced-stop point.
-        traces.push({x:[conv(series.Qmin)], y:[series.vc_an[2]], yaxis:'y',
+        traces.push({x:[conv(series.Qmin)], y:[vc_an_end_shifted], yaxis:'y',
           mode:'markers',
           marker:{color:colLim, size:13, symbol:'circle',
                   line:{color:colLimEdge, width:1.8}},
@@ -3182,17 +3548,16 @@ function renderSimPlot(){
           hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<br>'+
                         '(forced to stop · cathode is limiting cell capacity)<extra></extra>'});
       } else {
-        // Cathode is the LIMITED one.
         if(Number.isFinite(series.Qc_natural)){
           const xExt=[conv(series.Qmin), conv(series.Qc_natural)];
-          const yExt=[series.vc_cat[2], series.V_c_target + irHalf];
+          const yExt=[vc_cat_end_shifted, series.V_c_target + irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
             line:{color:colC, width:1.6, dash:'2px,4px'},
             opacity:0.55,
             name:'Cathode (unused)', showlegend:false,
             hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V (unused)<extra></extra>'});
         }
-        traces.push({x:[conv(series.Qmin)], y:[series.vc_cat[2]], yaxis:'y',
+        traces.push({x:[conv(series.Qmin)], y:[vc_cat_end_shifted], yaxis:'y',
           mode:'markers',
           marker:{color:colLim, size:13, symbol:'circle',
                   line:{color:colLimEdge, width:1.8}},
@@ -3288,7 +3653,7 @@ function renderSimPlot(){
     // plus the ghost-extension endpoint (V_th of the underutilised electrode)
     // when one electrode is limiting and its natural reach is finite, so
     // the unused-capacity tail stays on screen. Padded.
-    const yV1=series.vc_cat.concat(series.vc_an,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
+    const yV1=vc_cat.concat(vc_an,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
     if(series.limiting){
       const irHalf = series.irHalf || 0;
       const limCat = (series.limiting==="cathode");
@@ -3306,7 +3671,7 @@ function renderSimPlot(){
     let y1Range=[y1lo-y1pad, y1hi+y1pad];
 
     // Y2 range — V_cell, plus any active cell-voltage constraint lines.
-    const yV2=series.v_cell.slice();
+    const yV2=v_cell.slice();
     if(series.constraints){
       for(const key in series.constraints){
         const c=series.constraints[key];
@@ -3362,7 +3727,7 @@ function renderSimPlot(){
       const limiter  = limCat ? "cathode" : "anode";
       const limited  = limCat ? "anode"   : "cathode";
       const limitedNatural = limCat ? series.Qa_natural : series.Qc_natural;
-      const limitedV       = limCat ? series.vc_an[2]   : series.vc_cat[2];
+      const limitedV       = limCat ? vc_an_end_shifted : vc_cat_end_shifted;
       const limitedTargetV = limCat ? series.V_a_target : series.V_c_target;
       const irHalf = series.irHalf || 0;
       // Strip the IR offset back off the displayed end-voltage of the
@@ -4544,6 +4909,12 @@ function applyPS(prefix){
     setRateValue("cat-s","c1",r0.rv,r0.ru,lbl);
     if(r0.cN!=null && r0.cN>0)setRateValue("cat-s","cN",r0.rv,r0.ru,lbl);
     else resetRate("cat-s","cN");
+    // V_redox auto-fills from the preset rate; preserve any user override
+    // (saltVRedoxDirty=true) so picking a fresh preset re-syncs the field but
+    // typing into it locks the user's value in.
+    if(!saltVRedoxDirty && Number.isFinite(r0.vRedox)){
+      $("cat-s-vredox").value = r0.vRedox.toFixed(2);
+    }
   }
   // Refresh the simulation axis labels so the working ion (M) updates immediately
   // when the user changes a preset, without waiting for the user to open the tab.
