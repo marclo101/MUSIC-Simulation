@@ -2753,6 +2753,12 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   else if(Qa_at_budget + tol < Qc_at_budget){ Q_stop = Qa_at_budget; limiting = "anode"; }
   else { Q_stop = Math.min(Qc_at_budget, Qa_at_budget); limiting = null; }
 
+  // IR offset on the cell terminal voltage: V_cell_terminal = V_c − V_a + sign·I·R_eq.
+  // Per-electrode potentials (V_cat, V_an vs reference) do not include cell IR,
+  // so this offset only applies to cell-target constraints.
+  const Req = Number.isFinite(ctx.Req) ? ctx.Req : 0;
+  const dV_IR_full = sign * (Iu * Req) * 1e-6;
+
   // Constraint check — segment-aware. For each cathode segment, V_cat is
   // either linear (edlc) or constant (plateau); V_an is linear throughout.
   // Walk every (segment × constraint) pair and pick the earliest crossing.
@@ -2766,9 +2772,9 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
       const V_a_seg_start = V_a_in + slope_a * seg.Q_start;
       const slope_c_seg = (seg.kind === 'edlc') ? seg.slope : 0;
       let V0, slope_sig;
-      if(tgt === 'cat')      { V0 = seg.V_start;                   slope_sig = slope_c_seg; }
-      else if(tgt === 'an')  { V0 = V_a_seg_start;                 slope_sig = slope_a; }
-      else                   { V0 = seg.V_start - V_a_seg_start;   slope_sig = slope_c_seg - slope_a; }
+      if(tgt === 'cat')      { V0 = seg.V_start;                                slope_sig = slope_c_seg; }
+      else if(tgt === 'an')  { V0 = V_a_seg_start;                              slope_sig = slope_a; }
+      else                   { V0 = seg.V_start - V_a_seg_start + dV_IR_full;   slope_sig = slope_c_seg - slope_a; }
       if(Math.abs(slope_sig) < 1e-15) continue;
       const movingIn = (bd === 'max' && slope_sig > 0) ||
                        (bd === 'min' && slope_sig < 0);
@@ -2904,7 +2910,7 @@ function simComputeSeries(){
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
              Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints, plateaus};
+             Req, constraints, plateaus};
 
   // Walk every stroke from k=1 up to k_target, advancing the cumulative
   // (V_c, V_a) state and the salt's per-stage Q_remaining. The walk has to
@@ -3064,7 +3070,7 @@ function simComputeTimeSeries(){
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
              Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints, plateaus};
+             Req, constraints, plateaus};
 
   const k_total=2*Ncyc;
   const strokes=[];
