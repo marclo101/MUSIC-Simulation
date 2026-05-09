@@ -211,25 +211,26 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-cons .lab sub{font-size:9px}
 .sim-cons.dirty{border-color:#6B46C1;background:#F5F0FB}
 .sim-cons .u{font-size:10px;color:var(--ink3);font-family:var(--fm)}
-.sim-msg{font-size:11px;color:var(--ink3);font-style:italic;margin:6px 0 4px;padding:0 4px;line-height:1.45}
-.sim-msg.warn{color:#B7791F}
-.sim-msg.err{color:#C53030}
+.sim-msg{font-size:11.5px;color:var(--ink2);font-style:normal;margin:8px 0 6px;padding:8px 12px;line-height:1.55;background:#FFFAF0;border-left:3px solid #ECC94B;border-radius:3px}
+.sim-msg.warn{color:#7B341E;background:#FFF5EB;border-left-color:#DD6B20}
+.sim-msg.err{color:#742A2A;background:#FFF5F5;border-left-color:#C53030}
+.sim-msg sub{font-size:0.78em;vertical-align:sub}
 /* ── Simulation plot template (EC-Lab-inspired axes with click-to-edit units) ── */
-.sim-wrap{position:relative;width:100%;height:560px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);overflow:visible}
+.sim-wrap{position:relative;width:100%;height:600px;border:1px solid #D5DBE3;border-radius:8px;background:#FFFFFF;box-shadow:0 1px 3px rgba(15,25,40,0.04), 0 1px 2px rgba(15,25,40,0.03);overflow:visible}
 #simPlot{position:absolute;inset:0}
-.sim-ax{position:absolute;font-family:var(--fb);font-size:12px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;z-index:5}
+.sim-ax{position:absolute;font-family:Inter, system-ui, -apple-system, "Segoe UI", sans-serif;font-size:13px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;z-index:5;font-weight:500;letter-spacing:0.01em}
 .sim-ax > *{pointer-events:auto}
-.sim-ax-x{left:80px;right:80px;bottom:6px;height:22px;font-weight:500}
+.sim-ax-x{left:80px;right:80px;bottom:6px;height:24px}
 .sim-ax-y,.sim-ax-y2{top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;font-weight:500;pointer-events:auto;cursor:pointer;border-radius:4px;transition:background .12s,box-shadow .12s}
 .sim-ax-y{left:0;transform:rotate(180deg)}
 .sim-ax-y2{right:0}
 .sim-ax-y:hover,.sim-ax-y2:hover{background:rgba(45,55,72,0.05)}
 .sim-ax-y.ax-locked,.sim-ax-y2.ax-locked{background:rgba(45,55,72,0.10);box-shadow:inset 0 0 0 1.5px var(--cp,#3182ce)}
 .sim-ax-y.ax-locked .ax-pre,.sim-ax-y2.ax-locked .ax-pre{color:var(--ink)}
-.sim-ax .ax-pre{color:var(--ink2)}
-.sim-ax .ax-pill{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;font:inherit;color:var(--ink);background:var(--bone);border:1px solid var(--rule);border-radius:4px;cursor:pointer;transition:background .12s,border-color .12s;line-height:1.4}
-.sim-ax .ax-pill:hover{background:var(--bone2);border-color:var(--ink3)}
-.sim-ax .ax-pill.ax-pill-static{background:transparent;border-color:transparent;cursor:default;color:var(--ink2);padding:1px 4px}
+.sim-ax .ax-pre{color:#1A202C}
+.sim-ax .ax-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;font:inherit;color:var(--ink);background:var(--bone);border:1px solid var(--rule);border-radius:5px;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s;line-height:1.4}
+.sim-ax .ax-pill:hover{background:var(--bone2);border-color:var(--ink3);box-shadow:0 1px 2px rgba(15,25,40,0.06)}
+.sim-ax .ax-pill.ax-pill-static{background:transparent;border-color:transparent;cursor:default;color:var(--ink2);padding:1px 4px;box-shadow:none}
 .sim-ax .ax-pill .ax-pill-arrow{font-size:9px;color:var(--ink3);margin-left:1px}
 .sim-empty{position:absolute;left:80px;right:80px;top:20px;bottom:60px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--ink3);font-size:12px;font-style:italic;padding:0 24px;pointer-events:none}
 .sim-empty.hidden{display:none}
@@ -2284,37 +2285,47 @@ function simBuildLayout(){
   // CSS box (.sim-wrap is 100% × 560 px). Without this, Plotly latches onto
   // whatever pixel size the host had at first paint and stops following it,
   // which is what produced the off-size graph.
-  const tickFont={family:'JetBrains Mono, ui-monospace, monospace',size:11,color:'#3A4A5C'};
+  const tickFont={family:'Inter, system-ui, -apple-system, "Segoe UI", sans-serif',size:12.5,color:'#1A202C'};
+  const axisLine='#2D3748';
+  const gridLine='#EDF1F5';
+  const minorGridLine='#F4F6F9';
   return {
     autosize:true,
-    margin:{t:20,b:60,l:80,r:80},
+    margin:{t:24,b:64,l:78,r:78},
     showlegend:false,
     paper_bgcolor:'rgba(0,0,0,0)',
-    plot_bgcolor:'#FFFFFF',
+    plot_bgcolor:'#FCFCFD',
     dragmode:'pan',
     hovermode:'closest',
+    hoverlabel:{
+      bgcolor:'#FFFFFF',
+      bordercolor:'#CBD5E0',
+      font:{family:'Inter, system-ui, sans-serif', size:12, color:'#1A202C'}
+    },
     xaxis:{
       title:'',
       range:[0,1],
-      showgrid:true,gridcolor:'#E4EAF0',gridwidth:1,
+      showgrid:true, gridcolor:gridLine, gridwidth:1,
       zeroline:false,
-      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      ticks:'outside', ticklen:6, tickwidth:1.2, tickcolor:axisLine,
       tickfont:tickFont,
-      showline:true,linecolor:'#7A8A9A',linewidth:1,
-      // mirror=true draws a matching top line (no ticks) → closes the plot frame.
+      showline:true, linecolor:axisLine, linewidth:1.4,
       mirror:true,
-      automargin:false
+      automargin:false,
+      minor:{ticks:'outside', ticklen:3, tickcolor:axisLine, showgrid:true, gridcolor:minorGridLine, gridwidth:0.6}
     },
     yaxis:{
       title:'',
       range:[0,4.5],
-      showgrid:true,gridcolor:'#E4EAF0',gridwidth:1,
+      showgrid:true, gridcolor:gridLine, gridwidth:1,
       zeroline:false,
-      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      ticks:'outside', ticklen:6, tickwidth:1.2, tickcolor:axisLine,
       tickfont:tickFont,
-      showline:true,linecolor:'#7A8A9A',linewidth:1,
+      showline:true, linecolor:axisLine, linewidth:1.4,
       side:'left',
-      automargin:false
+      mirror:'all',
+      automargin:false,
+      minor:{ticks:'outside', ticklen:3, tickcolor:axisLine, showgrid:true, gridcolor:minorGridLine, gridwidth:0.6}
     },
     yaxis2:{
       title:'',
@@ -2323,10 +2334,11 @@ function simBuildLayout(){
       side:'right',
       showgrid:false,
       zeroline:false,
-      ticks:'outside',ticklen:5,tickcolor:'#7A8A9A',
+      ticks:'outside', ticklen:6, tickwidth:1.2, tickcolor:axisLine,
       tickfont:tickFont,
-      showline:true,linecolor:'#7A8A9A',linewidth:1,
-      automargin:false
+      showline:true, linecolor:axisLine, linewidth:1.4,
+      automargin:false,
+      minor:{ticks:'outside', ticklen:3, tickcolor:axisLine}
     }
   };
 }
@@ -2923,7 +2935,7 @@ function _renderSimPlotTime(host, xUnit){
   const series=simComputeTimeSeries();
   _simRenderCurrentLabel(series, true);
   const lblEl=$("simCycleDir");
-  const colC="#C0392B", colA="#2980B9", colCell="#2D3748", colCons="#6B46C1";
+  const colC="#B91C1C", colA="#1F4E79", colCell="#1A202C", colCons="#6B46C1";
   let traces;
 
   if(!series.ok){
@@ -2941,13 +2953,13 @@ function _renderSimPlotTime(host, xUnit){
 
     traces=[
       {x:xs, y:series.vc, yaxis:'y', mode:'lines',
-       line:{color:colC,width:1.6}, name:'Cathode',
+       line:{color:colC,width:2.4,shape:'linear'}, name:'Cathode',
        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cat</sub>=%{y:.3f} V<extra></extra>'},
       {x:xs, y:series.va, yaxis:'y', mode:'lines',
-       line:{color:colA,width:1.6}, name:'Anode',
+       line:{color:colA,width:2.4,shape:'linear'}, name:'Anode',
        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>an</sub>=%{y:.3f} V<extra></extra>'},
       {x:xs, y:series.vcell, yaxis:'y2', mode:'lines',
-       line:{color:colCell,width:1.0,dash:'dot'}, name:'Cell V',
+       line:{color:colCell,width:1.8,dash:'4px,3px'}, name:'Cell V',
        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
 
@@ -2957,7 +2969,12 @@ function _renderSimPlotTime(host, xUnit){
     const dashShape=(yref,y,color)=>({
       type:'line', xref:'paper', x0:0, x1:1,
       yref, y0:y, y1:y,
-      line:{color, width:1, dash:'dash'}, layer:'below'
+      line:{color, width:1.4, dash:'6px,5px'}, opacity:0.7, layer:'below'
+    });
+    const consDash=(yref,y)=>({
+      type:'line', xref:'paper', x0:0, x1:1,
+      yref, y0:y, y1:y,
+      line:{color:colCons, width:1.6, dash:'8px,4px'}, opacity:0.85, layer:'below'
     });
     layout.shapes=[
       dashShape('y',  series.Vop_c_hi, colC),
@@ -2969,7 +2986,7 @@ function _renderSimPlotTime(host, xUnit){
       for(const key in series.constraints){
         const c=series.constraints[key];
         if(c && c.def.target==='cell' && Number.isFinite(c.V)){
-          layout.shapes.push(dashShape('y2', c.V, colCons));
+          layout.shapes.push(consDash('y2', c.V));
         }
       }
     }
@@ -2982,7 +2999,7 @@ function _renderSimPlotTime(host, xUnit){
           type:'line', xref:'x', yref:'paper',
           x0:conv(s.t_end), x1:conv(s.t_end),
           y0:0, y1:1,
-          line:{color:'#CBD2DA', width:1, dash:'dot'}, layer:'below'
+          line:{color:'#D5DBE3', width:0.8, dash:'1px,3px'}, opacity:0.7, layer:'below'
         });
       }
     }
@@ -2994,7 +3011,7 @@ function _renderSimPlotTime(host, xUnit){
     const yV1=series.vc.concat(series.va,[series.Vop_c_hi,series.Vop_c_lo,series.Vop_a_hi,series.Vop_a_lo]);
     let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
     const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
-    layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
+    let y1Range=[y1lo-y1pad, y1hi+y1pad];
 
     const yV2=series.vcell.slice();
     if(series.constraints){
@@ -3005,12 +3022,23 @@ function _renderSimPlotTime(host, xUnit){
     }
     let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
     const y2pad=Math.max(0.1,(y2hi-y2lo)*0.10);
-    layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
+    let y2Range=[y2lo-y2pad, y2hi+y2pad];
+
+    if(!simAxisLock){
+      const lo=Math.min(y1Range[0], y2Range[0]);
+      const hi=Math.max(y1Range[1], y2Range[1]);
+      y1Range=[lo,hi]; y2Range=[lo,hi];
+    }
+    layout.yaxis.range=y1Range;
+    layout.yaxis2.range=y2Range;
 
     layout.showlegend=true;
-    layout.legend={x:0.01, y:0.99, xanchor:'left', yanchor:'top',
-                   bgcolor:'rgba(255,255,255,0.85)', bordercolor:'#CBD2DA', borderwidth:1,
-                   font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
+    layout.legend={x:0.012, y:0.985, xanchor:'left', yanchor:'top',
+                   bgcolor:'rgba(255,255,255,0.94)',
+                   bordercolor:'#CBD5E0', borderwidth:1,
+                   font:{family:'Inter, system-ui, -apple-system, sans-serif', size:11.5, color:'#1A202C'},
+                   itemsizing:'constant',
+                   tracegroupgap:4};
 
     // Status text — cycle count, current density(ies), total time.
     const _fmtCur=uA=>{
@@ -3107,19 +3135,20 @@ function renderSimPlot(){
     const xAn =series.xs_an.map(conv);
     const xCell=series.xs_cell.map(conv);
 
-    const colC="#C0392B", colA="#2980B9", colCell="#2D3748";
+    const colC="#B91C1C", colA="#1F4E79", colCell="#1A202C";
 
-    const colLim="#E53935"; // limiter highlight (red)
+    const colLim="#DC2626"; // limiter highlight (red)
+    const colLimEdge="#7F1D1D";
 
     traces=[
       {x:xCat, y:series.vc_cat, yaxis:'y', mode:'lines',
-       line:{color:colC,width:1.8}, name:'Cathode',
+       line:{color:colC,width:2.6,shape:'linear'}, name:'Cathode',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<extra></extra>'},
       {x:xAn, y:series.vc_an, yaxis:'y', mode:'lines',
-       line:{color:colA,width:1.8}, name:'Anode',
+       line:{color:colA,width:2.6,shape:'linear'}, name:'Anode',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<extra></extra>'},
       {x:xCell, y:series.v_cell, yaxis:'y2', mode:'lines',
-       line:{color:colCell,width:1.2,dash:'dot'}, name:'Cell V',
+       line:{color:colCell,width:2.0,dash:'4px,3px'}, name:'Cell V',
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
 
@@ -3139,15 +3168,16 @@ function renderSimPlot(){
           const xExt=[conv(series.Qmin), conv(series.Qa_natural)];
           const yExt=[series.vc_an[2], series.V_a_target - irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
-            line:{color:colA, width:1.2, dash:'dot'},
+            line:{color:colA, width:1.6, dash:'2px,4px'},
+            opacity:0.55,
             name:'Anode (unused)', showlegend:false,
             hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V (unused)<extra></extra>'});
         }
         // Red dot on the LIMITED (anode) electrode at its forced-stop point.
         traces.push({x:[conv(series.Qmin)], y:[series.vc_an[2]], yaxis:'y',
           mode:'markers',
-          marker:{color:colLim, size:10, symbol:'circle',
-                  line:{color:'#7F1D1D', width:1.5}},
+          marker:{color:colLim, size:13, symbol:'circle',
+                  line:{color:colLimEdge, width:1.8}},
           name:'Anode (forced stop)', showlegend:false,
           hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<br>'+
                         '(forced to stop · cathode is limiting cell capacity)<extra></extra>'});
@@ -3157,14 +3187,15 @@ function renderSimPlot(){
           const xExt=[conv(series.Qmin), conv(series.Qc_natural)];
           const yExt=[series.vc_cat[2], series.V_c_target + irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
-            line:{color:colC, width:1.2, dash:'dot'},
+            line:{color:colC, width:1.6, dash:'2px,4px'},
+            opacity:0.55,
             name:'Cathode (unused)', showlegend:false,
             hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V (unused)<extra></extra>'});
         }
         traces.push({x:[conv(series.Qmin)], y:[series.vc_cat[2]], yaxis:'y',
           mode:'markers',
-          marker:{color:colLim, size:10, symbol:'circle',
-                  line:{color:'#7F1D1D', width:1.5}},
+          marker:{color:colLim, size:13, symbol:'circle',
+                  line:{color:colLimEdge, width:1.8}},
           name:'Cathode (forced stop)', showlegend:false,
           hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<br>'+
                         '(forced to stop · anode is limiting cell capacity)<extra></extra>'});
@@ -3174,7 +3205,7 @@ function renderSimPlot(){
     const dashShape=(yref,y,color)=>({
       type:'line', xref:'paper', x0:0, x1:1,
       yref, y0:y, y1:y,
-      line:{color, width:1, dash:'dash'}, layer:'below'
+      line:{color, width:1.4, dash:'6px,5px'}, opacity:0.7, layer:'below'
     });
     layout.shapes=[
       dashShape('y',  series.Vop_c_hi, colC),
@@ -3191,7 +3222,7 @@ function renderSimPlot(){
     const consShape=(yref,y)=>({
       type:'line', xref:'paper', x0:0, x1:1,
       yref, y0:y, y1:y,
-      line:{color:colCons, width:1.4, dash:'dash'}, layer:'below'
+      line:{color:colCons, width:1.6, dash:'8px,4px'}, opacity:0.85, layer:'below'
     });
     if(series.constraints){
       for(const key in series.constraints){
@@ -3209,7 +3240,7 @@ function renderSimPlot(){
         type:'line', xref:'x', yref:'paper',
         x0:conv(series.Qmin), x1:conv(series.Qmin),
         y0:0, y1:1,
-        line:{color:colCons, width:1.2, dash:'dash'}, layer:'below'
+        line:{color:colCons, width:1.6, dash:'8px,4px'}, opacity:0.85, layer:'below'
       });
     }
 
@@ -3224,7 +3255,7 @@ function renderSimPlot(){
           type:'rect', xref:'x', yref:'paper',
           x0:conv(series.Qmin), x1:conv(limitedNatural),
           y0:0, y1:1,
-          fillcolor:'rgba(229,57,53,0.07)',
+          fillcolor:'rgba(220,38,38,0.06)',
           line:{width:0}, layer:'below'
         });
       }
@@ -3232,7 +3263,7 @@ function renderSimPlot(){
         type:'line', xref:'x', yref:'paper',
         x0:conv(series.Qmin), x1:conv(series.Qmin),
         y0:0, y1:1,
-        line:{color:colLim, width:1.2, dash:'dash'}, layer:'below'
+        line:{color:colLim, width:1.6, dash:'8px,4px'}, opacity:0.85, layer:'below'
       });
     }
 
@@ -3272,7 +3303,7 @@ function renderSimPlot(){
     }
     let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
     const y1pad=Math.max(0.1,(y1hi-y1lo)*0.08);
-    layout.yaxis.range=[y1lo-y1pad, y1hi+y1pad];
+    let y1Range=[y1lo-y1pad, y1hi+y1pad];
 
     // Y2 range — V_cell, plus any active cell-voltage constraint lines.
     const yV2=series.v_cell.slice();
@@ -3284,12 +3315,27 @@ function renderSimPlot(){
     }
     let y2lo=Math.min.apply(null,yV2), y2hi=Math.max.apply(null,yV2);
     const y2pad=Math.max(0.1,(y2hi-y2lo)*0.10);
-    layout.yaxis2.range=[y2lo-y2pad, y2hi+y2pad];
+    let y2Range=[y2lo-y2pad, y2hi+y2pad];
+
+    // Default behavior: both Y axes share the same scale (the union of the
+    // two natural ranges). The user can lock one axis to break the tie and
+    // zoom independently — when that happens, fall back to each axis's own
+    // natural range so the locked axis isn't compressed by the other side.
+    if(!simAxisLock){
+      const lo=Math.min(y1Range[0], y2Range[0]);
+      const hi=Math.max(y1Range[1], y2Range[1]);
+      y1Range=[lo,hi]; y2Range=[lo,hi];
+    }
+    layout.yaxis.range=y1Range;
+    layout.yaxis2.range=y2Range;
 
     layout.showlegend=true;
-    layout.legend={x:0.01, y:0.99, xanchor:'left', yanchor:'top',
-                   bgcolor:'rgba(255,255,255,0.85)', bordercolor:'#CBD2DA', borderwidth:1,
-                   font:{family:'JetBrains Mono, ui-monospace, monospace', size:10}};
+    layout.legend={x:0.012, y:0.985, xanchor:'left', yanchor:'top',
+                   bgcolor:'rgba(255,255,255,0.94)',
+                   bordercolor:'#CBD5E0', borderwidth:1,
+                   font:{family:'Inter, system-ui, -apple-system, sans-serif', size:11.5, color:'#1A202C'},
+                   itemsizing:'constant',
+                   tracegroupgap:4};
 
     const _fmtV=v=>{
       if(!Number.isFinite(v)) return "—";
