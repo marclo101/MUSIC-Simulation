@@ -220,8 +220,12 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-ax{position:absolute;font-family:var(--fb);font-size:12px;color:var(--ink);user-select:none;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;z-index:5}
 .sim-ax > *{pointer-events:auto}
 .sim-ax-x{left:80px;right:80px;bottom:6px;height:22px;font-weight:500}
-.sim-ax-y{left:0;top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:500}
-.sim-ax-y2{right:0;top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;font-weight:500}
+.sim-ax-y,.sim-ax-y2{top:20px;bottom:60px;width:24px;writing-mode:vertical-rl;font-weight:500;pointer-events:auto;cursor:pointer;border-radius:4px;transition:background .12s,box-shadow .12s}
+.sim-ax-y{left:0;transform:rotate(180deg)}
+.sim-ax-y2{right:0}
+.sim-ax-y:hover,.sim-ax-y2:hover{background:rgba(45,55,72,0.05)}
+.sim-ax-y.ax-locked,.sim-ax-y2.ax-locked{background:rgba(45,55,72,0.10);box-shadow:inset 0 0 0 1.5px var(--cp,#3182ce)}
+.sim-ax-y.ax-locked .ax-pre,.sim-ax-y2.ax-locked .ax-pre{color:var(--ink)}
 .sim-ax .ax-pre{color:var(--ink2)}
 .sim-ax .ax-pill{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;font:inherit;color:var(--ink);background:var(--bone);border:1px solid var(--rule);border-radius:4px;cursor:pointer;transition:background .12s,border-color .12s;line-height:1.4}
 .sim-ax .ax-pill:hover{background:var(--bone2);border-color:var(--ink3)}
@@ -858,12 +862,16 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
           <button type="button" class="sim-step" onclick="stepSimCycle(-1)" title="Previous cycle">◄</button>
           <input type="number" id="simCycleN" min="1" max="100" step="1" value="1" oninput="onSimCtrlChange()">
           <button type="button" class="sim-step" onclick="stepSimCycle(1)" title="Next cycle">►</button>
-          <span class="u" id="simCycleDir">cycle 1 · charge stroke</span>
+          <span class="u" id="simCycleDir">cycle 1 · charge</span>
         </div>
         <div class="sim-cg" title="Equivalent series resistance. Produces a vertical IR step at Q=0 of the displayed cycle equal to I·R_eq, split symmetrically across cathode and anode.">
           <label>R<sub>eq</sub>:</label>
           <input type="number" id="simReq" min="0" step="0.5" value="10" oninput="onSimCtrlChange()">
           <span class="u">Ω</span>
+        </div>
+        <div class="sim-cg" id="simIShowGrp" title="Galvanostatic current applied during the displayed cycle/stroke. Read from the row(s) selected in the Rates &amp; current densities tab (1st-cycle row drives stroke 1, Nth-cycle row drives all later strokes).">
+          <label>I:</label>
+          <span class="u" id="simIShowTxt" style="color:var(--ink);font-style:normal;font-family:var(--fm)">—</span>
         </div>
       </div>
       <div class="sim-ctrl sim-ctrl-cons" id="simConsCtrl" data-help="Galvanostatic stop conditions in MUSIC's electrode notation. Always active: when the relevant signal crosses its bound during a stroke, the stroke ends at the crossing point and that capacity becomes the stroke's Q_max. Six bounds — upper/lower on V_cat, V_an and V_cell. Defaults track the V_op inputs (Cathode V_max/V_min from the cathode V_op window, Anode V_max/V_min from the anode V_op window, Cell V_max from the cathode V_max, Cell V_min from the anode V_min). Edit any value to override; clear the field to fall back to the V_op default. Constraints only fire when the signal is moving toward the bound, so an out-of-spec value left over from a prior unbalanced stroke does not freeze the next stroke at Q=0." data-help-key="fld_sim_constraints">
@@ -2217,6 +2225,9 @@ const SIM_M_OPTIONS=[
   {id:"K", label:"K/K⁺"}
 ];
 const simAxisState={M:"Li",capUnit:"mAh"};
+// Axis-lock state. null → all axes interactive (default Plotly behavior).
+// "y1" or "y2" → only that axis responds to zoom/drag; others are pinned.
+let simAxisLock=null;
 let simUserOverrodeM=false; // stop auto-syncing M from inputs once user picks one
 let simPlotInitialised=false;
 
@@ -2328,13 +2339,58 @@ function simRenderAxisLabels(){
   if(ax) ax.innerHTML=
     `<span class="ax-pre">${xLabel}</span>`+
     `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to switch X axis (Capacity ↔ Time)">${xu.label}<span class="ax-pill-arrow">▾</span></button>`;
-  if(ay) ay.innerHTML=
-    `<span class="ax-pre">Potential (V vs</span>`+
-    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'mRef')" title="Click to change reference electrode">${m}<span class="ax-pill-arrow">▾</span></button>`+
-    `<span class="ax-pre">)</span>`;
-  if(ay2) ay2.innerHTML=
-    `<span class="ax-pre">Cell Voltage</span>`+
-    `<span class="ax-pill ax-pill-static">V</span>`;
+  if(ay){
+    ay.innerHTML=
+      `<span class="ax-pre">Potential (V vs</span>`+
+      `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'mRef')" title="Click to change reference electrode">${m}<span class="ax-pill-arrow">▾</span></button>`+
+      `<span class="ax-pre">)</span>`;
+    ay.title=(simAxisLock==="y1")
+      ? "Left axis is locked — only this axis responds to zoom/drag. Click to release."
+      : "Click to lock zoom/drag to the left axis only.";
+    ay.onclick=function(e){ if(e.target.closest('.ax-pill')) return; toggleSimAxisLock('y1'); };
+    ay.classList.toggle('ax-locked', simAxisLock==='y1');
+  }
+  if(ay2){
+    ay2.innerHTML=
+      `<span class="ax-pre">Cell Voltage</span>`+
+      `<span class="ax-pill ax-pill-static">V</span>`;
+    ay2.title=(simAxisLock==="y2")
+      ? "Right axis is locked — only this axis responds to zoom/drag. Click to release."
+      : "Click to lock zoom/drag to the right axis only.";
+    ay2.onclick=function(e){ if(e.target.closest('.ax-pill')) return; toggleSimAxisLock('y2'); };
+    ay2.classList.toggle('ax-locked', simAxisLock==='y2');
+  }
+}
+
+// Click an axis to restrict zoom/drag to that axis only. Click the same axis
+// again (or click the other axis) to switch / release. With no lock, every
+// axis is interactive (default Plotly).
+function toggleSimAxisLock(which){
+  simAxisLock=(simAxisLock===which)?null:which;
+  if(typeof renderSimPlot==="function") renderSimPlot();
+}
+
+// Apply the current axis-lock to a Plotly layout. Lock=null → no change
+// (all axes interactive). Lock="y1" → x and y2 fixed, y free. Lock="y2" →
+// x and y fixed, y2 free.
+function _simApplyAxisLockToLayout(layout){
+  if(!layout) return;
+  if(!layout.xaxis) layout.xaxis={};
+  if(!layout.yaxis) layout.yaxis={};
+  if(!layout.yaxis2) layout.yaxis2={};
+  if(simAxisLock==='y1'){
+    layout.xaxis.fixedrange=true;
+    layout.yaxis.fixedrange=false;
+    layout.yaxis2.fixedrange=true;
+  } else if(simAxisLock==='y2'){
+    layout.xaxis.fixedrange=true;
+    layout.yaxis.fixedrange=true;
+    layout.yaxis2.fixedrange=false;
+  } else {
+    layout.xaxis.fixedrange=false;
+    layout.yaxis.fixedrange=false;
+    layout.yaxis2.fixedrange=false;
+  }
 }
 
 /* ── Simulation control state & physics ──
@@ -2691,6 +2747,8 @@ function simComputeSeries(){
     V_c_end, V_a_end,
     V_c_target:stroke.V_c_target, V_a_target:stroke.V_a_target,
     irHalf:half,  // signed IR half-shift; cathode trace is offset +half, anode −half.
+    Iu,           // current actually applied this stroke (µA): I1 if k==1, else IN.
+    I1_uA, IN_uA,
     limiting:stroke.limiting,
     consHit:stroke.consHit,
     constraints,
@@ -2792,10 +2850,52 @@ function simComputeTimeSeries(){
   };
 }
 
+// Format a current in µA with auto-scaled units (mA above 1000 µA).
+function _simFmtCur(uA){
+  if(!Number.isFinite(uA)||uA<=0) return "—";
+  if(uA>=1000) return (uA/1000).toFixed(2)+" mA";
+  if(uA>=1)    return uA.toFixed(2)+" µA";
+  return uA.toFixed(3)+" µA";
+}
+
+// Update the small "I:" label next to R_eq with the current actually applied
+// to the displayed cycle/stroke. In capacity mode we show the single current
+// for the visible stroke (I_1st for k=1, I_Nth otherwise). In time mode we
+// show both (I_1st · I_Nth) since the whole multi-cycle run is plotted; if
+// they're equal we collapse to a single value.
+function _simRenderCurrentLabel(series, isTime){
+  const el=$("simIShowTxt"); if(!el) return;
+  if(!series || !series.ok){ el.innerHTML="—"; return; }
+  const I1=series.I1_uA, IN=series.IN_uA;
+  const sameI = Number.isFinite(I1) && Number.isFinite(IN) && Math.abs(I1-IN) < 1e-9;
+  if(isTime){
+    el.innerHTML = sameI ? _simFmtCur(I1)
+                         : `I<sub>1st</sub> = ${_simFmtCur(I1)} · I<sub>Nth</sub> = ${_simFmtCur(IN)}`;
+  } else {
+    const Iu=series.Iu;
+    if(Number.isFinite(Iu) && Iu>0){
+      const isFirst=(series.strokeK===1);
+      el.innerHTML = sameI
+        ? _simFmtCur(Iu)
+        : `${_simFmtCur(Iu)} <span style="color:var(--ink3);font-style:italic">(${isFirst?"1st-cycle":"N-th cycle"})</span>`;
+    } else {
+      el.innerHTML="—";
+    }
+  }
+}
+
+// Wrap V_xxx / Q_xxx subscripts in the constraint labels with <sub>...</sub>
+// so they render typographically when injected into the sim message panel.
+function _simSubscriptLabel(s){
+  if(!s) return s;
+  return String(s).replace(/\b([VQ])_(th|cell|cat|an|max|min|op|OCV|ocv|c|a|1st|Nth)\b/g,
+                            '$1<sub>$2</sub>');
+}
+
 function _simSetMsg(text,kind){
   const el=$("simMsg"); if(!el) return;
-  if(!text){ el.style.display="none"; el.textContent=""; el.className="sim-msg"; return; }
-  el.textContent=text;
+  if(!text){ el.style.display="none"; el.innerHTML=""; el.className="sim-msg"; return; }
+  el.innerHTML=text; // callers pass internally-built HTML strings (subscripts etc.)
   el.className="sim-msg"+(kind?(" "+kind):"");
   el.style.display="block";
 }
@@ -2813,6 +2913,7 @@ function _simApplyAxisMode(isTime){
 // constraint dashes; only the X coordinates and the trace shape change.
 function _renderSimPlotTime(host, xUnit){
   const layout=simBuildLayout();
+  _simApplyAxisLockToLayout(layout);
   const config={
     displayModeBar:true, displaylogo:false, responsive:true, scrollZoom:true,
     modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'],
@@ -2820,6 +2921,7 @@ function _renderSimPlotTime(host, xUnit){
     edits:{legendPosition:true}
   };
   const series=simComputeTimeSeries();
+  _simRenderCurrentLabel(series, true);
   const lblEl=$("simCycleDir");
   const colC="#C0392B", colA="#2980B9", colCell="#2D3748", colCons="#6B46C1";
   let traces;
@@ -2927,13 +3029,13 @@ function _renderSimPlotTime(host, xUnit){
                           (series.frozen?" · cell froze (no advance possible)":"");
     }
 
-    // Surface any per-stroke stop messages (constraints / V_th) summarised.
+    // Surface any per-cycle stop messages (constraints / V_th) summarised.
     const last = series.strokes[series.strokes.length-1];
     if(last && last.consHit && series.constraints[last.consHit]){
       const c=series.constraints[last.consHit];
-      _simSetMsg(`Last stroke (k=${last.k}, ${last.dir}) ended on user constraint ${c.def.label} (${c.V.toFixed(3)} V). Earlier strokes may have hit other limits — switch to a Capacity unit and step through cycles to inspect.`, "warn");
+      _simSetMsg(`Last cycle (k=${last.k}, ${last.dir}) ended on user constraint ${_simSubscriptLabel(c.def.label)} (${c.V.toFixed(3)} V). Earlier cycles may have hit other limits — switch to a Capacity unit and step through cycles to inspect.`, "warn");
     } else if(last && last.limiting){
-      _simSetMsg(`Last stroke (k=${last.k}, ${last.dir}) ended at V_th of the ${last.limiting}. Switch to a Capacity unit and step through cycles to inspect any imbalance propagation.`, "warn");
+      _simSetMsg(`${last.limiting.charAt(0).toUpperCase()+last.limiting.slice(1)} is limiting cell capacity on the last cycle (k=${last.k}, ${last.dir}). Switch to a Capacity unit and step through cycles to inspect any imbalance propagation.`, "warn");
     } else {
       _simSetMsg("","");
     }
@@ -2965,6 +3067,7 @@ function renderSimPlot(){
   if(isTime){ return _renderSimPlotTime(host, xUnit); }
 
   const layout=simBuildLayout();
+  _simApplyAxisLockToLayout(layout);
   const config={
     displayModeBar:true,
     displaylogo:false,
@@ -2986,9 +3089,10 @@ function renderSimPlot(){
     if(series.ok){
       const ocvNote=(series.strokeK===1)?" · formation · OCV-anchored":"";
       const limNote=series.limiting?(" · limiter: "+series.limiting):"";
-      lbl.textContent="cycle "+series.cycleN+" · "+series.dir+" stroke"+ocvNote+limNote;
+      lbl.textContent="cycle "+series.cycleN+" · "+series.dir+ocvNote+limNote;
     } else lbl.textContent="—";
   }
+  _simRenderCurrentLabel(series, false);
 
   if(!series.ok){
     traces=[
@@ -3046,7 +3150,7 @@ function renderSimPlot(){
                   line:{color:'#7F1D1D', width:1.5}},
           name:'Anode (forced stop)', showlegend:false,
           hovertemplate:'Q=%{x:.3g}<br>V<sub>an</sub>=%{y:.3f} V<br>'+
-                        '(forced to stop · cathode hit V_th first)<extra></extra>'});
+                        '(forced to stop · cathode is limiting cell capacity)<extra></extra>'});
       } else {
         // Cathode is the LIMITED one.
         if(Number.isFinite(series.Qc_natural)){
@@ -3063,7 +3167,7 @@ function renderSimPlot(){
                   line:{color:'#7F1D1D', width:1.5}},
           name:'Cathode (forced stop)', showlegend:false,
           hovertemplate:'Q=%{x:.3g}<br>V<sub>cat</sub>=%{y:.3f} V<br>'+
-                        '(forced to stop · anode hit V_th first)<extra></extra>'});
+                        '(forced to stop · anode is limiting cell capacity)<extra></extra>'});
       }
     }
 
@@ -3199,11 +3303,12 @@ function renderSimPlot(){
       const stop_disp = conv(series.Qmin);
       const c=series.constraints[series.consHit];
       const op = (c.def.bound==='max') ? "≤" : "≥";
-      const sigLab = {cat:"V_cat", an:"V_an", cell:"V_cell"}[c.def.target];
+      const sigLab = {cat:"V<sub>cat</sub>", an:"V<sub>an</sub>", cell:"V<sub>cell</sub>"}[c.def.target];
+      const consLabel = _simSubscriptLabel(c.def.label);
       _simSetMsg(
-        `Stroke stopped by user constraint ${c.def.label} (${sigLab} ${op} ${_fmtV(c.V)} V) `+
+        `Cycle stopped by user constraint ${consLabel} (${sigLab} ${op} ${_fmtV(c.V)} V) `+
         `at ${stop_disp.toFixed(3)} ${capLab} — both electrodes truncated. `+
-        `That capacity is the stroke's Q_max; subsequent strokes start from these partial voltages.`,
+        `That capacity is the cycle's Q<sub>max</sub>; subsequent cycles start from these partial voltages.`,
         "warn"
       );
     } else if(series.limiting){
@@ -3235,19 +3340,19 @@ function renderSimPlot(){
         const other_disp = conv(limitedNatural);
         const fracUsed = (series.Qmin/limitedNatural);
         tail = `the ${limited} only reached ${fmt(limitedV_phys)} V — `+
-               `${(fracUsed*100).toFixed(0)}% of its V_th window — and would have `+
+               `${(fracUsed*100).toFixed(0)}% of its V<sub>th</sub> window — and would have `+
                `delivered ${fmt(other_disp)} ${capLab} on its own.`;
       } else {
-        // Limited electrode is moving away from its own V_th this stroke
+        // Limited electrode is moving away from its own V_th this cycle
         // (started outside its window — the imbalance from a previous
-        // stroke is now showing through).
-        tail = `the ${limited} ended at ${fmt(limitedV_phys)} V, outside its V_th window — `+
-               `the imbalance from earlier strokes is still propagating.`;
+        // cycle is now showing through).
+        tail = `the ${limited} ended at ${fmt(limitedV_phys)} V, outside its V<sub>th</sub> window — `+
+               `the imbalance from earlier cycles is still propagating.`;
       }
       _simSetMsg(
-        `${Lcap(limiter)} hit its V_th first at ${fmt(stop_disp)} ${capLab} — `+
-        `${limited} forced to stop short. ${Lcap(tail)} `+
-        `The next stroke starts from these partial voltages, which is how `+
+        `${Lcap(limiter)} is limiting cell capacity — `+
+        `${limited} forced to stop short at ${fmt(stop_disp)} ${capLab}. ${Lcap(tail)} `+
+        `The next cycle starts from these partial voltages, which is how `+
         `the unbalance propagates through later cycles.`,
         "warn"
       );
