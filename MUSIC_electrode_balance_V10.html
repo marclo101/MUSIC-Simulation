@@ -2685,14 +2685,15 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   // ascending V_redox so the lowest plateau activates first). On a discharge
   // sweep V is moving down past V_redox — no activation, no plateau.
   //
-  // Salt is treated like the EDLC by a per-stroke charge-budget (capped at
-  // Qc_AM_budget per stroke), but its reservoir is global: Q_remaining is
-  // not reset between cycles, so contributions sum across charge strokes
-  // until the salt is fully consumed.
+  // Salt has its own global charge-budget (the plateau's Q_remaining, sized
+  // by mS·Cs1) — not the AM's per-stroke budget. It is NOT reset per cycle:
+  // each charge stroke that reaches V_redox consumes from the same shared
+  // pool until it is exhausted. Whatever the cycle's stop condition allows
+  // (anode limit, user constraint, cathode AM budget) gets eaten this stroke,
+  // the rest stays in p.Q_remaining for the next charge stroke.
   const tol = 1e-9 * Math.max(Qc_AM_budget, Qa_budget, 1);
   const catSegs = [];
   let Vc = V_c_in, Q_c_total = 0, Q_c_budget_used = 0;
-  let saltCapLeft = Qc_AM_budget; // per-stroke cap on total salt contribution
 
   const plateauQueue = (sign > 0 && Array.isArray(ctx.plateaus))
     ? ctx.plateaus
@@ -2721,18 +2722,10 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
                   Q_start:Q_c_total, Q_end:Q_c_total + dQ,
                   V_start:Vc, V_end:p.V, slope:slope_c_AM});
     Q_c_total += dQ; Q_c_budget_used += dQ; Vc = p.V;
-    // Cap this stroke's plateau contribution at the EDLC per-stroke budget
-    // (saltCapLeft). What we don't consume here stays in p.Q_remaining and
-    // contributes on the next charge stroke that reaches V_redox.
-    const platLen = Math.min(p.Q_remaining, saltCapLeft);
-    if(platLen > 1e-12){
-      catSegs.push({kind:'plateau', counts:false,
-                    Q_start:Q_c_total, Q_end:Q_c_total + platLen,
-                    V_start:p.V, V_end:p.V, slope:0, plateauRef:p});
-      Q_c_total += platLen;
-      saltCapLeft -= platLen;
-    }
-    if(saltCapLeft <= 1e-12) break; // higher plateaus wait for the next stroke
+    catSegs.push({kind:'plateau', counts:false,
+                  Q_start:Q_c_total, Q_end:Q_c_total + p.Q_remaining,
+                  V_start:p.V, V_end:p.V, slope:0, plateauRef:p});
+    Q_c_total += p.Q_remaining;
   }
   // Final EDLC remainder (only if the budget hasn't already been spent).
   if(Q_c_budget_used + tol < Qc_AM_budget){
@@ -3292,13 +3285,20 @@ function _renderSimPlotTime(host, xUnit){
     // Salt-plateau overlay — collect all plateau segments across all strokes
     // (each stroke has its own catSegs and t_start / Iu). Emits NaN-separated
     // horizontal segments at each V_redox so non-adjacent plateaus don't draw
-    // a connecting line. Only added when at least one plateau actually fired.
+    // a connecting line. `prev` is lifted out of the stroke loop so a charge
+    // stroke that ENDS on a plateau followed by another charge stroke that
+    // STARTS with a plateau gets a NaN break inserted at the boundary —
+    // otherwise Plotly would draw a straight horizontal line spanning the
+    // intervening discharge stroke (where V_cat is nowhere near V_redox).
     const saltX=[], saltY=[];
+    let prev=false;
     for(const s of (series.strokes||[])){
-      if(!s.catSegs || !Number.isFinite(s.Iu) || s.Iu <= 0) continue;
+      if(!s.catSegs || !Number.isFinite(s.Iu) || s.Iu <= 0){
+        if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
+        continue;
+      }
       const half = s.irHalf || 0;
       const _qToT = q => s.t_start + q * 3600 / s.Iu;
-      let prev=false;
       for(const seg of s.catSegs){
         if(seg.kind !== 'plateau'){
           if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
