@@ -2756,8 +2756,19 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   // Constraint check — segment-aware. For each cathode segment, V_cat is
   // either linear (edlc) or constant (plateau); V_an is linear throughout.
   // Walk every (segment × constraint) pair and pick the earliest crossing.
+  //
+  // IR drop is a constant offset within a galvanostatic stroke (current is
+  // fixed), so it shifts each electrode/cell voltage by a constant without
+  // changing its slope. The constraints describe the *measured* voltages,
+  // which is what the renderer displays: V_cat = V_c + half, V_an = V_a − half,
+  // V_cell = (V_c − V_a) + dV_IR. We add the same offset to each constraint's
+  // reference voltage V0 so the stop lands where the measured voltage — not the
+  // IR-free internal voltage — hits the limit. (Without this, a large R_eq lets
+  // V_cell overshoot its limit, e.g. settling at −0.1 V for a 0 V cutoff.)
   const cons = ctx.constraints || {};
   let consHit = null;
+  const dV_IR_cons = sign * (Iu * (ctx.Req || 0)) * 1e-6;
+  const half_cons  = dV_IR_cons / 2;
   for(const key in cons){
     const c = cons[key]; if(!c || !Number.isFinite(c.V)) continue;
     const lim = c.V, bd = c.def.bound, tgt = c.def.target;
@@ -2766,9 +2777,9 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
       const V_a_seg_start = V_a_in + slope_a * seg.Q_start;
       const slope_c_seg = (seg.kind === 'edlc') ? seg.slope : 0;
       let V0, slope_sig;
-      if(tgt === 'cat')      { V0 = seg.V_start;                   slope_sig = slope_c_seg; }
-      else if(tgt === 'an')  { V0 = V_a_seg_start;                 slope_sig = slope_a; }
-      else                   { V0 = seg.V_start - V_a_seg_start;   slope_sig = slope_c_seg - slope_a; }
+      if(tgt === 'cat')      { V0 = seg.V_start + half_cons;                          slope_sig = slope_c_seg; }
+      else if(tgt === 'an')  { V0 = V_a_seg_start - half_cons;                        slope_sig = slope_a; }
+      else                   { V0 = (seg.V_start - V_a_seg_start) + dV_IR_cons;       slope_sig = slope_c_seg - slope_a; }
       if(Math.abs(slope_sig) < 1e-15) continue;
       const movingIn = (bd === 'max' && slope_sig > 0) ||
                        (bd === 'min' && slope_sig < 0);
@@ -2904,7 +2915,7 @@ function simComputeSeries(){
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
              Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints, plateaus};
+             constraints, plateaus, Req};
 
   // Walk every stroke from k=1 up to k_target, advancing the cumulative
   // (V_c, V_a) state and the salt's per-stage Q_remaining. The walk has to
@@ -3064,7 +3075,7 @@ function simComputeTimeSeries(){
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
              Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             constraints, plateaus};
+             constraints, plateaus, Req};
 
   const k_total=2*Ncyc;
   const strokes=[];
