@@ -1673,11 +1673,13 @@ function _slowestRevCap(rates){
 }
 
 // Derive C₁ for a CAPACITIVE / PSEUDOCAPACITIVE electrode from the as-assembled
-// OCV. A capacitor's capacity ∝ voltage span, so the first charge — which only
-// sweeps from OCV to the operating limit — accesses a fraction of the slowest-
-// rate reversible capacity:
+// OCV. A capacitor's capacity ∝ voltage span, so the formation half-cycle —
+// which only sweeps from OCV to the operating limit in the "Start in cell"
+// direction — accesses a fraction of the slowest-rate reversible capacity. For
+// charge-first formation:
 //   cathode: C₁ = C_rev · (V_op,hi − OCV) / (V_th,hi − V_th,lo)
 //   anode  : C₁ = C_rev · (OCV − V_op,lo) / (V_th,hi − V_th,lo)
+// Discharge-first formation flips each electrode's span (see below).
 // Only runs when no measured C₁ exists (field empty) or we already own it; a
 // hand-typed C₁ locks it, and faradaic materials are never touched. The result
 // is clamped to [0, C_rev]. Does NOT recalc — the caller does.
@@ -1691,7 +1693,14 @@ function deriveCapC1(side){
   const cN=basis? basis.cN : N(side==="cat"?"cat-ac-cN":"an-cN");
   const ocv=N(side==="cat"?"cat-ac-ocv":"an-ocv");
   const window=N(side+"-Vth-hi")-N(side+"-Vth-lo");
-  let span=side==="cat"?(N(side+"-Vop-hi")-ocv):(ocv-N(side+"-Vop-lo"));
+  const vopHi=N(side+"-Vop-hi"),vopLo=N(side+"-Vop-lo");
+  // Span swept on the formation half-cycle, per the "Start in cell" direction.
+  // Charge: cathode sweeps up OCV→V_op,hi and anode down OCV→V_op,lo; discharge
+  // flips both. C₁ is the fraction of the window that first stroke covers.
+  const chargeFirst=(startDir!=="discharge");
+  let span=(side==="cat")
+    ? (chargeFirst ? vopHi-ocv : ocv-vopLo)
+    : (chargeFirst ? ocv-vopLo : vopHi-ocv);
   if(span<0) span=0;
   if(!(cN>0 && ocv>0 && window>0 && span>0)) return;   // not enough info — leave field as-is
   let c1=Math.round(cN*(span/window)*10)/10;
@@ -2697,6 +2706,9 @@ function setStartDir(d){
   const bC=$("startDirChg"),bD=$("startDirDis");
   if(bC) bC.classList.toggle("act",startDir==="charge");
   if(bD) bD.classList.toggle("act-d",startDir==="discharge");
+  // The formation direction sets which span an OCV-derived C₁ sweeps, so
+  // re-derive both electrodes and refresh the balance.
+  deriveCapC1("cat");deriveCapC1("an");recalc();
   // Default the visible stroke to whichever direction the user just picked
   // so the first thing they see on cycle 1 is the OCV-anchored stroke.
   if(typeof setSimDir==="function") setSimDir(startDir);

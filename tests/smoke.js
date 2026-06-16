@@ -72,6 +72,22 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("C1 re-derived on OCV edit 3→3.5 → 15.9", near(parseFloat(B.d35), 15.9), "got " + B.d35);
   check("hand-typed C1 not overridden by derivation", B.locked === "99", "got " + B.locked);
 
+  // ── Feature 2b: derived C1 follows the "Start in cell" (formation) direction ──
+  const C = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    c1Manual.cat = false; c1Derived.cat = false;
+    g("cat-ac-st").value = "capacitive";
+    g("cat-ac-ocv").value = "3"; g("cat-ac-cN").value = "50";
+    g("cat-Vth-hi").value = "4.2"; g("cat-Vth-lo").value = "2.0";
+    g("cat-Vop-hi").value = "4.2"; g("cat-Vop-lo").value = "2.0";
+    g("cat-ac-c1").value = "";
+    setStartDir("charge"); deriveCapC1("cat"); const chg = g("cat-ac-c1").value;   // (4.2-3)/2.2 * 50
+    setStartDir("discharge"); const dis = g("cat-ac-c1").value;                    // (3-2)/2.2 * 50, re-derived
+    setStartDir("charge");
+    return { chg, dis };
+  });
+  check("C1 follows start dir (charge→27.3, discharge→22.7)", near(parseFloat(C.chg), 27.3) && near(parseFloat(C.dis), 22.7), JSON.stringify(C));
+
   // ── Broad health check ──
   const H = await page.evaluate(() => {
     const r = {};
