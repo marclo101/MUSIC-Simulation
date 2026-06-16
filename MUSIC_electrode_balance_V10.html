@@ -1562,6 +1562,9 @@ function doCalc(){$("resPanel").style.display="";recalc();$("resPanel").scrollIn
 let origCap={catC1:0,catCN:0,anC1:0,anCN:0};
 // Track if C1st was manually edited (overrides auto-calc)
 let c1Manual={cat:false,an:false};
+// C₁ currently auto-derived from OCV (capacitive/pseudocapacitive, library has no
+// measured 1st-cycle value). Keeps OCV/V_op/V_th edits live-recomputing C₁.
+let c1Derived={cat:false,an:false};
 
 
 function presetSelectId(prefix){
@@ -1589,8 +1592,8 @@ function setPresetCustom(prefix,clearRates){
    independent of the capacity. updateRateEquiv() will recompute the displayed
    C-rate / hours equivalents using the new capacity. */
 function onCapManual(prefix,cycle){
-  if(prefix==="cat-ac"&&cycle==="c1") c1Manual.cat=true;
-  else if(prefix==="an"&&cycle==="c1") c1Manual.an=true;
+  if(prefix==="cat-ac"&&cycle==="c1"){c1Manual.cat=true;c1Derived.cat=false;}
+  else if(prefix==="an"&&cycle==="c1"){c1Manual.an=true;c1Derived.an=false;}
   setPresetCustom(prefix,false);
   updateRateEquiv();
   recalc();
@@ -1614,7 +1617,7 @@ function toggleVth(side){
     }
   });
   if(unlock)flds[0]?.querySelector("input")?.focus();
-  else recalc();
+  else{deriveCapC1(side);recalc();}   // V_th edited → re-derive C₁ if it's OCV-derived
 }
 
 function storeOrigCap(side){
@@ -1647,11 +1650,66 @@ function restoreOrigCap(side){
   $(side+"-c1-orig").textContent="";
   $(side+"-cN-orig").textContent="";
   c1Manual[side]=false;
+  c1Derived[side]=false;   // faradaic restore — C₁ is no longer OCV-derived
+}
+
+// Slowest rate row (lowest equivalent C-rate) and its reversible capacity — the
+// anchor for a capacitive/pseudocapacitive electrode's derived 1st-cycle value.
+// Returns {cN, rv, ru} or null.
+function _slowestRevCap(rates){
+  if(!Array.isArray(rates)||!rates.length) return null;
+  let best=null,bestCr=Infinity;
+  rates.forEach(r=>{
+    const cap=(r.cN!=null?r.cN:r.c1);
+    if(!(cap>0)) return;
+    const cr=rateToCRate(r.rv,r.ru,cap);            // 1/h; null if not convertible
+    if(cr!=null && cr>0 && cr<bestCr){bestCr=cr; best={cN:cap,rv:r.rv,ru:r.ru};}
+  });
+  if(best) return best;
+  // Fallback when C-rates aren't convertible (e.g. mA/cm²): highest-capacity row.
+  let hi=null,hiCap=-1;
+  rates.forEach(r=>{const cap=(r.cN!=null?r.cN:r.c1); if(cap>hiCap){hiCap=cap; hi={cN:cap,rv:r.rv,ru:r.ru};}});
+  return hi;
+}
+
+// Derive C₁ for a CAPACITIVE / PSEUDOCAPACITIVE electrode from the as-assembled
+// OCV. A capacitor's capacity ∝ voltage span, so the first charge — which only
+// sweeps from OCV to the operating limit — accesses a fraction of the slowest-
+// rate reversible capacity:
+//   cathode: C₁ = C_rev · (V_op,hi − OCV) / (V_th,hi − V_th,lo)
+//   anode  : C₁ = C_rev · (OCV − V_op,lo) / (V_th,hi − V_th,lo)
+// Only runs when no measured C₁ exists (field empty) or we already own it; a
+// hand-typed C₁ locks it, and faradaic materials are never touched. The result
+// is clamped to [0, C_rev]. Does NOT recalc — the caller does.
+function deriveCapC1(side){
+  const st=$(side==="cat"?"cat-ac-st":"an-st").value;
+  if(st!=="capacitive" && st!=="pseudocapacitive"){ c1Derived[side]=false; return; }
+  if(c1Manual[side]) return;                       // user typed C₁ → locked
+  const c1Id=side==="cat"?"cat-ac-c1":"an-c1";
+  if(!(c1Derived[side] || N(c1Id)<=0)) return;     // library supplied a measured C₁ → keep it
+  const basis=_slowestRevCap(side==="cat"?catAcRates:anRates);
+  const cN=basis? basis.cN : N(side==="cat"?"cat-ac-cN":"an-cN");
+  const ocv=N(side==="cat"?"cat-ac-ocv":"an-ocv");
+  const window=N(side+"-Vth-hi")-N(side+"-Vth-lo");
+  let span=side==="cat"?(N(side+"-Vop-hi")-ocv):(ocv-N(side+"-Vop-lo"));
+  if(span<0) span=0;
+  if(!(cN>0 && ocv>0 && window>0 && span>0)) return;   // not enough info — leave field as-is
+  let c1=Math.round(cN*(span/window)*10)/10;
+  if(c1>cN) c1=cN;                                 // 1st cycle can't exceed the reversible basis
+  $(c1Id).value=c1>0?c1:"";
+  c1Derived[side]=true;
+  if(basis){
+    const lbl=fRtU(basis.rv,basis.ru);
+    setRateValue(side==="cat"?"cat-ac":"an","c1",basis.rv,basis.ru,lbl);
+    const note=$(side+"-c1-orig");
+    if(note) note.textContent="(derived from reversible "+basis.cN+" mAh/g @ "+lbl+", OCV "+ocv+" V)";
+  }
 }
 
 function scaleVW(side){
   const stId=side==="cat"?"cat-ac-st":"an-st";
   const sType=$(stId).value;
+  deriveCapC1(side);   // silent C₁-from-OCV derivation (capacitive/pseudo, no library C₁)
   if(sType==="faradaic"){
     // Faradaic: no scaling suggestion, just recalc
     $(side+"-vw-note").style.display="none";
@@ -1686,7 +1744,9 @@ function scaleVW(side){
   // Build suggestion message
   let msg=`Vop/Vth = ${dVop.toFixed(2)}/${dVth.toFixed(2)} = ${(scaleN*100).toFixed(0)}%`;
   let suggestC1=null;
-  if(ocv>0){
+  // When C₁ is auto-derived (capacitive/pseudo, no library C₁), deriveCapC1 owns
+  // it silently — don't also prompt to rescale it here.
+  if(ocv>0 && !c1Derived[side]){
     let dV1st=side==="cat"?(opHi-ocv):(ocv-opLo);
     if(dV1st>0) suggestC1=Math.round(baseCN*(dV1st/dVth)*10)/10;
   }
@@ -4953,6 +5013,8 @@ function applyPS(prefix){
     $("cat-c1-orig").textContent="";
     setRateValue("cat-ac","c1",r0.rv,r0.ru,lbl);setRateValue("cat-ac","cN",r0.rv,r0.ru,lbl);
     storeOrigCap("cat");
+    // Capacitive/pseudo with no library C₁ → derive it from OCV (slowest-rate basis).
+    c1Derived.cat=false;deriveCapC1("cat");
   }else if(prefix==="an"){
     anRates=rates;
     $("an-name").value=m.name;$("an-label").value=m.name;$("an-st").value=r0.sType||"faradaic";
@@ -4965,6 +5027,7 @@ function applyPS(prefix){
     $("an-c1-orig").textContent="";
     setRateValue("an","c1",r0.rv,r0.ru,lbl);setRateValue("an","cN",r0.rv,r0.ru,lbl);
     storeOrigCap("an");
+    c1Derived.an=false;deriveCapC1("an");
   }else{
     catSRates=rates;
     $("cat-s-name").value=m.name;
@@ -5007,7 +5070,7 @@ function resetAll(){if(!confirm("Reset all inputs?"))return;
   $("cat-ac-ps").value="";$("cat-s-ps").value="";$("an-ps").value="";
   // Lock V_th edit toggles
   document.querySelectorAll(".vth-edit.on").forEach(b=>b.click());
-  catAcRates=[];anRates=[];catSRates=[];prevActiveStep=null;c1Manual={cat:false,an:false};origCap={catC1:0,catCN:0,anC1:0,anCN:0};
+  catAcRates=[];anRates=[];catSRates=[];prevActiveStep=null;c1Manual={cat:false,an:false};c1Derived={cat:false,an:false};origCap={catC1:0,catCN:0,anC1:0,anCN:0};
   // Reset salt toggle to default (disabled), in sync with the visual switch
   if(saltOn){saltOn=false;$("salt-sw").classList.remove("on");$("salt-flds").style.display="none";$("salt-lbl").innerHTML="<strong>No salt</strong>"}
   // Reset library tab to cathode AM and pie-driven overrides
