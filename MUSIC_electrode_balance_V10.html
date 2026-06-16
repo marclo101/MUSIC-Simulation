@@ -730,6 +730,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <label for="np-target" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00." data-help-key="fld_np_target" style="flex:1;font-size:12px;color:var(--ink);font-weight:500;cursor:pointer;min-width:180px">Target N/P ratio <span style="font-size:10.5px;color:var(--ink2);font-weight:400">· Nth cycle (1.00 = balanced)</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00."></button></label>
     <div class="fld" style="flex:0 0 90px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
     <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:18px;height:18px;font-size:11px">↻</button>
+    <button type="button" id="np1stTg" onclick="toggleNp1st()" title="Give the formation (1st) cycle its own Qₐ/Q꜀ target, distinct from the reversible cycles. The sacrificial salt is sized to hit it." style="padding:5px 10px;font-size:11px;font-weight:600;border:1px solid var(--rule);border-radius:6px;color:var(--ink2);background:var(--paper);font-family:var(--fm)">Different 1st cycle</button>
+    <div class="fld" id="np-target-1st-wrap" style="flex:0 0 100px;display:none"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P · 1st</span></div>
     <span style="border-left:1px solid var(--rule);height:24px;margin:0 4px"></span>
     <label data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ." data-help-key="fld_start_dir" style="font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Start in cell<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ."></button></label>
     <div class="sim-tg" id="startDirTg" style="margin-left:-2px">
@@ -1180,7 +1182,9 @@ let lib=ldLib(),saltOn=false,catMM="d",anMM="d",barPh="1st",advO=false,cdTab="cr
 // Mass-loading display mode for results: false=AM/cm² (default), true=total electrode film/cm²
 let showTotalLoading=false;
 // User-specified target N/P ratio (Nth-cycle Qa/Qc). 1.00 = balanced.
-let npTarget=1.00;
+let npTarget=1.00;     // Nth-cycle (reversible) Qa/Qc target
+let npTarget1=1.00;    // 1st-cycle (formation) Qa/Qc target — only used when np1stOn
+let np1stOn=false;     // "Different 1st cycle" toggle: give the formation cycle its own target
 // User-edited ratio overrides from the result hero (drives mass/composition fits).
 // {cycle:"1st"|"Nth", value:number} — null when no override is active.
 let ratioOverride=null;
@@ -1852,6 +1856,49 @@ function onNpTargetChange(){
 function resetNpTarget(){
   npTarget=1.00;
   $("np-target").value="1.00";
+  ratioOverride=null;
+  hideRatioEditMsg();
+  recalc();
+}
+
+// Clamped 1st-cycle target. When the "Different 1st cycle" toggle is off the
+// formation cycle simply tracks the Nth-cycle target, so cathode-mode and
+// anode-mode solve to the same (r1, rN) pair instead of disagreeing.
+function np1stTargetVal(){
+  return np1stOn ? Math.max(0.1,Math.min(npTarget1,5)) : Math.max(0.1,Math.min(npTarget,5));
+}
+
+function _np1stTgChrome(){
+  const btn=$("np1stTg"); if(!btn) return;
+  btn.style.background = np1stOn ? "var(--musicG)" : "var(--paper)";
+  btn.style.color      = np1stOn ? "#fff" : "var(--ink2)";
+  btn.style.borderColor= np1stOn ? "transparent" : "var(--rule)";
+  const wrap=$("np-target-1st-wrap"); if(wrap) wrap.style.display = np1stOn ? "" : "none";
+}
+
+function toggleNp1st(){
+  np1stOn=!np1stOn;
+  // Seed the formation target from the current Nth value on enable, so turning
+  // the toggle on changes nothing until the user actually edits it.
+  if(np1stOn){
+    npTarget1=npTarget;
+    const f=$("np-target-1st"); if(f) f.value=npTarget.toFixed(2);
+  }
+  _np1stTgChrome();
+  ratioOverride=null;
+  hideRatioEditMsg();
+  recalc();
+}
+
+function onNp1stChange(){
+  const raw=$("np-target-1st").value;
+  if(raw==="") return;  // user is mid-typing
+  const v=parseFloat(raw);
+  if(Number.isFinite(v) && v>0.1 && v<=5){
+    npTarget1=v;
+  } else {
+    return;  // out of range — keep previous value
+  }
   ratioOverride=null;
   hideRatioEditMsg();
   recalc();
@@ -4975,6 +5022,9 @@ function resetAll(){if(!confirm("Reset all inputs?"))return;
   // Reset target N/P + any pending result-side ratio override
   npTarget=1.00;
   $("np-target").value="1.00";
+  np1stOn=false;npTarget1=1.00;
+  {const f=$("np-target-1st");if(f)f.value="1.00";}
+  _np1stTgChrome();
   ratioOverride=null;
   hideRatioEditMsg();
   $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();toast("Cleared")}
@@ -5046,8 +5096,8 @@ function applyCathodeSaltSplit(r,inp){
   // Qa/Qc convention
   r.r1 =r.Qc1>0?r.Qa1/r.Qc1:0;
   r.rN =r.QcN>0?r.QaN/r.QcN:0;
-  const t=r.target||npTarget;
-  r.o1 =(r.r1-t)*100;r.oN=(r.rN-t)*100;
+  const t=r.target||npTarget, t1=r.target1||t;
+  r.o1 =(r.r1-t1)*100;r.oN=(r.rN-t)*100;
   r.np =r.QcN>0?r.QaN/r.QcN:0;
   r.c10=Math.min(r.QaN,r.QcN)/10;
 }
@@ -5107,8 +5157,8 @@ function applyRatioOverride(r, inp){
   // ─── CATHODE OR ANODE MODE — auto-solver active ───
   if(mode==="cathode" || mode==="anode"){
     if(cycle==="Nth" && saltOn){
-      // Option C: 2-knob fit — pin user's Nth + drive 1st to npTarget
-      const fit=fitMassAndSplit(inp, npTarget, rTarget, mode);
+      // Option C: 2-knob fit — pin user's Nth + drive 1st to the formation target
+      const fit=fitMassAndSplit(inp, np1stTargetVal(), rTarget, mode);
       if(!fit.ok){showRatioEditMsg(fit.reason,"error"); return false}
       // Push the new mass to the side the solver is computing, and lock the salt split
       if(mode==="cathode") inp.cat.mass=fit.mCat; else inp.an.mass=fit.mAn;
@@ -5120,11 +5170,11 @@ function applyRatioOverride(r, inp){
       r.QaN=fit.mAn*inp.an.wAM*inp.an.cN;
       r.r1 =r.Qc1>0?r.Qa1/r.Qc1:0;
       r.rN =r.QcN>0?r.QaN/r.QcN:0;
-      const t=r.target||npTarget;
-      r.o1=(r.r1-t)*100; r.oN=(r.rN-t)*100;
+      const t=r.target||npTarget, t1=r.target1||t;
+      r.o1=(r.r1-t1)*100; r.oN=(r.rN-t)*100;
       r.np=r.QcN>0?r.QaN/r.QcN:0;
       r.c10=Math.min(r.QaN,r.QcN)/10;
-      showRatioEditMsg("Nth-cycle ratio pinned to your value; cathode mass + salt split adjusted to drive 1st-cycle to target ("+(npTarget*100).toFixed(0)+"%).","warn");
+      showRatioEditMsg("Nth-cycle ratio pinned to your value; cathode mass + salt split adjusted to drive 1st-cycle to target ("+(np1stTargetVal()*100).toFixed(0)+"%).","warn");
       return true;
     }
     if(cycle==="1st" && saltOn){
@@ -5152,8 +5202,8 @@ function applyRatioOverride(r, inp){
     r.QaN=fit.mAn*inp.an.wAM*inp.an.cN;
     r.r1 =r.Qc1>0?r.Qa1/r.Qc1:0;
     r.rN =r.QcN>0?r.QaN/r.QcN:0;
-    const t=r.target||npTarget;
-    r.o1=(r.r1-t)*100; r.oN=(r.rN-t)*100;
+    const t=r.target||npTarget, t1=r.target1||t;
+    r.o1=(r.r1-t1)*100; r.oN=(r.rN-t)*100;
     r.np=r.QcN>0?r.QaN/r.QcN:0;
     r.c10=Math.min(r.QaN,r.QcN)/10;
     showRatioEditMsg("Salt is disabled — adjusted "+(mode==="cathode"?"cathode":"anode")+" mass to satisfy your "+cycle+"-cycle ratio. Consider adding sacrificial salt to control both cycles independently.","warn");
@@ -5179,14 +5229,21 @@ function solve(inp){
   // Target Nth-cycle Qa/Qc ratio. Solver branches multiply the auto-computed electrode
   // mass by `t` (cathode mode) or 1/t (anode mode) so the result hits the user's target.
   const t=Math.max(0.1,Math.min(npTarget,5));
+  // 1st-cycle (formation) target. Equals t unless the user enabled a distinct
+  // formation target. The salt-on branches size the sacrificial salt so the
+  // formation cycle hits t1 and the reversible cycle hits t — and crucially
+  // both solve directions (cathode-pinned / anode-pinned) now agree.
+  const t1=np1stTargetVal();
   let mAC,mS,mCat,mAn,sane=true;
   if(!saltOn){
     if(mode==="cathode"){mAn=inp.an.mass;const d=CcN*kc;mAC=d>.01?(CaN*mAn*wA)/(d*t):0;mS=0;mCat=wC>.01?mAC/wC:0}
     else if(mode==="anode"){mCat=inp.cat.mass;mAC=mCat*wC;mS=0;const d=wA*CaN;mAn=d>.01?(t*mAC*CcN*kc)/d:0}
     else{mCat=inp.cat.mass;mAn=inp.an.mass;mAC=mCat*wC;mS=0}
   }else{
-    if(mode==="cathode"){mAn=inp.an.mass;const d=CcN*kc;mAC=d>.01?(CaN*mAn*wA)/(d*t):0;mS=Cs1>.01?(mAn*wA*Ca1-mAC*Cc1)/Cs1:0;mCat=wC>.01?(mAC+mS)/wC:0}
-    else if(mode==="anode"){mCat=inp.cat.mass;const rh=CaN>.01?(CcN*kc*Ca1/CaN):0;const dn=rh-(Cc1-Cs1);if(Math.abs(dn)<.01){mAC=0;sane=false}else mAC=(mCat*wC*Cs1)/dn;mS=mCat*wC-mAC;const d2=wA*CaN;mAn=d2>.01?(t*mAC*CcN*kc)/d2:0}
+    // Salt sized so Qc1 = Qa1/t1 (formation hits t1) while AM mass holds rN = t.
+    if(mode==="cathode"){mAn=inp.an.mass;const d=CcN*kc;mAC=d>.01?(CaN*mAn*wA)/(d*t):0;mS=Cs1>.01?(mAn*wA*Ca1/t1-mAC*Cc1)/Cs1:0;mCat=wC>.01?(mAC+mS)/wC:0}
+    // Anode-pinned: pick the AM/salt split (mAC) and mAn so that r1=t1 and rN=t.
+    else if(mode==="anode"){mCat=inp.cat.mass;const rh=CaN>.01?(CcN*kc*Ca1/CaN):0;const dn=t*rh-t1*(Cc1-Cs1);if(Math.abs(dn)<.01){mAC=0;sane=false}else mAC=(mCat*wC*Cs1*t1)/dn;mS=mCat*wC-mAC;const d2=wA*CaN;mAn=d2>.01?(t*mAC*CcN*kc)/d2:0}
     else{mCat=inp.cat.mass;mAn=inp.an.mass;const dd=Cc1-Cs1;if(Math.abs(dd)<.01){mAC=mCat*wC;mS=0}else{mAC=(mAn*wA*Ca1-mCat*wC*Cs1)/dd;mS=mCat*wC-mAC}}
   }
   [mAC,mS,mCat,mAn]=[mAC,mS,mCat,mAn].map(v=>Number.isFinite(v)?v:0);
@@ -5196,9 +5253,9 @@ function solve(inp){
   // Ratios are Qa/Qc (N/P-style). r=1.000 means balanced; r>1 means anode-overcap.
   const r1=Qc1>0?Qa1/Qc1:0,rN=QcN>0?QaN/QcN:0;
   // Deviation from the user's TARGET (not from 1.00). Used by status pill + colors.
-  const o1=(r1-t)*100,oN=(rN-t)*100;
+  const o1=(r1-t1)*100,oN=(rN-t)*100;
   const Qr=Math.min(QaN,QcN),c10=Qr>0?Qr/10:0,np=QcN>0?QaN/QcN:0;
-  return{mAC,mS,mCat,mAn,pAC,pS,Qc1,QcN,Qa1,QaN,r1,rN,o1,oN,c10,kc,np,sane,target:t}
+  return{mAC,mS,mCat,mAn,pAC,pS,Qc1,QcN,Qa1,QaN,r1,rN,o1,oN,c10,kc,np,sane,target:t,target1:t1}
 }
 
 /* ══ RENDER ══ */
@@ -6435,7 +6492,7 @@ function gatherExportData(){
     timestamp:new Date(),
     mode:m,
     materials:{cathode:cat,salt,anode:an},
-    targets:{npTarget},
+    targets:{npTarget,npTarget1,np1stOn},
     masses:{mCat:r.mCat,mAn:r.mAn,mAC:r.mAC,mS:r.mS,mCat_AM,mAn_AM,mSalt},
     composition:{pAC:r.pAC,pS:r.pS},
     ratios:{r1:r.r1,rN:r.rN,np:r.np},
@@ -6563,6 +6620,7 @@ function buildTXT(D,sel){
   }
   if(sel.ratios){sec("N/P RATIOS");
     kv("Target N/P (Nth cycle):",D.targets.npTarget.toFixed(3));
+    if(D.targets.np1stOn) kv("Target N/P (1st cycle):",D.targets.npTarget1.toFixed(3));
     kv("1st cycle (Qa1/Qc1):",_fmt.ratio(D.ratios.r1));
     kv("Nth cycle (QaN/QcN):",_fmt.ratio(D.ratios.rN));
     kv("Nth cycle (raw):",_fmt.ratio(D.ratios.np));
@@ -6690,6 +6748,7 @@ async function buildHTMLBody(D,sel,opts){
   if(sel.ratios){
     h+=kvTable("N/P ratios",[
       ["Target N/P (N<sup>th</sup> cycle)",D.targets.npTarget.toFixed(3)],
+      ...(D.targets.np1stOn?[["Target N/P (1<sup>st</sup> cycle)",D.targets.npTarget1.toFixed(3)]]:[]),
       ["1<sup>st</sup> cycle (Q<sub>a1</sub>/Q<sub>c1</sub>)",_fmt.ratio(D.ratios.r1)],
       ["N<sup>th</sup> cycle (Q<sub>aN</sub>/Q<sub>cN</sub>)",_fmt.ratio(D.ratios.rN)],
     ]);
@@ -6815,5 +6874,4 @@ async function doExport(){
   }
 }
 </script>
-
-<div class="help-bubble" role="tooltip" style="left: 1307.5px; top: 730px;">Manage the embedded benchmark library. <strong>Add</strong> a new material (with rate-paired C₁/Cₙ, V-window, electrolyte and Nature-style citation); <strong>Save file</strong> writes the current library back into a downloadable copy of the HTML so it travels with the file; <strong>Export/Import JSON</strong> moves the library between files; <strong>Reset</strong> restores the bundled defaults.</div></body></html>
+</body></html>
