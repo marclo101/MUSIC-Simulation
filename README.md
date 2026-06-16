@@ -8,12 +8,16 @@ A single-page web tool for sizing and balancing the cathode and anode of a Li/Na
 |------|---------|
 | `MUSIC_electrode_balance_V10.html` | The application. Open it in a browser. |
 | `materials-library.js` | The benchmark material library, loaded automatically when the HTML opens. |
+| `plotly.min.js` | Plotting engine (Plotly.js v2.35.2) used by the **Simulation** tab. Loaded automatically. |
+| `plotly.LICENSE` | MIT license for the bundled Plotly.js. |
 
-Both files must sit in the **same folder**. The HTML loads the library via `<script src="materials-library.js">`.
+All files must sit in the **same folder**. The HTML loads the library and plot engine via `<script src="materials-library.js">` and `<script src="plotly.min.js">`. If `plotly.min.js` is absent the app still runs, but the Simulation plot will not render. (An internet connection is used only to fetch the web fonts; the tool falls back to system fonts offline.)
 
 ## What the program does
 
 Given a cathode active material, an optional sacrificial salt, and an anode, it computes the electrode masses, mass loadings, N/P (Q<sub>a</sub>/Q<sub>c</sub>) ratios, C/10 cell currents, and rate-dependent current densities required to balance the cell at a chosen target N/P. It supports faradaic, capacitive, and pseudocapacitive storage types, and exports the results as TXT, Word, Excel, or PDF.
+
+By default the target N/P applies to every cycle. Enabling **Different 1st cycle** (next to the target field) exposes a separate formation-cycle target: the sacrificial salt is then sized so the **1st cycle** lands on its own N/P while the electrode masses hold the **reversible (Nth) cycle** at the main target. With this off, the formation cycle simply tracks the reversible target, so solving for either electrode gives the same answer.
 
 ## How it works
 

@@ -1,0 +1,21 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node (only if tooling is ever added)
+node_modules/
+
+# Files the tool downloads when run from this folder
+# (exports are timestamped; keep the tracked materials-library.js)
+electrode-library.json
+music-balance-*.txt
+music-balance-*.doc
+music-balance-*.xls
+music-balance-*.pdf
