@@ -25,6 +25,7 @@ By default the target N/P applies to every cycle. Enabling **Different 1st cycle
 2. The app reads `window.MUSIC_LIBRARY` and uses it to populate the cathode/anode/salt presets and the **Benchmark material library** panel at the bottom of the page.
 3. If `materials-library.js` is missing or malformed, the app falls back to (a) a copy stored in the browser's `localStorage`, and (b) a small set of hard-coded defaults bundled inside the HTML.
 4. Picking a preset auto-fills the V<sub>th</sub> window, OCV, storage type, and rate-paired C₁/C<sub>N</sub> capacities. All other inputs (composition, target N/P, masses or loadings) are entered manually.
+5. For **capacitive and pseudocapacitive** electrodes, if the library has no measured 1st-cycle value, C₁ is derived from the as-assembled OCV: since a capacitor's capacity scales with voltage span, C₁ = C<sub>rev</sub> · (V<sub>op,hi</sub> − OCV)/(V<sub>th,hi</sub> − V<sub>th,lo</sub>) for the cathode (mirrored for the anode), using the reversible capacity at the slowest available rate. The span follows the **Start in cell** direction — the formula above is for charge-first formation; discharge-first flips each electrode's span. Editing the OCV, the windows, or the start direction re-derives it automatically; typing a C₁ by hand locks it. Faradaic materials keep their library C₁.
 
 ## Saving a new library
 
@@ -46,3 +47,15 @@ window.MUSIC_LIBRARY = { "ac": [...], "saltNa": [...], "saltLi": [...], "anode":
 ```
 
 The four top-level arrays hold cathode active materials, Na sacrificial salts, Li sacrificial salts, and anodes respectively. Each entry carries an `id`, `name`, `sys` (`"Li"` or `"Na"`), `ocv`, `ocvRef`, optional `note`, and a `rates[]` array with the rate-paired capacity, V-window, storage type, and citation. The file is plain JSON wrapped in one assignment, so it can be edited by hand if needed.
+
+## Development
+
+The application is plain HTML/CSS/JS with no build step — just open the HTML file. An **optional** headless regression test (Playwright) drives the real page in Chromium and asserts the solver, both 1st-cycle features, and a broad health check (Plotly load, simulation, export, library):
+
+```bash
+npm install
+npx playwright install chromium   # one-time browser download
+npm test
+```
+
+The test runner and `node_modules/` are development-only; the tool itself still needs no install or server.
