@@ -47,3 +47,15 @@ window.MUSIC_LIBRARY = { "ac": [...], "saltNa": [...], "saltLi": [...], "anode":
 ```
 
 The four top-level arrays hold cathode active materials, Na sacrificial salts, Li sacrificial salts, and anodes respectively. Each entry carries an `id`, `name`, `sys` (`"Li"` or `"Na"`), `ocv`, `ocvRef`, optional `note`, and a `rates[]` array with the rate-paired capacity, V-window, storage type, and citation. The file is plain JSON wrapped in one assignment, so it can be edited by hand if needed.
+
+## Development
+
+The application is plain HTML/CSS/JS with no build step — just open the HTML file. An **optional** headless regression test (Playwright) drives the real page in Chromium and asserts the solver, both 1st-cycle features, and a broad health check (Plotly load, simulation, export, library):
+
+```bash
+npm install
+npx playwright install chromium   # one-time browser download
+npm test
+```
+
+The test runner and `node_modules/` are development-only; the tool itself still needs no install or server.
