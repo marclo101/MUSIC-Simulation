@@ -3157,6 +3157,139 @@ function _simAdvanceOneStroke(k, x_c_in, x_a_in, ctx){
   };
 }
 
+/* ── Rate-dependent deliverable capacity (plan §1.5, M3) ──
+   A cell delivers less capacity at higher current. We capture that by scaling
+   each electrode's Q budget by a factor φ = c(i_app)/c(i_ref), where c(·) is the
+   material's measured capacity read off its rate ladder (the {rv,ru,c1,cN} rows
+   in catAcRates / anRates), i_app is the specific current the SIM runs at, and
+   i_ref is the specific current at which the typed-in capacity was measured.
+   Ratio-based ⇒ a hand-edited capacity is honoured (φ=1 when i_app=i_ref).
+   Everything degrades to φ=1 (today's behaviour) when data is missing: empty
+   ladder, <2 usable rows, unknown i_ref, or a stubbed DOM. Only the AM budgets
+   scale — the salt reservoir (Q_salt_1st) and the map SHAPE are rate-invariant.
+   All specific currents are in mA/g of ACTIVE MATERIAL. */
+
+// Normalize one rate spec (value rv, unit ru) to specific current i in mA/g of
+// active material. `cap` is the capacity (mAh/g) anchoring a 'C' rate; `loading`
+// the AM areal loading in g(AM)/cm² anchoring an 'mA/cm²' rate. Returns null when
+// the conversion is impossible (non-positive rate, 'C' with no capacity,
+// 'mA/cm²' with no loading, or an unknown unit) so the caller drops that row.
+function _simRateNorm(rv, ru, cap, loading){
+  if(!Number.isFinite(rv) || rv<=0) return null;
+  const u = ru || 'C';
+  if(u==='mA/g') return rv;                 // already specific current
+  if(u==='A/g')  return rv*1000;            // A/g → mA/g
+  if(u==='C')    return (Number.isFinite(cap)&&cap>0) ? rv*cap : null;   // 1/h · mAh/g = mA/g
+  if(u==='mA/cm²') return (Number.isFinite(loading)&&loading>0) ? rv/loading : null; // (mA/cm²)/(g/cm²)
+  return null;                              // 'unknown' / unrecognized
+}
+
+// AM areal loading in g(AM)/cm² from the SOLVED masses and the coin-cell area,
+// used only to convert an 'mA/cm²' ladder rate to mA/g. AM mass matches i_app:
+// cathode = lastR.mAC, anode = lastR.mAn·wAM (mg). Area (cm²) = the electrode's
+// own area input when set, else the ⌀12 mm coin default (A12). Returns null when
+// no usable AM mass is available (⇒ mA/cm² rows drop). typeof-guarded so it is
+// inert under the stubbed test DOM.
+function _simAMloading(side){
+  const r   = (typeof window!=='undefined' && window.lastR)   ? window.lastR   : null;
+  const inp = (typeof window!=='undefined' && window.lastInp) ? window.lastInp : null;
+  if(!r) return null;
+  const isCat=(side==='cat');
+  const wAMa=(inp&&inp.an&&Number.isFinite(inp.an.wAM))?inp.an.wAM:0;
+  const mAM_mg = isCat ? (r.mAC||0) : (r.mAn||0)*wAMa;
+  if(!(mAM_mg>0)) return null;
+  const A12v = (typeof A12!=='undefined') ? A12 : Math.PI*0.6*0.6;   // ⌀12 mm ≈ 1.131 cm²
+  let area = (typeof N==='function') ? N(isCat?'cat-ar':'an-ar') : NaN;
+  if(!(Number.isFinite(area) && area>0)) area = A12v;
+  return (mAM_mg/1000)/area;                // (g) / (cm²)
+}
+
+// Build one electrode+cycle rate ladder as [{i,c}] (i = mA/g, c = that cycle's
+// capacity mAh/g), sorted ascending by i, from the selected material's rate rows
+// (catAcRates for 'cat', anRates for 'an'). A row is kept only if it yields a
+// usable current AND has a capacity for THIS cycle; a 'C' row with no this-cycle
+// capacity falls back to the other cycle's capacity to anchor the current, but
+// is still dropped from the ladder if it lacks a this-cycle capacity. Missing
+// arrays (stubbed DOM) ⇒ [].
+function _simRateLadder(side, cycle){
+  const isCat=(side==='cat');
+  const rows = isCat ? (typeof catAcRates!=='undefined'?catAcRates:undefined)
+                     : (typeof anRates   !=='undefined'?anRates   :undefined);
+  if(!Array.isArray(rows) || !rows.length) return [];
+  const loading=_simAMloading(side);
+  const out=[];
+  for(const row of rows){
+    if(!row) continue;
+    const cThis  = cycle==='c1' ? row.c1 : row.cN;
+    const cOther = cycle==='c1' ? row.cN : row.c1;
+    if(!(Number.isFinite(cThis) && cThis>0)) continue;   // need capacity for THIS cycle
+    const cAnchor = (Number.isFinite(cThis)&&cThis>0) ? cThis
+                  : ((Number.isFinite(cOther)&&cOther>0) ? cOther : null);
+    const i=_simRateNorm(row.rv, row.ru, cAnchor, loading);
+    if(!(Number.isFinite(i) && i>0)) continue;           // unconvertible (e.g. mA/cm² w/o loading)
+    out.push({i, c:cThis});
+  }
+  out.sort((a,b)=>a.i-b.i);
+  return out;
+}
+
+// Capacity at specific current i by linear interpolation of the ladder capacity
+// in log10(i), CLAMPED at both ends (no extrapolation past the slowest/fastest
+// measured rate). Ladder is [{i,c}] ascending in i, length ≥1. Returns
+// {c, clamped} where clamped=true when i fell at/outside a ladder end.
+function _simRateCapAt(ladder, i){
+  const n=ladder.length;
+  if(i<=ladder[0].i)     return {c:ladder[0].c,   clamped:true};
+  if(i>=ladder[n-1].i)   return {c:ladder[n-1].c, clamped:true};
+  const L=Math.log10(i);
+  for(let k=0;k<n-1;k++){
+    const a=ladder[k], b=ladder[k+1];
+    if(i>=a.i && i<=b.i){
+      const La=Math.log10(a.i), Lb=Math.log10(b.i);
+      if(Lb-La<1e-15) return {c:a.c, clamped:false};
+      return {c:a.c + (b.c-a.c)*(L-La)/(Lb-La), clamped:false};
+    }
+  }
+  return {c:ladder[n-1].c, clamped:false};
+}
+
+// Rate capacity factor φ = c(i_app)/c(i_ref) for one electrode+cycle budget.
+// Needs ≥2 ladder points and finite positive i_app AND i_ref, else φ=1 (today's
+// behaviour). φ is clamped to a sane band [0.05, 2] so a degenerate ladder can
+// neither zero nor blow up the sim. Returns
+// {phi, i_app, i_ref, usable, clamped}: usable=false ⇒ the φ=1 fallback fired;
+// clamped=true ⇒ i_app/i_ref hit a ladder end OR φ hit the band.
+function _simRateCapFactor(ladder, i_app, i_ref){
+  const info={ phi:1,
+               i_app:(Number.isFinite(i_app)&&i_app>0)?i_app:null,
+               i_ref:(Number.isFinite(i_ref)&&i_ref>0)?i_ref:null,
+               usable:false, clamped:false };
+  if(!Array.isArray(ladder) || ladder.length<2) return info;
+  if(!(Number.isFinite(i_app)&&i_app>0) || !(Number.isFinite(i_ref)&&i_ref>0)) return info;
+  const cApp=_simRateCapAt(ladder, i_app), cRef=_simRateCapAt(ladder, i_ref);
+  if(!(cRef.c>0)) return info;
+  let phi=cApp.c/cRef.c, band=false;
+  const LO=0.05, HI=2;
+  if(phi<LO){ phi=LO; band=true; } else if(phi>HI){ phi=HI; band=true; }
+  info.phi=phi; info.usable=true; info.clamped=cApp.clamped||cRef.clamped||band;
+  return info;
+}
+
+// Reference specific current (mA/g) at which an electrode's typed-in capacity was
+// measured, from the hidden rate inputs (prefix+'-r1'/'-rN' value and '-ru' unit;
+// prefix is 'cat-ac' or 'an'). `capRef` = that input capacity (mAh/g) anchoring a
+// 'C' rate; `loading` = AM areal loading anchoring an 'mA/cm²' rate. Returns null
+// when the rate is unset/unknown or not convertible (⇒ φ=1 for that budget).
+function _simRateRef(prefix, cycle, capRef, loading){
+  const rId=prefix+'-'+(cycle==='c1'?'r1':'rN');
+  const get=(typeof $==='function')?$:(()=>null);
+  const ruEl=get(rId+'-ru'), rvEl=get(rId);
+  const ru=(ruEl && typeof ruEl.value!=='undefined')?ruEl.value:'';
+  const rv=rvEl?parseFloat(rvEl.value):NaN;
+  if(ru==='unknown' || !ru || !(Number.isFinite(rv)&&rv>0)) return null;
+  return _simRateNorm(rv, ru, capRef, loading);
+}
+
 // ── Shared sim input harvesting ──
 // Both sim modes (capacity and time) consume the same physical inputs: the
 // balance result (masses/capacities), V-windows, OCVs, R_eq, the selected
@@ -3181,10 +3314,10 @@ function _simGatherInputs(){
   // Split the cathode first-cycle capacity into AM-only (counts toward EDLC
   // budget, defines the slope) and salt (delivered at fixed V_redox plateau).
   // r.Qc1 = mAC*Cc1 + mS*Cs1 — the salt term is what the plateau eats.
-  const Q_c_AM_1st = (r.mAC||0) * (inp.cat?.ac?.c1 || 0);
-  const Q_c_AM_N   = (r.mAC||0) * (inp.cat?.ac?.cN || 0) * (r.kc || 1);
-  const Q_salt_1st = Math.max(0, (r.Qc1||0) - Q_c_AM_1st);
-  const Q_a_1=r.Qa1, Q_a_N=r.QaN;
+  let Q_c_AM_1st = (r.mAC||0) * (inp.cat?.ac?.c1 || 0);
+  let Q_c_AM_N   = (r.mAC||0) * (inp.cat?.ac?.cN || 0) * (r.kc || 1);
+  const Q_salt_1st = Math.max(0, (r.Qc1||0) - Q_c_AM_1st); // salt is NOT rate-scaled — from the un-scaled AM budget
+  let Q_a_1=r.Qa1, Q_a_N=r.QaN;
   if(!(Q_c_AM_1st>0 && Q_c_AM_N>0 && Q_a_1>0 && Q_a_N>0)){
     return {ok:false, msg:"All four electrode AM capacities must be > 0 — re-run the balance."};
   }
@@ -3217,18 +3350,46 @@ function _simGatherInputs(){
   const plateauSpecCat=_simReadPlateauSpec('cat');
   const plateauSpecAn =_simReadPlateauSpec('an');
 
+  // ── Rate-dependent capacity (plan §1.5): scale the four AM budgets by φ ──
+  // i_app = I_µA / m_AM[mg] (µA/mg ≡ mA/g). Cathode AM mass = r.mAC; anode AM
+  // mass = r.mAn·wAM. Formation (Q_c_AM_1st, Q_a_1) runs at I1_uA, Nth at IN_uA.
+  // i_ref comes from the hidden measurement-rate inputs; c(·) from the ladder.
+  // Any missing piece ⇒ φ=1 (usable:false). The salt budget is untouched.
+  const _wAMa=(inp.an && Number.isFinite(inp.an.wAM))?inp.an.wAM:0;
+  const _mAM_c=(r.mAC||0), _mAM_a=(r.mAn||0)*_wAMa;      // mg of AM per electrode
+  const _iApp=(Iu,m)=> (Number.isFinite(Iu)&&Iu>0 && m>0) ? Iu/m : NaN; // mA/g
+  const _load_c=_simAMloading('cat'), _load_a=_simAMloading('an');
+  const _phiFor=(side,cycle,mAM,Iu,capRef)=>{
+    const prefix = side==='cat' ? 'cat-ac' : 'an';
+    const loading= side==='cat' ? _load_c : _load_a;
+    const f=_simRateCapFactor(_simRateLadder(side,cycle),
+                              _iApp(Iu,mAM),
+                              _simRateRef(prefix,cycle,capRef,loading));
+    return {i_app:f.i_app, i_ref:f.i_ref, phi:f.phi, clamped:f.clamped, usable:f.usable};
+  };
+  const _capC1=(inp.cat&&inp.cat.ac)?inp.cat.ac.c1:null, _capCN=(inp.cat&&inp.cat.ac)?inp.cat.ac.cN:null;
+  const _capA1=inp.an?inp.an.c1:null, _capAN=inp.an?inp.an.cN:null;
+  const rateInfo={
+    cat:{ c1:_phiFor('cat','c1',_mAM_c,I1_uA,_capC1), cN:_phiFor('cat','cN',_mAM_c,IN_uA,_capCN) },
+    an :{ c1:_phiFor('an', 'c1',_mAM_a,I1_uA,_capA1), cN:_phiFor('an', 'cN',_mAM_a,IN_uA,_capAN) },
+  };
+  Q_c_AM_1st *= rateInfo.cat.c1.phi;
+  Q_c_AM_N   *= rateInfo.cat.cN.phi;
+  Q_a_1      *= rateInfo.an.c1.phi;
+  Q_a_N      *= rateInfo.an.cN.phi;
+
   // Build the four canonical maps ONCE so both compute modes share them.
   const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
              Vocv_c, Vocv_a, startDir,
              Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
              constraints, plateaus, Req,
-             plateauSpecCat, plateauSpecAn};
+             plateauSpecCat, plateauSpecAn, rateInfo};
   ctx.map1_c=_simBuildElectrodeMap('cat','1st',ctx);
   ctx.mapN_c=_simBuildElectrodeMap('cat','Nth',ctx);
   ctx.map1_a=_simBuildElectrodeMap('an','1st',ctx);
   ctx.mapN_a=_simBuildElectrodeMap('an','Nth',ctx);
 
-  return {ok:true, ctx,
+  return {ok:true, ctx, rateInfo,
     Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
     Vop_c_hi:inp.cat.Vop[0], Vop_c_lo:inp.cat.Vop[1],
     Vop_a_hi:inp.an.Vop[0],  Vop_a_lo:inp.an.Vop[1]};

@@ -50,6 +50,13 @@ const parts = [
   extract('_simInterleaveSalt', 'fn'),
   extract('_simConstraintStop', 'fn'),
   extract('_simReadPlateauSpec', 'fn'),
+  // Rate module (M3) — rate-dependent deliverable capacity (plan §1.5).
+  extract('_simRateNorm', 'fn'),
+  extract('_simAMloading', 'fn'),
+  extract('_simRateLadder', 'fn'),
+  extract('_simRateCapAt', 'fn'),
+  extract('_simRateCapFactor', 'fn'),
+  extract('_simRateRef', 'fn'),
   // SOC engine v2 (M2) — walker + compute modes.
   extract('_simAdvanceOneStroke', 'fn'),
   extract('_simGatherInputs', 'fn'),
