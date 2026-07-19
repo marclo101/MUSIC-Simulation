@@ -432,7 +432,14 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .fld-with-clear{display:flex;align-items:center;gap:0}
 
 /* ── Clear-all-masses button in the results header ── */
-.clr-all-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--ruleS);background:var(--paper);color:var(--ink2);border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11px;font-weight:500;line-height:1;transition:all .12s;white-space:nowrap}
+.clr-all-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--ruleS);background:var(--paper);color:var(--ink2);border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11px;font-weight:500;line-height:1;transition:all .12s;white-space:nowrap}
+/* Manual-recalculation button. Input edits only mark the results stale; the
+   solver runs when this is clicked. `.dirty` = inputs changed since last run. */
+.recalc-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border:1px solid var(--cp);background:var(--cp);color:#fff;border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11.5px;font-weight:600;line-height:1;transition:all .12s;white-space:nowrap;margin-right:8px}
+.recalc-btn:hover{filter:brightness(1.08)}
+.recalc-btn.dirty{background:#B7791F;border-color:#B7791F;box-shadow:0 0 0 3px rgba(183,121,31,.18);animation:recalcPulse 1.6s ease-in-out infinite}
+@keyframes recalcPulse{0%,100%{box-shadow:0 0 0 3px rgba(183,121,31,.18)}50%{box-shadow:0 0 0 6px rgba(183,121,31,.06)}}
+.recalc-stale{margin:6px 0 10px;padding:7px 12px;font-size:11.5px;color:#7B341E;background:#FFF5EB;border-left:3px solid #DD6B20;border-radius:3px}
 .clr-all-btn:hover{background:var(--erB);color:var(--er);border-color:rgba(225,90,79,.3)}
 .clr-all-btn:active{transform:translateY(1px)}
 
@@ -795,7 +802,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <!-- ══ RESULTS ══ -->
 <div class="res" id="resPanel" style="display:none">
-<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="clr-all-btn" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
+<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="recalc-btn" id="recalcBtn" onclick="recalcNow()" data-help="Runs the balance solver on the current inputs. Edits to the materials, masses, targets or rates never recompute automatically — they mark the results as stale until you click here." title="Compute the balance from the current inputs">⟳ Recalculate</button><button class="clr-all-btn" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
+<div class="recalc-stale" id="recalcStale" style="display:none">Inputs changed — the results below are <strong>stale</strong>. Click <strong>⟳ Recalculate</strong> to update them.</div>
 <div id="r-mode" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)." data-help-key="res_mode_indicator" style="display:none;text-align:center;padding:6px 18px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cp);background:var(--cl);border-bottom:1px solid var(--ruleS)"><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)."></button></div>
 
 <!-- Top-level results tabs -->
@@ -6336,7 +6344,25 @@ function solve(inp){
 }
 
 /* ══ RENDER ══ */
+// Manual-recalculation gate. Every input edit across the app funnels into
+// recalc() (inline handlers + the global card input listener); under manual
+// mode that only FLAGS the results as stale — the solver itself runs in
+// recalcNow(), triggered by the ⟳ Recalculate button (and by the load/test
+// paths that need an immediate compute). Sim-tab display controls (cycle,
+// R_eq, smoothing, constraints, axis units) stay live: they re-render the
+// existing solution without re-solving.
+let calcDirty=false;
+function _calcStaleUI(dirty){
+  const b=$("recalcBtn"); if(b) b.classList.toggle("dirty",dirty);
+  const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
+}
 function recalc(){
+  calcDirty=true;
+  _calcStaleUI(true);
+}
+function recalcNow(){
+  calcDirty=false;
+  _calcStaleUI(false);
   // Auto-detect mode from inputs
   mode=detectMode();
   updateMassFieldStyles();
@@ -7361,7 +7387,9 @@ function applyDevDefaults(force){
     // Storage types were written directly (no onStorageTypeChange), so sync
     // the faradaic plateau-editor visibility with the values set above.
     if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
-    if(typeof recalc==="function") recalc();
+    // Dev/test scenario wants immediate results — run the solver, not the
+    // manual-mode stale marker.
+    if(typeof recalcNow==="function") recalcNow();
   }catch(e){
     // Don't take the page down if a field id is missing after a refactor.
     console.warn("[dev defaults] skipped:",e);
