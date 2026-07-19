@@ -6357,6 +6357,17 @@ function _calcStaleUI(dirty){
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
 }
 function recalc(){
+  // The FIRST calculation is automatic: until a solve has produced results
+  // there is nothing to go stale, and requiring a click just to see the
+  // first numbers is pointless friction. The initial setup also flows
+  // through the loading-ratio preview into the first pinned-mass solve, so
+  // the ratio→pinned mode transition stays automatic too. Once results of
+  // the current mode exist, edits only mark them stale and the
+  // ⟳ Recalculate button applies them.
+  if(typeof window==="undefined" || !window.lastR ||
+     (window.lastMode==="ratio" && typeof detectMode==="function" && detectMode()!=="ratio")){
+    recalcNow(); return;
+  }
   calcDirty=true;
   _calcStaleUI(true);
 }
