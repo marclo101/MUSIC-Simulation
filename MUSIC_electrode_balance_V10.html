@@ -2930,7 +2930,6 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
     const consumed = Math.max(0, Math.min(seg.Q_end, Q_stop) - seg.Q_start);
     if(consumed > 1e-12){
       seg.plateauRef.Q_remaining = Math.max(0, seg.plateauRef.Q_remaining - consumed);
-      seg.plateauRef.everActivated = true;
     }
   }
 
@@ -2970,7 +2969,17 @@ function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
   };
 }
 
-function simComputeSeries(){
+// ── Shared sim input harvesting ──
+// Both sim modes (capacity and time) consume the same physical inputs: the
+// balance result (masses/capacities), V-windows, OCVs, R_eq, the selected
+// currents, the stop constraints and the salt plateau state. Gather and
+// validate them in ONE place so the two modes can never drift apart.
+// Returns {ok:false,msg} on the first validation failure; on success returns
+// {ok:true, ctx, …} where ctx is ready for _simAdvanceOneStroke and the rest
+// are the pass-through fields each mode's result object exposes to the
+// renderers. The plateau state is rebuilt on every call so each walk starts
+// from a full salt reservoir.
+function _simGatherInputs(){
   const inp=window.lastInp,r=window.lastR;
   if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
   if(!r.sane||!(r.mCat>0)||!(r.mAn>0)) return {ok:false, msg:"Balance result is not valid — check the Single-mode inputs."};
@@ -3004,14 +3013,30 @@ function simComputeSeries(){
   const Vocv_c=N("cat-ac-ocv"),Vocv_a=N("an-ocv");
   if(!Number.isFinite(Vocv_c)||!Number.isFinite(Vocv_a)) return {ok:false, msg:"Set OCV values for both electrodes."};
 
-  const Vop_c_hi=inp.cat.Vop[0], Vop_c_lo=inp.cat.Vop[1];
-  const Vop_a_hi=inp.an.Vop[0],  Vop_a_lo=inp.an.Vop[1];
-
   const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
   let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
 
   const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
   const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
+
+  const constraints=_simReadConstraints();
+  const plateaus=_simBuildPlateauState(Q_salt_1st);
+  return {ok:true,
+    ctx:{Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
+         Vocv_c, Vocv_a, startDir,
+         Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+         constraints, plateaus, Req},
+    Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
+    Vop_c_hi:inp.cat.Vop[0], Vop_c_lo:inp.cat.Vop[1],
+    Vop_a_hi:inp.an.Vop[0],  Vop_a_lo:inp.an.Vop[1]};
+}
+
+function simComputeSeries(){
+  const g=_simGatherInputs();
+  if(!g.ok) return g;
+  const {ctx, Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
+         Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo}=g;
+  const {Vocv_c, Vocv_a}=ctx;
 
   let target=parseInt($("simCycleN")?.value);
   if(!Number.isFinite(target)||target<1) target=1;
@@ -3023,13 +3048,6 @@ function simComputeSeries(){
   const showDir=simDirState;
   const isFirstHalf=(showDir===startDir);
   const k_target=isFirstHalf ? (2*target-1) : (2*target);
-
-  const constraints=_simReadConstraints();
-  const plateaus=_simBuildPlateauState(Q_salt_1st, Vth_c_lo, Vth_c_hi);
-  const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
-             Vocv_c, Vocv_a, startDir,
-             Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             Req, constraints, plateaus};
 
   // Walk every stroke from k=1 up to k_target, advancing the cumulative
   // (V_c, V_a) state and the salt's per-stage Q_remaining. The walk has to
@@ -3082,11 +3100,14 @@ function simComputeSeries(){
 // Returns an array of stages (possibly length 1 for a single-plateau salt,
 // possibly length 0 if the salt is off / unsupported / no V_redox set).
 //
-// Each stage: {V, frac, Q_total, Q_remaining, source, label, everActivated}.
+// Each stage: {V, frac, Q_total, Q_remaining, source, label}.
 // The walker decrements Q_remaining as charge sweeps consume each stage.
 // `Q_salt_total` is the salt's irreversible 1st-cycle capacity from the
 // balance (mS · Cs1 in µAh); the stages partition that across V_redox plateaus.
-function _simBuildPlateauState(Q_salt_total, Vth_c_lo, Vth_c_hi){
+// Stages whose V_redox sits outside the reachable window need no explicit
+// filtering — the charge sweep simply never gets there, which is the
+// physically correct outcome.
+function _simBuildPlateauState(Q_salt_total){
   if(!(Q_salt_total > 1e-9)) return [];
   if(!(typeof saltOn === 'boolean') || !saltOn) return [];
   const stages = _simReadSaltStages();
@@ -3106,8 +3127,7 @@ function _simBuildPlateauState(Q_salt_total, Vth_c_lo, Vth_c_hi){
       V: s.V, frac,
       Q_total: Q, Q_remaining: Q,
       source: 'salt-stage-' + (i+1),
-      label: stages.length === 1 ? 'salt' : ('stage ' + (i+1)),
-      everActivated: false
+      label: stages.length === 1 ? 'salt' : ('stage ' + (i+1))
     });
   }
   return out;
@@ -3142,54 +3162,19 @@ function _simReadSaltStages(){
 // stroke contributes an instantaneous IR jump at its start (vertical
 // segment at the boundary) and a linear ramp to its physical end voltage.
 function simComputeTimeSeries(){
-  const inp=window.lastInp,r=window.lastR;
-  if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
-  if(!r.sane||!(r.mCat>0)||!(r.mAn>0)) return {ok:false, msg:"Balance result is not valid — check the Single-mode inputs."};
+  const g=_simGatherInputs();
+  if(!g.ok) return g;
+  const {ctx, Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
+         Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo}=g;
+  const {Vocv_c, Vocv_a}=ctx;
 
-  const stCat=inp.cat.ac.st,stAn=inp.an.st;
-  if(stCat!=="capacitive"||stAn!=="capacitive"){
-    const lab=s=>s==="capacitive"?"EDLC":s==="pseudocapacitive"?"pseudocapacitive":"faradaic";
-    return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
-  }
-
-  const Q_c_AM_1st = (r.mAC||0) * (inp.cat?.ac?.c1 || 0);
-  const Q_c_AM_N   = (r.mAC||0) * (inp.cat?.ac?.cN || 0) * (r.kc || 1);
-  const Q_salt_1st = Math.max(0, (r.Qc1||0) - Q_c_AM_1st);
-  const Q_a_1=r.Qa1, Q_a_N=r.QaN;
-  if(!(Q_c_AM_1st>0 && Q_c_AM_N>0 && Q_a_1>0 && Q_a_N>0)){
-    return {ok:false, msg:"All four electrode AM capacities must be > 0 — re-run the balance."};
-  }
-
-  const Vth_c_hi=Math.max(inp.cat.Vth[0], inp.cat.Vth[1]);
-  const Vth_c_lo=Math.min(inp.cat.Vth[0], inp.cat.Vth[1]);
-  const Vth_a_hi=Math.max(inp.an.Vth[0],  inp.an.Vth[1]);
-  const Vth_a_lo=Math.min(inp.an.Vth[0],  inp.an.Vth[1]);
-  const dVc=Vth_c_hi-Vth_c_lo, dVa=Vth_a_hi-Vth_a_lo;
-  if(!(dVc>0&&dVa>0)) return {ok:false, msg:"Theoretical V-windows (V_th) must span a non-zero range."};
-
-  const Vocv_c=N("cat-ac-ocv"),Vocv_a=N("an-ocv");
-  if(!Number.isFinite(Vocv_c)||!Number.isFinite(Vocv_a)) return {ok:false, msg:"Set OCV values for both electrodes."};
-
-  const Vop_c_hi=inp.cat.Vop[0], Vop_c_lo=inp.cat.Vop[1];
-  const Vop_a_hi=inp.an.Vop[0],  Vop_a_lo=inp.an.Vop[1];
-
-  const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
-  let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
-
-  const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
-  const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
+  // Time mode needs a real current to convert charge to time (Δt = Q/I);
+  // capacity mode tolerates I = 0 (it only affects the IR offset).
   if(!(I1_uA>0)||!(IN_uA>0)) return {ok:false, msg:"Pick a current rate (1st-cycle and N-th cycle rows in the Rates table) so the time series has a non-zero current."};
 
   let Ncyc=parseInt($("simCycleN")?.value);
   if(!Number.isFinite(Ncyc)||Ncyc<1) Ncyc=1;
   if(Ncyc>100) Ncyc=100;
-
-  const constraints=_simReadConstraints();
-  const plateaus=_simBuildPlateauState(Q_salt_1st, Vth_c_lo, Vth_c_hi);
-  const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
-             Vocv_c, Vocv_a, startDir,
-             Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-             Req, constraints, plateaus};
 
   const k_total=2*Ncyc;
   const strokes=[];
@@ -3522,15 +3507,9 @@ function _renderSimPlotTime(host, xUnit){
                    tracegroupgap:4};
 
     // Status text — cycle count, current density(ies), total time.
-    const _fmtCur=uA=>{
-      if(!Number.isFinite(uA)||uA<=0) return "—";
-      if(uA>=1000) return (uA/1000).toFixed(2)+" mA";
-      if(uA>=1)    return uA.toFixed(2)+" µA";
-      return uA.toFixed(3)+" µA";
-    };
     const sameI = Math.abs(series.I1_uA - series.IN_uA) < 1e-9;
-    const Itxt = sameI ? `I = ${_fmtCur(series.I1_uA)}`
-                       : `I_1st = ${_fmtCur(series.I1_uA)} · I_Nth = ${_fmtCur(series.IN_uA)}`;
+    const Itxt = sameI ? `I = ${_simFmtCur(series.I1_uA)}`
+                       : `I_1st = ${_simFmtCur(series.I1_uA)} · I_Nth = ${_simFmtCur(series.IN_uA)}`;
     if(lblEl){
       const tDisp=conv(series.totalTime);
       lblEl.textContent = `${series.Ncyc} cycle${series.Ncyc>1?"s":""} (${series.strokes.length} half-cycle${series.strokes.length===1?"":"s"})`+
@@ -3671,8 +3650,12 @@ function renderSimPlot(){
       const irHalf = series.irHalf || 0;
       if(limCat){
         if(Number.isFinite(series.Qa_natural)){
+          // Extension ends at the anode's natural reach from THIS stroke's
+          // start (V_a_at_budget), not the V_th window extreme — the two
+          // differ once imbalance from earlier cycles has offset the start.
+          // Using the extreme would kink the dashed line off the true slope.
           const xExt=[conv(series.Qmin), conv(series.Qa_natural)];
-          const yExt=[vc_an_end_shifted, series.V_a_target - irHalf];
+          const yExt=[vc_an_end_shifted, series.V_a_at_budget - irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
             line:{color:colA, width:1.6, dash:'2px,4px'},
             opacity:0.55,
@@ -3688,8 +3671,9 @@ function renderSimPlot(){
                         '(forced to stop · cathode is limiting cell capacity)<extra></extra>'});
       } else {
         if(Number.isFinite(series.Qc_natural)){
+          // Same as the anode case above: end at V_c_at_budget, not V_th.
           const xExt=[conv(series.Qmin), conv(series.Qc_natural)];
-          const yExt=[vc_cat_end_shifted, series.V_c_target + irHalf];
+          const yExt=[vc_cat_end_shifted, series.V_c_at_budget + irHalf];
           traces.push({x:xExt, y:yExt, yaxis:'y', mode:'lines',
             line:{color:colC, width:1.6, dash:'2px,4px'},
             opacity:0.55,
@@ -3800,9 +3784,9 @@ function renderSimPlot(){
       // whose natural reach is drawn). The limiter already lands on its
       // V_th (already in vc_cat / vc_an).
       if(limCat && Number.isFinite(series.Qa_natural)){
-        yV1.push(series.V_a_target - irHalf);
+        yV1.push(series.V_a_at_budget - irHalf);
       } else if(!limCat && Number.isFinite(series.Qc_natural)){
-        yV1.push(series.V_c_target + irHalf);
+        yV1.push(series.V_c_at_budget + irHalf);
       }
     }
     let y1lo=Math.min.apply(null,yV1), y1hi=Math.max.apply(null,yV1);
@@ -3867,7 +3851,6 @@ function renderSimPlot(){
       const limited  = limCat ? "anode"   : "cathode";
       const limitedNatural = limCat ? series.Qa_natural : series.Qc_natural;
       const limitedV       = limCat ? vc_an_end_shifted : vc_cat_end_shifted;
-      const limitedTargetV = limCat ? series.V_a_target : series.V_c_target;
       const irHalf = series.irHalf || 0;
       // Strip the IR offset back off the displayed end-voltage of the
       // limited electrode so the message quotes the physical V (not the
