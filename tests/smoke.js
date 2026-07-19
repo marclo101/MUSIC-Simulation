@@ -19,7 +19,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
 (async () => {
   let browser;
   try {
-    browser = await chromium.launch();
+    // CHROMIUM_PATH: optional override for environments with a pre-installed
+    // browser that doesn't match Playwright's pinned revision.
+    browser = await chromium.launch(
+      process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   } catch (e) {
     console.error("Could not launch Chromium. Run: npx playwright install chromium\n" + e.message);
     process.exit(2);

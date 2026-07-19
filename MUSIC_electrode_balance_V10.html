@@ -2735,236 +2735,424 @@ function stepSimCycle(d){
   if(typeof renderSimPlot==="function") renderSimPlot();
 }
 
-// Compute the V-vs-Q traces for ONE stroke (charge or discharge) of ONE cycle.
-// Strokes are indexed chronologically k=1,2,3,…  Stroke 1 has direction
-// `startDir`; subsequent strokes alternate. Cycle N pairs strokes (2N−1, 2N).
-//
-// Slope rule for stroke k=1 (and only k=1): the angular coefficient is
-// (V_extreme − V_OCV) / Q_1st instead of ΔV_th / Q_1st. End potential is
-// the V_th extreme reached by going `startDir` from V_OCV. All later
-// strokes — including cycle 1's reverse half (k=2) — traverse the full
-// ΔV_th window over Q_Nth (slope = ±ΔV_th / Q_Nth) because the formation
-// loss is captured entirely by the first half-stroke.
-//
-// Galvanostatic coupling: in a real two-electrode cell both electrodes pass
-// the same charge Q, so a stroke ends as soon as EITHER electrode hits its
-// own V_th extreme. The non-limiting electrode keeps its intrinsic slope
-// but is truncated at Q = Qmin = min(Q_c_max, Q_a_max), landing on a
-// partial voltage. That partial voltage becomes the starting V for the
-// next stroke — which is how cumulative imbalance from an unbalanced cell
-// shows up in the simulation.
+/* ── Canonical electrode Q–V map (SOC engine v2, plan §1) ──
+   Each electrode's state is its charge q on a canonical piecewise-linear map
+   V(q); V is derived, never stored. q advances +ΔQ on CELL CHARGE for BOTH
+   electrodes — the cathode delithiates (V rises with q), the anode lithiates
+   (V falls with q) — so the SOC x = q/Q_tot ∈ [0,1] runs from the discharged
+   end (x=0) to the charged end (x=1) on each side. A map is:
+     {Q_tot, x0, segs:[{q0,q1,V0,V1,kind:'ramp'|'plateau'}], side, phase}
+   'ramp'    → V linear in q (dV/dq≠0; a zero-length ramp q0==q1 is a vertical
+               step — the f_r=0 staircase ends, rendered like the IR jump).
+   'plateau' → V constant (V0==V1) over a finite q-span (a redox plateau).
+   Benefits over the v1 V-drift model: exact charge conservation; imbalance
+   pins an electrode at x=0/1 instead of drifting V outside its window;
+   truncated strokes resume from the pinned SOC; reversible plateaus reappear
+   on the return stroke.
 
-// Compute the geometry of stroke k starting from cumulative state (V_c_in,
-// V_a_in). Builds a per-electrode ordered list of segments that make up the
-// V-vs-Q trace, applies the universal stop rule "first electrode to deliver
-// its EDLC budget Q_AM stops the cell", and surfaces the truncated segments
-// for the renderer to plot as a polyline.
-//
-// Segment kinds (functional standard for capacity-by-segment summation):
-//   {kind:'edlc',    counts:true,  Q_start, Q_end, V_start, V_end, slope}
-//     Linear EDLC ramp; Q_end-Q_start contributes to that electrode's
-//     AM-only "EDLC budget" (Q_c_AM_1st / Q_c_AM_N or Q_a_1 / Q_a_N).
-//   {kind:'plateau', counts:false, Q_start, Q_end, V_start (=V_end), slope:0, plateauRef}
-//     Faradaic plateau (sacrificial-salt redox). Charge passes through but
-//     does NOT consume the EDLC budget. plateauRef points back at the salt-
-//     stage state object so Q_remaining can be decremented across strokes.
-//
-// Galvanostatic stop rule (segment-independent): each electrode publishes a
-// Q_at_budget = total Q passed when its EDLC budget is exhausted (sum of
-// EDLC contributions = Q_AM, plus any preceding plateau Q for the cathode).
-// The cell stops at min(Q_at_budget_cat, Q_at_budget_an, Q_first_constraint)
-// — whichever runs out first limits the whole cell, which is exactly why an
-// undercapacitive anode can stop the cathode mid-plateau.
-function _simAdvanceOneStroke(k, V_c_in, V_a_in, ctx){
+   Map construction (plan §1.1, cathode ascending V / anode mirrored):
+   nodes W_lo,V_1<…<V_n,W_hi with ramp fraction f_r=1−Σf_i; interval spans
+   ΔV_j, S=ΣΔV_j; ramp j gets f_r·Q_tot·ΔV_j/S, plateau i gets f_i·Q_tot.
+   An empty plateau spec ⇒ one ramp W_lo→W_hi (EDLC / pseudocapacitive).
+   Formation map (plan §1.2): the span is extended to
+   [min(W_lo,OCV), max(W_hi,OCV)] so an OCV outside the window still lands on
+   the map; the extension counts as extra ramp span in S. Then g = capacity
+   fraction between OCV and the far window edge the formation stroke heads
+   toward, Q_tot,1 = Q₁/g, and x₀ = OCV's position on the map. For an empty
+   plateau spec this reproduces the v1 OCV-anchored slope (V_far−OCV)/Q₁ in
+   both start directions. */
+
+// V at absolute map-charge `q` within a single segment (linear ramp or flat
+// plateau; a vertical q0==q1 ramp returns its low-q endpoint).
+function _simVonSeg(s, q){
+  if(s.kind==='plateau') return s.V0;
+  const w=s.q1-s.q0;
+  if(w<1e-15) return s.V0;
+  return s.V0 + (s.V1-s.V0)*(q-s.q0)/w;
+}
+
+// Ascending-V position (normalized 0..1 from the spanLo end) of voltage V on
+// an ascending-V normalized segment list. Used to place OCV on the map.
+function _simXatV_asc(asc, V){
+  if(!asc.length) return 0;
+  const Vbot=asc[0].V0, Vtop=asc[asc.length-1].V1;
+  if(V<=Vbot+1e-12) return 0;
+  if(V>=Vtop-1e-12) return 1;
+  for(const s of asc){
+    const vlo=Math.min(s.V0,s.V1), vhi=Math.max(s.V0,s.V1);
+    if(V>=vlo-1e-12 && V<=vhi+1e-12){
+      if(s.kind==='plateau' || Math.abs(s.V1-s.V0)<1e-15) return s.q0; // OCV on a plateau → entry
+      return s.q0 + (s.q1-s.q0)*(V-s.V0)/(s.V1-s.V0);
+    }
+  }
+  return 1;
+}
+
+// Build one electrode's canonical map. `side` is 'cat'|'an', `phase` is
+// '1st' (formation) or 'Nth' (reversible). Reads window/OCV/budget/plateau
+// spec and startDir from ctx (see comment above).
+function _simBuildElectrodeMap(side, phase, ctx){
+  const isCat=(side==='cat');
+  const Vhi = isCat ? ctx.Vth_c_hi : ctx.Vth_a_hi;
+  const Vlo = isCat ? ctx.Vth_c_lo : ctx.Vth_a_lo;
+  const OCV = isCat ? ctx.Vocv_c   : ctx.Vocv_a;
+  const spec = (isCat ? ctx.plateauSpecCat : ctx.plateauSpecAn) || [];
+  const isFormation=(phase==='1st');
+  const Qbud = isFormation ? (isCat ? ctx.Q_c_AM_1st : ctx.Q_a_1)
+                           : (isCat ? ctx.Q_c_AM_N   : ctx.Q_a_N);
+
+  // Span: full V_th window (Nth), extended past the window edge to swallow an
+  // out-of-window OCV (formation).
+  const spanLo = isFormation ? Math.min(Vlo, OCV) : Vlo;
+  const spanHi = isFormation ? Math.max(Vhi, OCV) : Vhi;
+  const S = spanHi - spanLo;
+
+  // Plateau nodes strictly inside the REAL window (out-of-window plateaus are
+  // skipped — the sweep never reaches them, plan §1.7). Renormalize if the
+  // fractions over-commit (Σf_i>1); the leftover is ramp span (f_r).
+  const plats=[]; let sumF=0;
+  for(const p of spec){
+    const V=(p&&Number.isFinite(p.V))?p.V:NaN;
+    const f=(p&&Number.isFinite(p.frac))?p.frac:0;
+    if(!Number.isFinite(V)||f<=0) continue;
+    if(V<=Vlo+1e-9 || V>=Vhi-1e-9) continue;
+    plats.push({V, f}); sumF+=f;
+  }
+  plats.sort((a,b)=>a.V-b.V);
+  if(sumF>1){ for(const p of plats) p.f/=sumF; sumF=1; }
+  const fr=Math.max(0, 1-sumF);
+
+  // Normalized (Q_tot=1) ascending-V sequence:
+  //   ramp(spanLo→V_1)·plateau(V_1)·…·plateau(V_n)·ramp(V_n→spanHi)
+  const nodes=[spanLo, ...plats.map(p=>p.V), spanHi];
+  const asc=[]; let qn=0;
+  for(let i=0;i<nodes.length-1;i++){
+    const V0=nodes[i], V1=nodes[i+1];
+    const dq=(S>1e-15)? fr*((V1-V0)/S) : (i===0?fr:0);
+    asc.push({q0:qn, q1:qn+dq, V0, V1, kind:'ramp'}); qn+=dq;
+    if(i<plats.length){
+      asc.push({q0:qn, q1:qn+plats[i].f, V0:plats[i].V, V1:plats[i].V, kind:'plateau'}); qn+=plats[i].f;
+    }
+  }
+  const qEnd = qn>1e-15 ? qn : 1;
+  for(const s of asc){ s.q0/=qEnd; s.q1/=qEnd; }
+
+  // Q_tot and initial SOC.
+  let Q_tot, x0;
+  if(isFormation){
+    const posAsc=_simXatV_asc(asc, OCV);          // 0..1 from spanLo (ascending V)
+    const x_ocv = isCat ? posAsc : (1-posAsc);    // electrode SOC (q=0 end)
+    const chargeFirst=(ctx.startDir==='charge');
+    // q climbs toward q=1 on charge for BOTH electrodes; the far q-edge is
+    // q=1 for a charge-first formation stroke, q=0 for discharge-first.
+    let g = chargeFirst ? (1-x_ocv) : x_ocv;
+    if(!(g>1e-6)){ g=1e-6; (ctx._mapWarn=ctx._mapWarn||[]).push(side+' formation OCV at/beyond far window edge — clamped'); }
+    Q_tot = Qbud/g;
+    x0 = x_ocv;
+  } else {
+    Q_tot = Qbud; x0 = 0;
+  }
+
+  // Emit in electrode-q orientation (q increases on charge). Cathode keeps
+  // the ascending-V order; the anode reverses it so q=0 sits at the high-V
+  // (spanHi) end and V falls as q grows.
+  const segs=[];
+  if(isCat){
+    for(const s of asc) segs.push({q0:s.q0*Q_tot, q1:s.q1*Q_tot, V0:s.V0, V1:s.V1, kind:s.kind});
+  } else {
+    for(let i=asc.length-1;i>=0;i--){
+      const s=asc[i];
+      segs.push({q0:(1-s.q1)*Q_tot, q1:(1-s.q0)*Q_tot, V0:s.V1, V1:s.V0, kind:s.kind});
+    }
+  }
+  return {Q_tot, x0, segs, side, phase};
+}
+
+// V at absolute map-charge q (clamped to [0,Q_tot]) by walking the map.
+function _simMapVatQ(map, q){
+  const segs=map.segs; if(!segs.length) return NaN;
+  const Q=Math.max(0, Math.min(q, map.Q_tot));
+  for(const s of segs){
+    if(Q<=s.q1+1e-12){
+      if(s.kind==='plateau' || Math.abs(s.q1-s.q0)<1e-15) return (Q<=s.q0+1e-12)?s.V0:s.V1;
+      return _simVonSeg(s, Q);
+    }
+  }
+  return segs[segs.length-1].V1;
+}
+
+// Stroke-relative slice of a map: traverse from absolute charge q_now by up to
+// dQ in direction sigma (+1 charge / −1 discharge). Returns an ordered segment
+// list with Q_start/Q_end starting at 0 and increasing, V following the
+// traversal direction, plus `slope`, `counts:true` and a `vertical` flag for
+// zero-capacity steps.
+function _simMapSliceFrom(map, q_now, dQ, sigma){
+  const segs=map.segs, out=[];
+  const qStart=Math.max(0, Math.min(q_now, map.Q_tot));
+  const reach = sigma>0 ? Math.min(map.Q_tot, qStart+Math.max(0,dQ))
+                        : Math.max(0, qStart-Math.max(0,dQ));
+  const lo=Math.min(qStart,reach), hi=Math.max(qStart,reach);
+  const parts=[];
+  for(const s of segs){
+    if(Math.abs(s.q1-s.q0)<1e-15){ // vertical step
+      if(s.q0>=lo-1e-12 && s.q0<=hi+1e-12 && Math.abs(s.V1-s.V0)>1e-15)
+        parts.push({qa:s.q0, qb:s.q0, Va:s.V0, Vb:s.V1, kind:'ramp', vert:true});
+      continue;
+    }
+    const a=Math.max(s.q0, lo), b=Math.min(s.q1, hi);
+    if(b<=a+1e-15) continue;
+    parts.push({qa:a, qb:b, Va:_simVonSeg(s,a), Vb:_simVonSeg(s,b), kind:s.kind, vert:false});
+  }
+  let acc=0;
+  const emit=(qlen,Vs,Ve,kind,vert)=>{
+    out.push({kind, counts:true, Q_start:acc, Q_end:acc+qlen, V_start:Vs, V_end:Ve,
+              slope:(kind==='ramp'&&qlen>1e-15)?(Ve-Vs)/qlen:0, vertical:!!vert});
+    acc+=qlen;
+  };
+  if(sigma>0){ for(const p of parts) emit(p.qb-p.qa, p.Va, p.Vb, p.kind, p.vert); }
+  else       { for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; emit(p.qb-p.qa, p.Vb, p.Va, p.kind, p.vert); } }
+  return out;
+}
+
+// V at stroke-relative charge q by walking an emitted stroke segment list.
+function _simVatQinSegs(segs, q){
+  if(!segs.length) return 0;
+  if(q<=segs[0].Q_start) return segs[0].V_start;
+  for(const s of segs){
+    if(q<=s.Q_end+1e-12){
+      if(s.Q_end-s.Q_start<1e-15) return s.V_end; // vertical: post-step value
+      return s.V_start + (s.V_end-s.V_start)*(q-s.Q_start)/(s.Q_end-s.Q_start);
+    }
+  }
+  return segs[segs.length-1].V_end;
+}
+
+// Truncate a stroke segment list at total charge Q (drop everything past Q,
+// shorten the segment that straddles it). Mirrors the v1 renderer contract.
+function _simTruncSegs(segs, Q, tol){
+  const out=[];
+  for(const s of segs){
+    if(s.Q_start>=Q-tol) break;
+    if(s.Q_end<=Q+tol){ out.push(s); continue; }
+    const dq=Q-s.Q_start;
+    const V_end_t=(s.kind==='ramp' && (s.Q_end-s.Q_start)>1e-15) ? s.V_start+s.slope*dq : s.V_start;
+    out.push({...s, Q_end:Q, V_end:V_end_t});
+    break;
+  }
+  return out;
+}
+
+// Overlay sacrificial-salt plateaus onto the cathode AM slice (plan §1.4).
+// Salt is oxidation-only (CHARGE strokes) and draws from a GLOBAL reservoir
+// (`p.Q_remaining`, counts:false) that does NOT advance the AM SOC. Plateaus
+// with V_redox above the current cathode V and reservoir left are inserted
+// where the AM potential rises through V_redox; at equal V salt goes first
+// (the reservoir drains before an AM plateau continues). Returns a fresh
+// stroke-relative segment list with cumulative total charge.
+function _simInterleaveSalt(amSlice, V_start, sign, plateaus){
+  const out=[]; let acc=0;
+  const pushSeg=(kind,counts,qlen,Vs,Ve,ref,vert)=>{
+    out.push({kind, counts, Q_start:acc, Q_end:acc+qlen, V_start:Vs, V_end:Ve,
+              slope:(kind==='ramp'&&qlen>1e-15)?(Ve-Vs)/qlen:0, plateauRef:ref||null, vertical:!!vert});
+    acc+=qlen;
+  };
+  const queue = (sign>0 && Array.isArray(plateaus))
+    ? plateaus.filter(p=>p && p.Q_remaining>1e-12 && Number.isFinite(p.V) && p.V>V_start+1e-9)
+              .slice().sort((a,b)=>a.V-b.V)
+    : [];
+  let qi=0;
+  for(const s of amSlice){
+    if(s.vertical){
+      while(qi<queue.length && Math.abs(queue[qi].V-s.V_start)<=1e-9){ const p=queue[qi]; pushSeg('plateau',false,p.Q_remaining,p.V,p.V,p,false); qi++; }
+      pushSeg('ramp',true,0,s.V_start,s.V_end,null,true);
+    } else if(s.kind==='ramp'){
+      let Vcur=s.V_start, remain=s.Q_end-s.Q_start; const slope=s.slope;
+      while(qi<queue.length && slope>1e-15 && queue[qi].V<=s.V_end+1e-12){
+        const p=queue[qi];
+        if(p.V<Vcur-1e-12){ qi++; continue; }
+        const dq=(p.V-Vcur)/slope;
+        if(dq>1e-15){ pushSeg('ramp',true,dq,Vcur,p.V,null,false); Vcur=p.V; remain-=dq; }
+        pushSeg('plateau',false,p.Q_remaining,p.V,p.V,p,false); qi++;
+      }
+      if(remain>1e-15 || (s.Q_end-s.Q_start)<=1e-15) pushSeg('ramp',true,Math.max(0,remain),Vcur,s.V_end,null,false);
+    } else { // AM plateau (reversible, counts:true, never touches a reservoir)
+      while(qi<queue.length && Math.abs(queue[qi].V-s.V_start)<=1e-9){ const p=queue[qi]; pushSeg('plateau',false,p.Q_remaining,p.V,p.V,p,false); qi++; }
+      pushSeg('plateau',true,s.Q_end-s.Q_start,s.V_start,s.V_end,null,false);
+    }
+  }
+  return out;
+}
+
+// Earliest constraint crossing over BOTH electrodes' stroke segment lists.
+// Merges cat+an breakpoints (V_cat, V_an each linear on every sub-interval)
+// and also tests zero-capacity vertical steps: a bound whose V lies inside a
+// vertical's V-span is hit AT that charge. IR (dV_IR_full) shifts cell-target
+// bounds only. Returns the earliest {Q,key} in (0,Qcap], or null.
+function _simConstraintStop(catSegs, anSegs, cons, dV_IR_full, Qcap, tol){
+  const bps=new Set([0, Qcap]);
+  const add=q=>{ if(q>=-tol && q<=Qcap+tol) bps.add(Math.min(Math.max(q,0),Qcap)); };
+  for(const s of catSegs){ add(s.Q_start); add(s.Q_end); }
+  for(const s of anSegs){  add(s.Q_start); add(s.Q_end); }
+  const pts=[...bps].sort((a,b)=>a-b);
+  let best=null;
+  const consider=(Q,key)=>{ if(Q>1e-12 && Q<=Qcap+tol && (!best || Q<best.Q-1e-15)) best={Q:Math.min(Q,Qcap), key}; };
+  // linear sub-intervals
+  for(let i=0;i<pts.length-1;i++){
+    const qa=pts[i], qb=pts[i+1]; if(qb<=qa+1e-12) continue;
+    const Vc_a=_simVatQinSegs(catSegs,qa), Vc_b=_simVatQinSegs(catSegs,qb);
+    const Va_a=_simVatQinSegs(anSegs,qa),  Va_b=_simVatQinSegs(anSegs,qb);
+    const sc=(Vc_b-Vc_a)/(qb-qa), sa=(Va_b-Va_a)/(qb-qa);
+    for(const key in cons){
+      const c=cons[key]; if(!c||!Number.isFinite(c.V)) continue;
+      const lim=c.V, bd=c.def.bound, tgt=c.def.target;
+      let V0, slope;
+      if(tgt==='cat'){ V0=Vc_a; slope=sc; }
+      else if(tgt==='an'){ V0=Va_a; slope=sa; }
+      else { V0=Vc_a-Va_a+dV_IR_full; slope=sc-sa; }
+      if(Math.abs(slope)<1e-15) continue;
+      const movingIn=(bd==='max'&&slope>0)||(bd==='min'&&slope<0);
+      if(!movingIn) continue;
+      if(bd==='max'&&V0>=lim-1e-12) continue;
+      if(bd==='min'&&V0<=lim+1e-12) continue;
+      const dq=(lim-V0)/slope;
+      if(dq<=0 || dq>(qb-qa)+1e-9) continue;
+      consider(qa+dq, key);
+    }
+  }
+  // vertical steps (zero-capacity ramps)
+  const verts=[];
+  for(const s of catSegs) if(s.vertical) verts.push({side:'cat', Q:s.Q_start, Vlo:Math.min(s.V_start,s.V_end), Vhi:Math.max(s.V_start,s.V_end)});
+  for(const s of anSegs)  if(s.vertical) verts.push({side:'an',  Q:s.Q_start, Vlo:Math.min(s.V_start,s.V_end), Vhi:Math.max(s.V_start,s.V_end)});
+  for(const v of verts){
+    for(const key in cons){
+      const c=cons[key]; if(!c||!Number.isFinite(c.V)) continue;
+      const tgt=c.def.target; let inSpan=false;
+      if((tgt==='cat'&&v.side==='cat')||(tgt==='an'&&v.side==='an')){
+        inSpan = c.V>=v.Vlo-1e-12 && c.V<=v.Vhi+1e-12;
+      } else if(tgt==='cell'){
+        const other = v.side==='cat' ? _simVatQinSegs(anSegs,v.Q) : _simVatQinSegs(catSegs,v.Q);
+        const cLo=(v.side==='cat'? v.Vlo-other : other-v.Vhi)+dV_IR_full;
+        const cHi=(v.side==='cat'? v.Vhi-other : other-v.Vlo)+dV_IR_full;
+        inSpan = c.V>=cLo-1e-12 && c.V<=cHi+1e-12;
+      }
+      if(inSpan) consider(v.Q, key);
+    }
+  }
+  return best;
+}
+
+// Compute stroke k from per-electrode SOC (x_c_in, x_a_in) on the ACTIVE map
+// (map₁ for k=1, map_N for k≥2 — the caller carries fractional x across the
+// switch). Emits stroke-relative cat/an segment lists (cathode overlaid with
+// salt), applies the galvanostatic stop
+//   Q_stop = min(cat Q_at_end incl. salt extension, an Q_at_end, earliest
+//                constraint crossing)
+// and returns the truncated segments plus the new SOC. Salt charge advances
+// the anode but NOT the cathode AM SOC (counts:false).
+function _simAdvanceOneStroke(k, x_c_in, x_a_in, ctx){
   const dir = (k%2===1) ? ctx.startDir : (ctx.startDir==="charge"?"discharge":"charge");
   const sign = (dir==="charge") ? +1 : -1;
   const isFormation = (k===1);
 
-  // AM-only EDLC budgets — the per-stroke charge each electrode is allowed
-  // to deliver via its capacitive mechanism alone. Salt plateau charge is
-  // separate and does not consume this.
-  const Qc_AM_budget = isFormation ? ctx.Q_c_AM_1st : ctx.Q_c_AM_N;
-  const Qa_budget    = isFormation ? ctx.Q_a_1      : ctx.Q_a_N;
-  const Iu           = isFormation ? ctx.I1_uA      : ctx.IN_uA;
+  // Active maps: formation map for stroke 1, reversible map thereafter. The
+  // caller carries fractional SOC across the switch, so x here is already on
+  // the active map.
+  const map_c = isFormation ? ctx.map1_c : ctx.mapN_c;
+  const map_a = isFormation ? ctx.map1_a : ctx.mapN_a;
+  const Iu    = isFormation ? ctx.I1_uA  : ctx.IN_uA;
 
-  // V each electrode is heading toward this stroke (charge: cathode → V_th_hi,
-  // anode → V_th_lo; flipped for discharge). Slopes are intrinsic to the
-  // electrode and constant within a stroke (anchored at OCV for formation).
-  const V_c_target = (sign > 0) ? ctx.Vth_c_hi : ctx.Vth_c_lo;
-  const V_a_target = (sign > 0) ? ctx.Vth_a_lo : ctx.Vth_a_hi;
-  const slope_c_AM = isFormation
-    ? (V_c_target - ctx.Vocv_c) / Qc_AM_budget
-    : ( sign * ctx.dVc) / Qc_AM_budget;
-  const slope_a    = isFormation
-    ? (V_a_target - ctx.Vocv_a) / Qa_budget
-    : (-sign * ctx.dVa) / Qa_budget;
+  const q_c_in = Math.max(0, Math.min(x_c_in*map_c.Q_tot, map_c.Q_tot));
+  const q_a_in = Math.max(0, Math.min(x_a_in*map_a.Q_tot, map_a.Q_tot));
+  const V_c_in = _simMapVatQ(map_c, q_c_in);
+  const V_a_in = _simMapVatQ(map_a, q_a_in);
+  const tol = 1e-9 * Math.max(map_c.Q_tot, map_a.Q_tot, 1);
 
-  // Build the cathode segment list. On a charge sweep, salt plateaus that
-  // sit above V_c_in and still have Q_remaining > 0 are inserted (sorted by
-  // ascending V_redox so the lowest plateau activates first). On a discharge
-  // sweep V is moving down past V_redox — no activation, no plateau.
-  //
-  // Salt has its own global charge-budget (the plateau's Q_remaining, sized
-  // by mS·Cs1) — not the AM's per-stroke budget. It is NOT reset per cycle:
-  // each charge stroke that reaches V_redox consumes from the same shared
-  // pool until it is exhausted. Whatever the cycle's stop condition allows
-  // (anode limit, user constraint, cathode AM budget) gets eaten this stroke,
-  // the rest stays in p.Q_remaining for the next charge stroke.
-  const tol = 1e-9 * Math.max(Qc_AM_budget, Qa_budget, 1);
-  const catSegs = [];
-  let Vc = V_c_in, Q_c_total = 0, Q_c_budget_used = 0;
+  // AM capacity remaining to each electrode in this direction (q climbs on
+  // charge, falls on discharge for BOTH sides).
+  const Qc_AM_avail = sign>0 ? (map_c.Q_tot - q_c_in) : q_c_in;
+  const Qa_avail    = sign>0 ? (map_a.Q_tot - q_a_in) : q_a_in;
 
-  const plateauQueue = (sign > 0 && Array.isArray(ctx.plateaus))
-    ? ctx.plateaus
-        .filter(p => p && p.Q_remaining > 1e-12 && Number.isFinite(p.V)
-                  && p.V > V_c_in + 1e-9 && slope_c_AM > 1e-15)
-        .slice()
-        .sort((a, b) => a.V - b.V)
-    : [];
+  // Cathode segment list = AM slice overlaid with sacrificial-salt plateaus
+  // (charge only). Salt adds counts:false charge that extends total-Q past
+  // the AM budget but does not advance the cathode's map position.
+  const amSliceC = _simMapSliceFrom(map_c, q_c_in, Qc_AM_avail, sign);
+  const catSegs  = _simInterleaveSalt(amSliceC, V_c_in, sign, ctx.plateaus);
+  // Anode segment list — the AM slice (this side carries no salt).
+  const anSegs   = _simMapSliceFrom(map_a, q_a_in, Qa_avail, sign);
 
-  for(const p of plateauQueue){
-    const dV = p.V - Vc;
-    const dQ = dV / slope_c_AM;
-    if(dQ <= tol) continue;
-    const left = Qc_AM_budget - Q_c_budget_used;
-    if(dQ >= left - tol){
-      // Budget exhausted before reaching this plateau — emit the truncated
-      // EDLC ramp and stop building. (Lower plateaus that we couldn't reach
-      // remain unreacted; their Q_remaining is unchanged.)
-      catSegs.push({kind:'edlc', counts:true,
-                    Q_start:Q_c_total, Q_end:Q_c_total + left,
-                    V_start:Vc, V_end:Vc + slope_c_AM*left, slope:slope_c_AM});
-      Q_c_total += left; Q_c_budget_used += left; Vc += slope_c_AM*left;
-      break;
-    }
-    catSegs.push({kind:'edlc', counts:true,
-                  Q_start:Q_c_total, Q_end:Q_c_total + dQ,
-                  V_start:Vc, V_end:p.V, slope:slope_c_AM});
-    Q_c_total += dQ; Q_c_budget_used += dQ; Vc = p.V;
-    catSegs.push({kind:'plateau', counts:false,
-                  Q_start:Q_c_total, Q_end:Q_c_total + p.Q_remaining,
-                  V_start:p.V, V_end:p.V, slope:0, plateauRef:p});
-    Q_c_total += p.Q_remaining;
-  }
-  // Final EDLC remainder (only if the budget hasn't already been spent).
-  if(Q_c_budget_used + tol < Qc_AM_budget){
-    const left = Qc_AM_budget - Q_c_budget_used;
-    catSegs.push({kind:'edlc', counts:true,
-                  Q_start:Q_c_total, Q_end:Q_c_total + left,
-                  V_start:Vc, V_end:Vc + slope_c_AM*left, slope:slope_c_AM});
-    Q_c_total += left; Q_c_budget_used += left; Vc += slope_c_AM*left;
-  }
-  const Qc_at_budget = Q_c_total;
-  const Vc_at_budget = Vc;
+  // Q_at_end: total stroke-charge at which each electrode exhausts its reach.
+  // The cathode's includes the salt extension (last emitted segment's Q_end).
+  const Qc_at_budget = catSegs.length ? catSegs[catSegs.length-1].Q_end : 0;
+  const Qa_at_budget = anSegs.length  ? anSegs[anSegs.length-1].Q_end  : 0;
+  const Vc_at_budget = catSegs.length ? catSegs[catSegs.length-1].V_end : V_c_in;
+  const Va_at_budget = anSegs.length  ? anSegs[anSegs.length-1].V_end  : V_a_in;
 
-  // Anode trace — single EDLC segment, no plateaus on this side.
-  const anSegsFull = [{
-    kind:'edlc', counts:true,
-    Q_start:0, Q_end:Qa_budget,
-    V_start:V_a_in, V_end:V_a_in + slope_a*Qa_budget, slope:slope_a
-  }];
-  const Qa_at_budget = Qa_budget;
-  const Va_at_budget = V_a_in + slope_a*Qa_budget;
-
-  // Galvanostatic stop — purely Q-based, segment-independent.
+  // Galvanostatic stop — Q-based; the electrode that runs out first limits.
   let Q_stop, limiting;
   if(Qc_at_budget + tol < Qa_at_budget){ Q_stop = Qc_at_budget; limiting = "cathode"; }
   else if(Qa_at_budget + tol < Qc_at_budget){ Q_stop = Qa_at_budget; limiting = "anode"; }
   else { Q_stop = Math.min(Qc_at_budget, Qa_at_budget); limiting = null; }
 
   // IR offset on the cell terminal voltage: V_cell_terminal = V_c − V_a + sign·I·R_eq.
-  // Per-electrode potentials (V_cat, V_an vs reference) do not include cell IR,
-  // so this offset only applies to cell-target constraints.
+  // Per-electrode potentials do not carry cell IR, so this offset only applies
+  // to cell-target constraints.
   const Req = Number.isFinite(ctx.Req) ? ctx.Req : 0;
   const dV_IR_full = sign * (Iu * Req) * 1e-6;
 
-  // Constraint check — segment-aware. For each cathode segment, V_cat is
-  // either linear (edlc) or constant (plateau); V_an is linear throughout.
-  // Walk every (segment × constraint) pair and pick the earliest crossing.
-  const cons = ctx.constraints || {};
+  // Constraint crossing — walk BOTH electrodes' segment lists (anode may now
+  // carry plateaus / vertical steps) and pick the earliest crossing before
+  // the budget-limited Q_stop.
+  const cr = _simConstraintStop(catSegs, anSegs, ctx.constraints||{}, dV_IR_full, Q_stop, tol);
   let consHit = null;
-  for(const key in cons){
-    const c = cons[key]; if(!c || !Number.isFinite(c.V)) continue;
-    const lim = c.V, bd = c.def.bound, tgt = c.def.target;
-    for(const seg of catSegs){
-      if(seg.Q_start >= Q_stop - tol) break;
-      const V_a_seg_start = V_a_in + slope_a * seg.Q_start;
-      const slope_c_seg = (seg.kind === 'edlc') ? seg.slope : 0;
-      let V0, slope_sig;
-      if(tgt === 'cat')      { V0 = seg.V_start;                                slope_sig = slope_c_seg; }
-      else if(tgt === 'an')  { V0 = V_a_seg_start;                              slope_sig = slope_a; }
-      else                   { V0 = seg.V_start - V_a_seg_start + dV_IR_full;   slope_sig = slope_c_seg - slope_a; }
-      if(Math.abs(slope_sig) < 1e-15) continue;
-      const movingIn = (bd === 'max' && slope_sig > 0) ||
-                       (bd === 'min' && slope_sig < 0);
-      if(!movingIn) continue;
-      if(bd === 'max' && V0 >= lim - 1e-12) continue;
-      if(bd === 'min' && V0 <= lim + 1e-12) continue;
-      const dQ_to_lim = (lim - V0) / slope_sig;
-      if(dQ_to_lim <= 0) continue;
-      const segLen = seg.Q_end - seg.Q_start;
-      if(dQ_to_lim > segLen + 1e-9) continue;
-      const Q_abs = seg.Q_start + dQ_to_lim;
-      if(Q_abs + tol < Q_stop){ Q_stop = Q_abs; limiting = null; consHit = key; }
-    }
-  }
+  if(cr && cr.Q + tol < Q_stop){ Q_stop = cr.Q; limiting = null; consHit = cr.key; }
   if(!Number.isFinite(Q_stop) || Q_stop < 0) Q_stop = 0;
 
-  // Resolve cathode V at Q_stop by walking segments.
-  let V_c_end_at_stop = V_c_in;
-  for(const seg of catSegs){
-    if(Q_stop <= seg.Q_end + tol){
-      const dq = Math.max(0, Q_stop - seg.Q_start);
-      V_c_end_at_stop = seg.V_start + (seg.kind === 'edlc' ? seg.slope * dq : 0);
-      break;
-    }
-    V_c_end_at_stop = seg.V_end;
+  // Advance SOC: the anode passes all Q_stop charge; the cathode advances only
+  // by the AM (counts:true) portion — salt charge does not move its map SOC.
+  let dQ_am_c = 0;
+  for(const s of catSegs){
+    if(s.Q_start >= Q_stop - tol) break;
+    if(s.counts === false) continue;
+    dQ_am_c += Math.min(s.Q_end, Q_stop) - s.Q_start;
   }
-  if(Q_stop > Qc_at_budget + tol) V_c_end_at_stop = Vc_at_budget;
-  const V_a_end_at_stop = V_a_in + slope_a * Math.min(Q_stop, Qa_budget);
+  const dQ_am_a = Math.min(Q_stop, Qa_at_budget);
+  const q_c_end = q_c_in + sign*dQ_am_c;
+  const q_a_end = q_a_in + sign*dQ_am_a;
+  const x_c_end = map_c.Q_tot>0 ? q_c_end/map_c.Q_tot : 0;
+  const x_a_end = map_a.Q_tot>0 ? q_a_end/map_a.Q_tot : 0;
+  const V_c_end = _simMapVatQ(map_c, q_c_end);
+  const V_a_end = _simMapVatQ(map_a, q_a_end);
 
-  // Mutate plateau Q_remaining for the slice consumed in this stroke.
+  // Decrement the global salt reservoirs for the slice actually consumed.
   for(const seg of catSegs){
-    if(seg.kind !== 'plateau' || !seg.plateauRef) continue;
+    if(seg.kind !== 'plateau' || seg.counts !== false || !seg.plateauRef) continue;
     if(seg.Q_start >= Q_stop) break;
     const consumed = Math.max(0, Math.min(seg.Q_end, Q_stop) - seg.Q_start);
-    if(consumed > 1e-12){
-      seg.plateauRef.Q_remaining = Math.max(0, seg.plateauRef.Q_remaining - consumed);
-    }
+    if(consumed > 1e-12) seg.plateauRef.Q_remaining = Math.max(0, seg.plateauRef.Q_remaining - consumed);
   }
 
-  // Truncated segment lists for the renderer (everything past Q_stop is
-  // dropped; the segment crossing Q_stop is shortened).
-  const _trunc = (segs, Q) => {
-    const out = [];
-    for(const s of segs){
-      if(s.Q_start >= Q - tol) break;
-      if(s.Q_end <= Q + tol){ out.push(s); continue; }
-      const dq = Q - s.Q_start;
-      const V_end_t = s.kind === 'edlc' ? s.V_start + s.slope * dq : s.V_start;
-      out.push({...s, Q_end:Q, V_end:V_end_t});
-      break;
-    }
-    return out;
-  };
-  const catSegsTrunc = _trunc(catSegs, Q_stop);
-  const anSegsTrunc  = _trunc(anSegsFull, Q_stop);
+  const catSegsTrunc = _simTruncSegs(catSegs, Q_stop, tol);
+  const anSegsTrunc  = _simTruncSegs(anSegs,  Q_stop, tol);
 
   return {
     dir, sign, isFormation,
-    Qc_full: Qc_AM_budget, Qa_full: Qa_budget, Iu,
+    Qc_full: Qc_at_budget, Qa_full: Qa_at_budget, Iu,
     Qc_max: Qc_at_budget, Qa_max: Qa_at_budget,
     Qmin: Q_stop,
+    x_c_in, x_a_in, x_c_end, x_a_end,
+    q_c_in, q_a_in, q_c_end, q_a_end,
     V_c_in, V_a_in,
-    V_c_end: V_c_end_at_stop, V_a_end: V_a_end_at_stop,
+    V_c_end, V_a_end,
     V_c_at_budget: Vc_at_budget, V_a_at_budget: Va_at_budget,
-    V_c_target, V_a_target,
-    dV_c: V_c_end_at_stop - V_c_in,
-    dV_a: V_a_end_at_stop - V_a_in,
-    slope_c: slope_c_AM, slope_a,
+    V_c_target: (sign>0) ? ctx.Vth_c_hi : ctx.Vth_c_lo,
+    V_a_target: (sign>0) ? ctx.Vth_a_lo : ctx.Vth_a_hi,
+    dV_c: V_c_end - V_c_in,
+    dV_a: V_a_end - V_a_in,
+    slope_c: catSegs.length ? catSegs[0].slope : 0,
+    slope_a: anSegs.length  ? anSegs[0].slope  : 0,
     catSegs: catSegsTrunc, anSegs: anSegsTrunc,
     catSegsFull: catSegs,
-    anSegsFull,
+    anSegsFull: anSegs,
     limiting, consHit,
   };
 }
@@ -3021,14 +3209,38 @@ function _simGatherInputs(){
 
   const constraints=_simReadConstraints();
   const plateaus=_simBuildPlateauState(Q_salt_1st);
-  return {ok:true,
-    ctx:{Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
-         Vocv_c, Vocv_a, startDir,
-         Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
-         constraints, plateaus, Req},
+
+  // Reversible AM redox plateau specs (faradaic electrodes). The UI editor is
+  // a later step, so these are empty for now (EDLC/pseudocap ⇒ pure ramps),
+  // but the map path is fully wired: tests exercise it by injecting specs into
+  // ctx before building the maps.
+  const plateauSpecCat=_simReadPlateauSpec('cat');
+  const plateauSpecAn =_simReadPlateauSpec('an');
+
+  // Build the four canonical maps ONCE so both compute modes share them.
+  const ctx={Vth_c_hi, Vth_c_lo, Vth_a_hi, Vth_a_lo, dVc, dVa,
+             Vocv_c, Vocv_a, startDir,
+             Q_c_AM_1st, Q_c_AM_N, Q_a_1, Q_a_N, I1_uA, IN_uA,
+             constraints, plateaus, Req,
+             plateauSpecCat, plateauSpecAn};
+  ctx.map1_c=_simBuildElectrodeMap('cat','1st',ctx);
+  ctx.mapN_c=_simBuildElectrodeMap('cat','Nth',ctx);
+  ctx.map1_a=_simBuildElectrodeMap('an','1st',ctx);
+  ctx.mapN_a=_simBuildElectrodeMap('an','Nth',ctx);
+
+  return {ok:true, ctx,
     Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
     Vop_c_hi:inp.cat.Vop[0], Vop_c_lo:inp.cat.Vop[1],
     Vop_a_hi:inp.an.Vop[0],  Vop_a_lo:inp.an.Vop[1]};
+}
+
+// Reversible AM redox plateau spec [{V,frac}] per electrode (faradaic). The
+// per-electrode editor arrives with the UI step; until then this returns [] so
+// AM maps stay single ramps (EDLC / pseudocapacitive). Σfrac≤1; the builder
+// skips plateaus outside the V_th window and renormalizes an over-committed
+// sum.
+function _simReadPlateauSpec(side){
+  return [];
 }
 
 function simComputeSeries(){
@@ -3049,17 +3261,19 @@ function simComputeSeries(){
   const isFirstHalf=(showDir===startDir);
   const k_target=isFirstHalf ? (2*target-1) : (2*target);
 
-  // Walk every stroke from k=1 up to k_target, advancing the cumulative
-  // (V_c, V_a) state and the salt's per-stage Q_remaining. The walk has to
-  // be galvanostatic — each previous stroke may have ended short on the
-  // non-limiting electrode — otherwise stroke 2 onward would lose the
-  // imbalance the simulation is trying to expose, and salt activation would
-  // not propagate correctly when the user starts in the discharge direction.
-  let V_c=Vocv_c, V_a=Vocv_a;
+  // Walk every stroke from k=1 up to k_target, advancing the per-electrode
+  // SOC (x_c, x_a) and the salt reservoirs. The walk has to be galvanostatic —
+  // each previous stroke may have ended short on the non-limiting electrode —
+  // otherwise stroke 2 onward would lose the imbalance the simulation is
+  // trying to expose, and salt activation would not propagate correctly when
+  // the user starts in the discharge direction. The initial SOC is OCV's
+  // position on the formation map (x0); fractional x carries across the
+  // map₁→map_N switch after stroke 1.
+  let x_c=ctx.map1_c.x0, x_a=ctx.map1_a.x0;
   let stroke=null;
   for(let k=1;k<=k_target;k++){
-    stroke=_simAdvanceOneStroke(k, V_c, V_a, ctx);
-    if(k<k_target){ V_c=stroke.V_c_end; V_a=stroke.V_a_end; }
+    stroke=_simAdvanceOneStroke(k, x_c, x_a, ctx);
+    if(k<k_target){ x_c=stroke.x_c_end; x_a=stroke.x_a_end; }
   }
 
   const dir_t=stroke.dir;
@@ -3081,7 +3295,7 @@ function simComputeSeries(){
     catSegsFull:stroke.catSegsFull,
     Qc, Qa, Qmin,
     Qc_natural:stroke.Qc_max, Qa_natural:stroke.Qa_max,
-    V_c_start:V_c, V_a_start:V_a,
+    V_c_start:stroke.V_c_in, V_a_start:stroke.V_a_in,
     V_c_end, V_a_end,
     V_c_at_budget:stroke.V_c_at_budget, V_a_at_budget:stroke.V_a_at_budget,
     V_c_target:stroke.V_c_target, V_a_target:stroke.V_a_target,
@@ -3185,14 +3399,15 @@ function simComputeTimeSeries(){
   // with V_cat's plateau corners we sample it at the same breakpoints.
   const ts=[0], vc=[Vocv_c], va=[Vocv_a], vcell=[Vocv_c-Vocv_a];
 
-  let V_c=Vocv_c, V_a=Vocv_a, t=0; // t in seconds
+  let x_c=ctx.map1_c.x0, x_a=ctx.map1_a.x0, t=0; // t in seconds; x = per-electrode SOC
   let frozen=false;
   for(let k=1; k<=k_total; k++){
-    const stroke=_simAdvanceOneStroke(k, V_c, V_a, ctx);
+    const stroke=_simAdvanceOneStroke(k, x_c, x_a, ctx);
     const Iu=stroke.Iu, Qmin=stroke.Qmin;
+    const V_c_in=stroke.V_c_in, V_a_in=stroke.V_a_in;
     if(!Number.isFinite(Qmin) || Qmin<=1e-12){
       strokes.push({k, t_start:t, t_end:t, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, frozen:true,
-                    catSegs:[], anSegs:[], V_c_in:V_c, V_a_in:V_a});
+                    catSegs:[], anSegs:[], V_c_in, V_a_in});
       frozen=true; break;
     }
     const dt = Qmin * 3600 / Iu;
@@ -3203,13 +3418,15 @@ function simComputeTimeSeries(){
     // Q→t conversion within this stroke: t = t_start + Q*3600/Iu.
     const _qToT = q => t + q * 3600 / Iu;
     // IR step at the stroke boundary: append two samples at t_start with the
-    // pre- and post-jump voltages.
+    // pre- and post-jump voltages. V_c_in / V_a_in are read from the active
+    // map at the carried SOC, so a map-switch discontinuity (formation → Nth)
+    // shows up here as part of the vertical step.
     ts.push(t);
-    vc.push(V_c + half); va.push(V_a - half);
-    vcell.push((V_c+half) - (V_a-half));
-    // Walk cathode segment endpoints, sampling V_an linearly along the way.
-    const an = (stroke.anSegs && stroke.anSegs[0]) || null;
-    const _va = q => an ? (an.V_start + an.slope * Math.max(0, Math.min(q, an.Q_end))) : V_a;
+    vc.push(V_c_in + half); va.push(V_a_in - half);
+    vcell.push((V_c_in+half) - (V_a_in-half));
+    // Walk cathode segment endpoints, sampling V_an by walking the anode
+    // segment list (the anode may now carry plateaus of its own).
+    const _va = q => _simVatQinSegs(stroke.anSegs, q);
     for(const s of (stroke.catSegs||[])){
       const tEnd = _qToT(s.Q_end);
       ts.push(tEnd);
@@ -3220,12 +3437,12 @@ function simComputeTimeSeries(){
 
     strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu,
                   limiting:stroke.limiting, consHit:stroke.consHit,
-                  V_c_in:V_c, V_a_in:V_a,
+                  V_c_in, V_a_in,
                   V_c_end:stroke.V_c_end, V_a_end:stroke.V_a_end,
                   catSegs:stroke.catSegs, anSegs:stroke.anSegs,
                   irHalf:half});
 
-    V_c=stroke.V_c_end; V_a=stroke.V_a_end; t=t_end;
+    x_c=stroke.x_c_end; x_a=stroke.x_a_end; t=t_end;
   }
 
   return {ok:true, mode:'time',
@@ -3255,32 +3472,39 @@ function _simSegsToPolyline(segs, vOffset){
   return {xs, ys};
 }
 
-// V_cell(Q) breakpoints: V_cat(Q) − V_an(Q) sampled at every cathode segment
-// boundary. The anode is one linear segment (no plateaus on that side), so
-// V_an(Q) = V_a_start + slope_a · Q over the whole stroke.
+// V_cell(Q) breakpoints: V_cat(Q) − V_an(Q) sampled at the UNION of both
+// electrodes' segment boundaries. Either side may now carry plateaus (anode
+// faradaic maps, cathode AM+salt plateaus), so both are walked as segment
+// lists rather than assuming a single linear anode.
 function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
   if(!catSegs.length || !anSegs.length) return {xs:[], ys:[]};
-  const an = anSegs[0];
-  const _va = q => an.V_start + an.slope * Math.max(0, Math.min(q, an.Q_end));
-  const v0_pre  = catSegs[0].V_start - an.V_start;
-  const v0_post = (catSegs[0].V_start + halfC) - (an.V_start + halfA);
-  const xs = [0, 0], ys = [v0_pre, v0_post];
-  for(const s of catSegs){
-    xs.push(s.Q_end);
-    ys.push((s.V_end + halfC) - (_va(s.Q_end) + halfA));
+  const bps=new Set();
+  for(const s of catSegs){ bps.add(s.Q_start); bps.add(s.Q_end); }
+  for(const s of anSegs){  bps.add(s.Q_start); bps.add(s.Q_end); }
+  const pts=[...bps].sort((a,b)=>a-b);
+  const vcat=q=>_simVatQinSegs(catSegs,q), van=q=>_simVatQinSegs(anSegs,q);
+  const q0=pts[0];
+  const v0_pre  = vcat(q0) - van(q0);
+  const v0_post = (vcat(q0) + halfC) - (van(q0) + halfA);
+  const xs = [q0, q0], ys = [v0_pre, v0_post];
+  for(let i=1;i<pts.length;i++){
+    xs.push(pts[i]);
+    ys.push((vcat(pts[i]) + halfC) - (van(pts[i]) + halfA));
   }
   return {xs, ys};
 }
 
 // Salt-plateau polyline (orange overlay). Emits one horizontal segment per
-// plateau in the cathode segment list, separated by NaN gaps so non-adjacent
-// plateaus don't draw a connecting line. Returns an empty trace when no
-// plateau segments are present (e.g. salt off, or V_redox not yet reached).
+// SACRIFICIAL-salt plateau (counts:false) in the cathode segment list,
+// separated by NaN gaps so non-adjacent plateaus don't draw a connecting
+// line. Reversible AM plateaus (counts:true) stay in the green cathode trace,
+// so they are skipped here. Returns an empty trace when no salt plateau
+// segments are present (salt off, or V_redox not yet reached).
 function _simSaltPolylineFromSegs(catSegs, vOffset){
   const xs=[], ys=[];
   let prevWasPlateau=false;
   for(const s of catSegs){
-    if(s.kind !== 'plateau'){
+    if(s.kind !== 'plateau' || s.counts !== false){
       if(prevWasPlateau){ xs.push(NaN); ys.push(NaN); prevWasPlateau=false; }
       continue;
     }
@@ -3410,7 +3634,7 @@ function _renderSimPlotTime(host, xUnit){
       const half = s.irHalf || 0;
       const _qToT = q => s.t_start + q * 3600 / s.Iu;
       for(const seg of s.catSegs){
-        if(seg.kind !== 'plateau'){
+        if(seg.kind !== 'plateau' || seg.counts !== false){
           if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
           continue;
         }

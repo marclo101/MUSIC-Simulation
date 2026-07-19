@@ -39,6 +39,18 @@ const parts = [
   extract('_simReadConstraints', 'fn'),
   extract('_simBuildPlateauState', 'fn'),
   extract('_simReadSaltStages', 'fn'),
+  // SOC engine v2 (M1) — canonical map builder + helpers.
+  extract('_simVonSeg', 'fn'),
+  extract('_simXatV_asc', 'fn'),
+  extract('_simBuildElectrodeMap', 'fn'),
+  extract('_simMapVatQ', 'fn'),
+  extract('_simMapSliceFrom', 'fn'),
+  extract('_simVatQinSegs', 'fn'),
+  extract('_simTruncSegs', 'fn'),
+  extract('_simInterleaveSalt', 'fn'),
+  extract('_simConstraintStop', 'fn'),
+  extract('_simReadPlateauSpec', 'fn'),
+  // SOC engine v2 (M2) — walker + compute modes.
   extract('_simAdvanceOneStroke', 'fn'),
   extract('_simGatherInputs', 'fn'),
   extract('simComputeSeries', 'fn'),
@@ -56,7 +68,13 @@ const inputs = {
   'cat-Vop-hi': '4.2', 'cat-Vop-lo': '1.0',
   'an-Vop-hi': '2.5',  'an-Vop-lo': '-0.5', // unreachable → anode stops on its budget, not a constraint
   'cat-s-vredox': '3.3',
-  'simCons_cellMin_v': '0.00', // explicit Cell V_min = 0 V (the bug scenario)
+  // Cell V_min raised from 0 V to 0.60 V for the SOC engine (v2). Under the
+  // SOC model the undersized anode pins the cathode at x=0 while the internal
+  // V_cell is still ≈0.5 V, so a 0 V limit is never reached and the IR-aware
+  // constraint math would go untested. 0.60 V sits inside the reachable band
+  // on discharge for BOTH R_eq=10 kΩ (measured V_cell lands on 0.60) and
+  // R_eq=0 (internal V_cell lands on 0.60), keeping that math covered.
+  'simCons_cellMin_v': '0.60',
 };
 global.$ = id => (id in inputs)
   ? { value: inputs[id], classList: { contains: () => false } }
@@ -66,8 +84,12 @@ global.saltOn = true;
 global.simRateSel = { '1st': { I_uA: 10 }, 'Nth': { I_uA: 10 } };
 global.document = { querySelectorAll: () => [] };
 // Anode (100 µAh) is smaller than cathode 1st-cycle total (50 AM + 150 salt),
-// so the formation charge stops mid-plateau and the salt must spread its
-// remaining budget over later cycles — the user's multi-cycle scenario.
+// so the formation charge stops mid-plateau (undercapacitive-anode limiting).
+// NB (SOC engine v2): salt drains during the formation transient and the cell
+// then settles into a limit cycle — it does NOT keep spreading salt over later
+// cycles the way the v1 V-drift model did (that was an artifact of re-sweeping
+// the full ΔV each stroke). The salt reservoir is still a single global pool,
+// conserved and oxidation-only; that is what the salt checks below assert.
 global.window = {
   lastInp: {
     cat: { ac: { st: 'capacitive', c1: 50, cN: 100 }, salt: { c1: 150, cN: 0 },
@@ -108,15 +130,26 @@ if (ts.ok) {
   check('salt: consumed + remaining == budget',
         Math.abs(consumed + remaining - saltTotal) < 1e-6,
         `consumed=${consumed.toFixed(3)} remaining=${remaining.toFixed(3)}`);
-  check('salt: contributes on multiple charge strokes (global pool, no per-cycle reset)',
-        ts.strokes.filter(s => s.dir === 'charge' &&
-          (s.catSegs || []).some(g => g.kind === 'plateau')).length >= 2);
+  // SOC engine v2: salt oxidizes during the formation transient, then the cell
+  // settles into a limit cycle — it does NOT keep spreading salt over later
+  // cycles (that was a v1 V-drift artifact of re-sweeping the full ΔV each
+  // stroke). Assert the reservoir behaves as ONE global pool: it activates on
+  // the formation charge and is partially drained yet never refilled
+  // (0 < remaining < budget), which a per-cycle reset would violate.
+  const chargeStrokesWithSalt = ts.strokes.filter(s => s.dir === 'charge' &&
+      (s.catSegs || []).some(g => g.kind === 'plateau' && g.counts === false)).length;
+  check('salt: oxidizes on the formation charge (global pool activates)',
+        chargeStrokesWithSalt >= 1, `chargeStrokesWithSalt=${chargeStrokesWithSalt}`);
+  check('salt: global pool drained but not refilled (0 < remaining < budget)',
+        remaining > 1e-9 && remaining < saltTotal - 1e-9,
+        `remaining=${remaining.toFixed(3)}`);
   check('salt: never activates on discharge (oxidation only)', onDischarge === 0);
   check('salt: never over-consumed', consumed <= saltTotal + 1e-9,
         `consumed=${consumed.toFixed(3)}`);
 
   // ── Test 2: IR-aware constraint — measured V_cell stops ON the limit ──
   // Find any stroke that ended on cellMin and verify measured V_cell there.
+  const cellMinLim = (ts.constraints.cellMin && ts.constraints.cellMin.V) || 0;
   let cellMinChecked = false;
   for (const s of ts.strokes) {
     if (s.consHit !== 'cellMin' || s.frozen) continue;
@@ -126,8 +159,8 @@ if (ts.ok) {
     const Qend = catEnd.Q_end;
     const vAn = an.V_start + an.slope * Math.min(Qend, an.Q_end);
     const measured = (catEnd.V_end - vAn) + 2 * (s.irHalf || 0);
-    check(`IR constraint: measured V_cell at stop == 0 V (stroke k=${s.k})`,
-          Math.abs(measured - 0) < 1e-6, `measured=${measured.toFixed(6)} V`);
+    check(`IR constraint: measured V_cell at stop == ${cellMinLim} V (stroke k=${s.k})`,
+          Math.abs(measured - cellMinLim) < 1e-6, `measured=${measured.toFixed(6)} V`);
     cellMinChecked = true;
   }
   check('IR constraint: at least one stroke ended on Cell V_min', cellMinChecked);
@@ -159,11 +192,14 @@ if (cs.ok && ts.ok) {
   }
 }
 
-// ── Test 5: with R_eq = 0 the cell stops exactly at internal V_cell = 0 ──
+// ── Test 5: with R_eq = 0 the cell stops exactly at internal V_cell = limit ──
+// (no IR offset ⇒ the raw internal V_cell, not just the measured terminal V,
+// lands on the cell constraint).
 inputs['simReq'] = '0';
 const ts0 = simComputeTimeSeries();
 check('R_eq=0 runs ok', ts0.ok === true, ts0.msg || '');
 if (ts0.ok) {
+  const lim0 = (ts0.constraints.cellMin && ts0.constraints.cellMin.V) || 0;
   let ok = true, seen = false;
   for (const s of ts0.strokes) {
     if (s.consHit !== 'cellMin' || s.frozen) continue;
@@ -171,9 +207,9 @@ if (ts0.ok) {
     const catEnd = s.catSegs[s.catSegs.length - 1];
     const an = s.anSegs[0];
     const vAn = an.V_start + an.slope * Math.min(catEnd.Q_end, an.Q_end);
-    if (Math.abs((catEnd.V_end - vAn) - 0) > 1e-6) ok = false;
+    if (Math.abs((catEnd.V_end - vAn) - lim0) > 1e-6) ok = false;
   }
-  check('R_eq=0: internal V_cell at cellMin stop == 0 V (regression guard)', !seen || ok);
+  check('R_eq=0: internal V_cell at cellMin stop == limit (regression guard)', seen && ok);
 }
 
 process.exit(fails ? 1 : 0);
