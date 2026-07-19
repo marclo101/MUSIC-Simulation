@@ -219,4 +219,243 @@ if (ts0.ok) {
   check('R_eq=0: internal V_cell at cellMin stop == limit (regression guard)', seen && ok);
 }
 
+/* ════════ SOC engine v2 faradaic scenarios (plan M6 / PI test spec) ════════ */
+
+// Swap every stub for a fresh scenario. cfg: {inputs, lastInp, lastR, saltOn,
+// rateSel, catAcRates, anRates, onIds (classList 'on' ids), msRows (selector →
+// [{v,p}] fake multi-stage rows)}.
+function setScenario(cfg){
+  global.$ = id => (id in cfg.inputs)
+    ? { value: String(cfg.inputs[id]),
+        classList: { contains: c => (cfg.onIds || []).includes(id) } }
+    : null;
+  global.N = id => parseFloat(cfg.inputs[id]);
+  global.saltOn = !!cfg.saltOn;
+  global.simRateSel = cfg.rateSel || { '1st': { I_uA: 10 }, 'Nth': { I_uA: 10 } };
+  global.catAcRates = cfg.catAcRates;
+  global.anRates = cfg.anRates;
+  global.document = { querySelectorAll: sel => {
+    const rows = (cfg.msRows || {})[sel];
+    if (!rows) return [];
+    return rows.map(r => ({ querySelector: q =>
+      q === '.ms-v' ? { value: String(r.v) } :
+      q === '.ms-p' ? { value: String(r.p) } : null }));
+  } };
+  global.window = { lastInp: cfg.lastInp, lastR: cfg.lastR };
+}
+
+// LFP-like faradaic cathode (plateau 3.45 V / 90%, window 2.5–4.2, OCV 3.0,
+// C1 55 / CN 50) vs EDLC anode (60/60, window 2.5–0.05, OCV at window top).
+// Hand-derived map numbers: fr=0.1, S=1.7 ⇒ x0=0.0294118, g=0.9705882,
+// Q_tot,1=56.6667, formation plateau 51.0; mapN plateau 45.0.
+const lfp = {
+  inputs: { 'cat-ac-ocv':'3.0', 'an-ocv':'2.5', 'simCycleN':'2',
+            'cat-ac-st':'faradaic', 'an-st':'capacitive',
+            'cat-fp-v':'3.45', 'cat-fp-p':'90' },
+  lastInp: {
+    cat:{ ac:{ st:'faradaic', c1:55, cN:50 }, salt:{ c1:0, cN:0 },
+          Vth:[4.2,2.5], Vop:[4.2,2.5] },
+    an: { st:'capacitive', c1:60, cN:60, wAM:1, Vth:[2.5,0.05], Vop:[2.5,0.05] } },
+  lastR: { sane:true, mCat:1, mAn:1, mAC:1, mS:0, kc:1,
+           Qc1:55, Qa1:60, QaN:60, c10:5 },
+};
+
+// ── Test 6: faradaic staircase — formation anchor, plateau geometry ──
+setScenario(lfp);
+const tsF = simComputeTimeSeries();
+check('faradaic: time mode ok', tsF.ok === true, tsF.msg || '');
+if (tsF.ok) {
+  const s1 = tsF.strokes[0], s2 = tsF.strokes[1], s3 = tsF.strokes[2];
+  const plats = s => (s.catSegs || []).filter(x => x.kind === 'plateau');
+  check('faradaic: formation starts at OCV (first seg V_start = 3.0)',
+        s1.catSegs.length && Math.abs(s1.catSegs[0].V_start - 3.0) < 1e-9,
+        `V_start=${s1.catSegs[0]?.V_start}`);
+  const p1 = plats(s1);
+  check('faradaic: formation plateau at 3.45 V, counts:true, len 51.0',
+        p1.length === 1 && p1[0].counts === true &&
+        Math.abs(p1[0].V_start - 3.45) < 1e-9 &&
+        Math.abs((p1[0].Q_end - p1[0].Q_start) - 51.0) < 1e-6,
+        p1.length ? `V=${p1[0].V_start} len=${(p1[0].Q_end-p1[0].Q_start).toFixed(4)}` : 'none');
+  check('faradaic: formation cathode-limited at C1 = 55',
+        Math.abs((s1.catSegs[s1.catSegs.length-1].Q_end) - 55) < 1e-6);
+  const p2 = plats(s2);
+  check('faradaic: plateau REAPPEARS on discharge (reversible), len 45.0 on mapN',
+        p2.length === 1 && p2[0].counts === true &&
+        Math.abs(p2[0].V_start - 3.45) < 1e-9 &&
+        Math.abs((p2[0].Q_end - p2[0].Q_start) - 45.0) < 1e-6,
+        p2.length ? `len=${(p2[0].Q_end-p2[0].Q_start).toFixed(4)}` : 'none');
+  check('faradaic: stroke 2 starts from mapN top (V_c_in = 4.2, full formation carry x=1)',
+        Math.abs(s2.V_c_in - 4.2) < 1e-9, `V_c_in=${s2.V_c_in}`);
+  const p3 = plats(s3);
+  check('faradaic: plateau appears again on cycle-2 charge (no reservoir depletion)',
+        p3.length === 1 && Math.abs((p3[0].Q_end - p3[0].Q_start) - 45.0) < 1e-6);
+  check('faradaic: charge conservation in limit cycle (Q(s2) == Q(s3) == 50)',
+        Math.abs(s2.catSegs[s2.catSegs.length-1].Q_end - 50) < 1e-6 &&
+        Math.abs(s3.catSegs[s3.catSegs.length-1].Q_end - 50) < 1e-6);
+  // SOC pinning: no cathode segment voltage ever leaves [V_th_lo, V_th_hi]
+  // (formation span includes only the in-window OCV here).
+  let inWin = true;
+  for (const s of tsF.strokes) for (const seg of (s.catSegs || []))
+    if (seg.V_start < 2.5 - 1e-9 || seg.V_start > 4.2 + 1e-9 ||
+        seg.V_end   < 2.5 - 1e-9 || seg.V_end   > 4.2 + 1e-9) inWin = false;
+  check('faradaic: cathode V never leaves its V_th window (SOC pinning)', inWin);
+}
+
+// ── Test 7: formation g-rule + fractional-SOC carry under a catMax truncation ──
+// catMax = 3.40 V stops the formation ramp before the plateau. Hand-derived:
+// formation slope below the plateau = 0.3 V/µAh ⇒ ΔQ = 0.4/0.3 = 1.33333,
+// x_t = (x0·56.6667 + 1.33333)/56.6667 = 0.0529412; on mapN that lands at
+// V = 2.5 + 0.95·(x_t·50/2.79412) = 3.4000.
+setScenario({ ...lfp, inputs: { ...lfp.inputs, 'simCons_catMax_v': '3.40' } });
+{
+  const g7 = _simGatherInputs();
+  check('g-rule: gather ok', g7.ok === true, g7.msg || '');
+  if (g7.ok) {
+    check('g-rule: formation map Q_tot = C1/g = 56.6667',
+          Math.abs(g7.ctx.map1_c.Q_tot - 56.6666667) < 1e-4, `Q_tot=${g7.ctx.map1_c.Q_tot.toFixed(5)}`);
+    check('g-rule: x0 = OCV position = 0.0294118',
+          Math.abs(g7.ctx.map1_c.x0 - 0.0294118) < 1e-6, `x0=${g7.ctx.map1_c.x0.toFixed(7)}`);
+    const s1 = _simAdvanceOneStroke(1, g7.ctx.map1_c.x0, g7.ctx.map1_a.x0, g7.ctx);
+    check('g-rule: formation stopped by catMax at 3.40 V',
+          s1.consHit === 'catMax' && Math.abs(s1.V_c_end - 3.40) < 1e-9,
+          `consHit=${s1.consHit} V=${s1.V_c_end}`);
+    check('carry: truncated formation SOC x_t = 0.0529412',
+          Math.abs(s1.x_c_end - 0.0529412) < 1e-6, `x_t=${s1.x_c_end.toFixed(7)}`);
+    const s2 = _simAdvanceOneStroke(2, s1.x_c_end, s1.x_a_end, g7.ctx);
+    check('carry: stroke 2 reads the SAME fractional x on mapN (V_c_in = 3.4000)',
+          Math.abs(s2.V_c_in - 3.4000) < 1e-3, `V_c_in=${s2.V_c_in.toFixed(5)}`);
+  }
+}
+
+// ── Test 8: salt + AM plateau interleaving on the cathode ──
+// AM plateau 3.45 V / 50% + sacrificial salt at 3.65 V (100 µAh reservoir).
+// Expected charge-stroke order by ascending V: ramp · AM plateau (counts:true)
+// · ramp · salt plateau (counts:false) · ramp.
+setScenario({
+  inputs: { 'cat-ac-ocv':'3.0', 'an-ocv':'2.5', 'simCycleN':'2',
+            'cat-ac-st':'faradaic', 'an-st':'capacitive',
+            'cat-fp-v':'3.45', 'cat-fp-p':'50', 'cat-s-vredox':'3.65' },
+  lastInp: {
+    cat:{ ac:{ st:'faradaic', c1:55, cN:50 }, salt:{ c1:100, cN:0 },
+          Vth:[4.2,2.5], Vop:[4.2,2.5] },
+    an: { st:'capacitive', c1:300, cN:300, wAM:1, Vth:[2.5,0.05], Vop:[2.5,0.05] } },
+  lastR: { sane:true, mCat:2, mAn:1, mAC:1, mS:1, kc:1,
+           Qc1:155, Qa1:300, QaN:300, c10:5 },
+  saltOn: true,
+});
+const tsS = simComputeTimeSeries();
+check('salt+AM: time mode ok', tsS.ok === true, tsS.msg || '');
+if (tsS.ok) {
+  const s1 = tsS.strokes[0];
+  const kinds = (s1.catSegs || []).map(x => x.kind + ':' + (x.counts === false ? 'salt' : 'am'));
+  const plats = (s1.catSegs || []).filter(x => x.kind === 'plateau');
+  check('salt+AM: both plateaus present on formation charge, AM below salt',
+        plats.length === 2 &&
+        Math.abs(plats[0].V_start - 3.45) < 1e-9 && plats[0].counts === true &&
+        Math.abs(plats[1].V_start - 3.65) < 1e-9 && plats[1].counts === false,
+        kinds.join(' · '));
+  check('salt+AM: salt reservoir decremented, AM plateau reservoir-free',
+        tsS.plateaus.length === 1 && tsS.plateaus[0].Q_remaining < 100 - 1e-9,
+        `remaining=${tsS.plateaus[0]?.Q_remaining}`);
+  const s2 = tsS.strokes[1];
+  const p2 = (s2.catSegs || []).filter(x => x.kind === 'plateau');
+  check('salt+AM: discharge keeps the reversible AM plateau, drops the salt',
+        p2.length === 1 && p2[0].counts === true && Math.abs(p2[0].V_start - 3.45) < 1e-9,
+        p2.map(x => x.V_start).join(','));
+}
+
+// ── Test 9: discharge-first on a fresh cell (x pinned at 0) freezes stroke 1 ──
+setScenario(lfp);
+{
+  const g9 = _simGatherInputs();
+  if (g9.ok) {
+    const ctx9 = { ...g9.ctx, startDir: 'discharge',
+                   Vocv_c: 2.5, Vocv_a: 2.5 };  // as-assembled: both at window edge
+    ctx9.map1_c = _simBuildElectrodeMap('cat', '1st', ctx9);
+    ctx9.map1_a = _simBuildElectrodeMap('an', '1st', ctx9);
+    ctx9.mapN_c = g9.ctx.mapN_c; ctx9.mapN_a = g9.ctx.mapN_a;
+    const s1 = _simAdvanceOneStroke(1, ctx9.map1_c.x0, ctx9.map1_a.x0, ctx9);
+    check('fresh-cell discharge-first: stroke 1 cannot advance (Qmin = 0)',
+          s1.Qmin <= 1e-9, `Qmin=${s1.Qmin}`);
+    check('fresh-cell discharge-first: degenerate-g map warning surfaced',
+          Array.isArray(ctx9._mapWarn) && ctx9._mapWarn.length >= 1,
+          (ctx9._mapWarn || []).join(' | '));
+  }
+}
+
+// ── Test 10: rate module — unit normalization, log-interp, φ integration ──
+check('rate: mA/g passthrough', _simRateNorm(100, 'mA/g') === 100);
+check('rate: A/g → mA/g', _simRateNorm(0.5, 'A/g') === 500);
+check('rate: C-rate anchored by capacity', _simRateNorm(2, 'C', 150) === 300);
+check('rate: C-rate w/o capacity dropped', _simRateNorm(2, 'C', null) === null);
+check('rate: mA/cm² with loading', Math.abs(_simRateNorm(2, 'mA/cm²', null, 0.01) - 200) < 1e-9);
+check('rate: mA/cm² w/o loading dropped', _simRateNorm(2, 'mA/cm²', null, null) === null);
+check('rate: unknown unit dropped', _simRateNorm(5, 'zorb') === null);
+check('rate: non-positive rate dropped', _simRateNorm(-1, 'mA/g') === null);
+{
+  const lad = [{ i: 10, c: 100 }, { i: 1000, c: 60 }];
+  const mid = _simRateCapAt(lad, 100);
+  check('rate: log10-linear midpoint (i=100 → c=80)',
+        Math.abs(mid.c - 80) < 1e-9 && mid.clamped === false, `c=${mid.c}`);
+  check('rate: clamped below ladder', _simRateCapAt(lad, 5).c === 100 && _simRateCapAt(lad, 5).clamped === true);
+  check('rate: clamped above ladder', _simRateCapAt(lad, 5000).c === 60 && _simRateCapAt(lad, 5000).clamped === true);
+  const f = _simRateCapFactor(lad, 100, 10);
+  check('rate: φ = c(i_app)/c(i_ref) = 0.8', Math.abs(f.phi - 0.8) < 1e-9 && f.usable === true, `phi=${f.phi}`);
+  check('rate: <2 rows ⇒ φ=1 fallback', _simRateCapFactor([{ i: 10, c: 100 }], 100, 10).usable === false);
+  const fb = _simRateCapFactor([{ i: 1, c: 100 }, { i: 100, c: 1 }], 100, 1);
+  check('rate: φ band-clamped to 0.05', Math.abs(fb.phi - 0.05) < 1e-12 && fb.clamped === true, `phi=${fb.phi}`);
+}
+// Integration: cN ladder 100→60 mAh/g over 10→1000 mA/g, input capacity
+// measured at 10 mA/g, sim current 100 µA on 1 mg AM ⇒ i_app 100 mA/g ⇒
+// φ_cN = 80/100 = 0.8 ⇒ mapN Q_tot = 50·0.8 = 40. Formation ladder has no c1
+// values ⇒ φ_c1 = 1 ⇒ map1 unscaled.
+setScenario({ ...lfp,
+  inputs: { ...lfp.inputs, 'cat-ac-rN': '10', 'cat-ac-rN-ru': 'mA/g' },
+  rateSel: { '1st': { I_uA: 10 }, 'Nth': { I_uA: 100 } },
+  catAcRates: [ { rv: 10, ru: 'mA/g', c1: null, cN: 100 },
+                { rv: 1000, ru: 'mA/g', c1: null, cN: 60 } ],
+});
+{
+  const gR = _simGatherInputs();
+  check('rate: gather ok with ladder', gR.ok === true, gR.msg || '');
+  if (gR.ok) {
+    check('rate: φ_cN = 0.8 exposed in rateInfo',
+          Math.abs(gR.rateInfo.cat.cN.phi - 0.8) < 1e-9 && gR.rateInfo.cat.cN.usable === true,
+          `phi=${gR.rateInfo.cat.cN.phi}`);
+    check('rate: mapN_c budget scaled to 40 µAh',
+          Math.abs(gR.ctx.mapN_c.Q_tot - 40) < 1e-9, `Q_tot=${gR.ctx.mapN_c.Q_tot}`);
+    check('rate: formation map unscaled (no usable c1 ladder)',
+          Math.abs(gR.ctx.map1_c.Q_tot - 56.6666667) < 1e-4 && gR.rateInfo.cat.c1.usable === false);
+    check('rate: salt-free budgets — Q_salt untouched by φ', gR.Q_salt_1st === 0);
+  }
+}
+
+// ── Test 11: multi-stage plateau spec via the editor rows ──
+setScenario({ ...lfp,
+  // 'an-fp-ms-sw' must exist as an input key for the $ stub to return an
+  // element; its 'on' state comes from onIds.
+  inputs: { ...lfp.inputs, 'an-st': 'faradaic', 'an-fp-ms-sw': '' },
+  onIds: ['an-fp-ms-sw'],
+  msRows: { '#an-fp-ms-rows .ms-row': [ { v: 0.2, p: 30 }, { v: 0.12, p: 30 }, { v: 0.09, p: 30 } ] },
+  lastInp: { ...lfp.lastInp,
+    an: { st: 'faradaic', c1: 60, cN: 60, wAM: 1, Vth: [1.5, 0.05], Vop: [1.5, 0.05] } },
+});
+{
+  const spec = _simReadPlateauSpec('an');
+  check('multi-stage: 3 stages read from editor rows', spec.length === 3, JSON.stringify(spec));
+  const gM = _simGatherInputs();
+  check('multi-stage: gather ok', gM.ok === true, gM.msg || '');
+  if (gM.ok) {
+    // Anode map: V falls with q, so plateaus appear in DESCENDING V order.
+    const plats = gM.ctx.mapN_a.segs.filter(s => s.kind === 'plateau');
+    check('multi-stage: anode mapN has 3 plateaus in descending V',
+          plats.length === 3 &&
+          plats[0].V0 > plats[1].V0 && plats[1].V0 > plats[2].V0,
+          plats.map(p => p.V0).join(' > '));
+    check('multi-stage: each plateau holds 30% of Q_tot (18 µAh)',
+          plats.every(p => Math.abs((p.q1 - p.q0) - 18) < 1e-9),
+          plats.map(p => (p.q1 - p.q0).toFixed(3)).join(','));
+  }
+}
+
 process.exit(fails ? 1 : 0);

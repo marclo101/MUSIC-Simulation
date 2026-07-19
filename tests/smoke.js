@@ -110,6 +110,28 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("simulation plot renders", H.simRender === true, String(H.simRender));
   check("TXT export builds", typeof H.txt === "number" && H.txt > 200, String(H.txt));
   check("library loaded + renders", typeof H.lib === "number" && H.lib > 0, String(H.lib));
+
+  // ── Faradaic health check: plateau editor → staircase GCD on the real page ──
+  const F = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("cat-Vth-hi").value = "4.2"; g("cat-Vth-lo").value = "2.5"; g("cat-ac-ocv").value = "3.0";
+    g("cat-ac-c1").value = "55"; g("cat-ac-cN").value = "50";
+    g("cat-fp-v").value = "3.45"; g("cat-fp-p").value = "90"; onFpEdit("cat");
+    recalc();
+    const out = { editorShown: g("cat-fp-wrap").style.display !== "none" };
+    const s = simComputeSeries();
+    out.ok = s.ok === true; out.msg = s.msg || "";
+    out.plateau = s.ok && s.catSegs.some(x => x.kind === "plateau" && x.counts === true &&
+                                              Math.abs(x.V_start - 3.45) < 1e-6);
+    try { renderSimPlot(); out.render = true; } catch (e) { out.render = "THREW:" + e.message; }
+    return out;
+  });
+  check("faradaic: plateau editor shown for faradaic storage", F.editorShown === true);
+  check("faradaic: cathode simulates through the opened gate", F.ok === true, F.msg);
+  check("faradaic: staircase carries reversible plateau at 3.45 V", F.plateau === true);
+  check("faradaic: plot renders", F.render === true, String(F.render));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
