@@ -38,6 +38,7 @@ const parts = [
   extract('_simConsVopDefault', 'fn'),
   extract('_simReadConstraints', 'fn'),
   extract('_simBuildPlateauState', 'fn'),
+  extract('_simSaltResumeV', 'fn'),
   extract('_simReadSaltStages', 'fn'),
   // SOC engine v2 (M1) — canonical map builder + helpers.
   extract('_simVonSeg', 'fn'),
@@ -455,6 +456,64 @@ setScenario({ ...lfp,
     check('multi-stage: each plateau holds 30% of Q_tot (18 µAh)',
           plats.every(p => Math.abs((p.q1 - p.q0) - 18) < 1e-9),
           plats.map(p => (p.q1 - p.q0).toFixed(3)).join(','));
+  }
+}
+
+// ── Test 12: potential-RANGE stages — AM band + croconate-like salt band ──
+// (a) AM band: cathode faradaic stage 3.3→3.6 V / 50% ⇒ the mapN carries a
+// capacity-carrying sloped band (kind ramp, band:true) of 25 µAh spanning
+// exactly 3.3–3.6 V. (b) Salt band 3.6→3.7 V: the emitted salt segment sweeps
+// the band, carries the parallel AM share, and a partially consumed reservoir
+// resumes at the interpolated voltage on the next charge.
+setScenario({ ...lfp,
+  inputs: { ...lfp.inputs, 'cat-fp-v': '3.3', 'cat-fp-p': '50', 'cat-fp-v2': '3.6',
+            'cat-s-vredox': '3.6', 'cat-s-vredox2': '3.7' },
+  lastInp: { ...lfp.lastInp,
+    cat: { ac: { st:'faradaic', c1:55, cN:50 }, salt: { c1:100, cN:0 },
+           Vth: [4.2,2.5], Vop: [4.2,2.5] },
+    an:  { st:'capacitive', c1:80, cN:80, wAM:1, Vth:[2.5,0.05], Vop:[2.5,0.05] } },
+  lastR: { sane:true, mCat:2, mAn:1, mAC:1, mS:1, kc:1,
+           Qc1:155, Qa1:80, QaN:80, c10:5 },
+  saltOn: true,
+});
+{
+  const spec12 = _simReadPlateauSpec('cat');
+  check('range: spec carries V2 (3.3→3.6 band)',
+        spec12.length === 1 && Math.abs(spec12[0].V - 3.3) < 1e-9 &&
+        Math.abs(spec12[0].V2 - 3.6) < 1e-9, JSON.stringify(spec12));
+  const g12 = _simGatherInputs();
+  check('range: gather ok', g12.ok === true, g12.msg || '');
+  if (g12.ok) {
+    const band = g12.ctx.mapN_c.segs.find(s => s.band === true);
+    check('range: mapN has a sloped band 3.3→3.6 V of 25 µAh (kind ramp)',
+          !!band && band.kind === 'ramp' &&
+          Math.abs(band.V0 - 3.3) < 1e-9 && Math.abs(band.V1 - 3.6) < 1e-9 &&
+          Math.abs((band.q1 - band.q0) - 25) < 1e-6,
+          band ? `V ${band.V0}→${band.V1} len=${(band.q1-band.q0).toFixed(3)}` : 'none');
+    // Salt band state: Vlo=3.6, Vhi=3.7, budget 100; fresh stage resumes at 3.6.
+    check('range: salt stage carries band edges (3.6→3.7)',
+          g12.plateaus.length === 1 && Math.abs(g12.plateaus[0].V - 3.6) < 1e-9 &&
+          Math.abs(g12.plateaus[0].Vhi - 3.7) < 1e-9,
+          JSON.stringify(g12.plateaus.map(p => ({V:p.V, Vhi:p.Vhi}))));
+    check('range: fresh salt stage resumes at its low edge',
+          Math.abs(_simSaltResumeV(g12.plateaus[0]) - 3.6) < 1e-12);
+    // Walk stroke 1: anode (80) limits before the cathode's 155 total, so the
+    // salt band is entered but NOT finished — the reservoir must resume at an
+    // interpolated V in (3.6, 3.7) on the next charge stroke.
+    const s1 = _simAdvanceOneStroke(1, g12.ctx.map1_c.x0, g12.ctx.map1_a.x0, g12.ctx);
+    const saltSeg = (s1.catSegsFull || []).find(x => x.counts === false);
+    check('range: emitted salt segment sweeps upward from 3.6 (sloped, salt+AM split)',
+          !!saltSeg && Math.abs(saltSeg.V_start - 3.6) < 1e-9 &&
+          saltSeg.V_end > saltSeg.V_start + 1e-9 &&
+          Number.isFinite(saltSeg.saltQ) && saltSeg.saltQ > 0,
+          saltSeg ? `V ${saltSeg.V_start.toFixed(3)}→${saltSeg.V_end.toFixed(3)} saltQ=${saltSeg.saltQ.toFixed(2)} amQ=${(saltSeg.amQ||0).toFixed(2)}` : 'none');
+    const p12 = g12.plateaus[0];
+    check('range: partially consumed reservoir (0 < remaining < 100)',
+          p12.Q_remaining > 1e-9 && p12.Q_remaining < 100 - 1e-9,
+          `remaining=${p12.Q_remaining.toFixed(3)}`);
+    const vRes = _simSaltResumeV(p12);
+    check('range: resume V interpolated inside the band',
+          vRes > 3.6 + 1e-9 && vRes < 3.7 - 1e-9, `vRes=${vRes.toFixed(4)}`);
   }
 }
 
