@@ -4,7 +4,7 @@
   "private": true,
   "description": "MUSIC Electrode Balance — a single-file browser tool for sizing and balancing Li/Na-ion full cells. The app itself needs no install; this package only provides an optional headless regression test.",
   "scripts": {
-    "test": "node tests/smoke.js"
+    "test": "node tests/sim_smoke_test.js && node tests/smoke.js"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

@@ -17,6 +17,19 @@ All files must sit in the **same folder**. The HTML loads the library and plot e
 
 Given a cathode active material, an optional sacrificial salt, and an anode, it computes the electrode masses, mass loadings, N/P (Q<sub>a</sub>/Q<sub>c</sub>) ratios, C/10 cell currents, and rate-dependent current densities required to balance the cell at a chosen target N/P. It supports faradaic, capacitive, and pseudocapacitive storage types, and exports the results as TXT, Word, Excel, or PDF.
 
+### The Simulation tab
+
+The **Simulation** tab draws the galvanostatic charge–discharge (GCD) curves — V<sub>cat</sub>, V<sub>an</sub> and V<sub>cell</sub> vs capacity or time — of the balanced cell. Each electrode is a state-of-charge position on a canonical piecewise-linear Q–V map built from the balance results and the material inputs:
+
+- **Capacitive (EDLC) and pseudocapacitive** electrodes are linear V–Q ramps across their V<sub>th</sub> window.
+- **Faradaic** electrodes are plateau staircases: a per-electrode **V<sub>plateau</sub> / % share** editor (single or multi-stage) pins the electrode at its redox potential(s) for that share of the capacity, with the remainder drawn as sloping ramps. These plateaus are reversible and appear in every cycle.
+- The **sacrificial salt** adds one-shot oxidation-only plateaus at V<sub>redox</sub> from a global reservoir (m<sub>S</sub>·C<sub>s,1</sub>) that is consumed across cycles and never refilled.
+- The very first stroke is the **formation** half-cycle: anchored at the as-assembled OCV and sized by C<sub>1st</sub>; every later stroke uses C<sub>Nth</sub>, with the irreversible loss carried across the switch.
+- **Deliverable capacity is rate-dependent**: when the material's library entry has a multi-rate ladder, the simulated capacity is scaled by φ = c(i<sub>app</sub>)/c(i<sub>ref</sub>), interpolated in log current, where i<sub>app</sub> comes from the currents picked in the Rates tab and the solved electrode masses.
+- Both electrodes pass the same charge; a stroke ends when either electrode exhausts its capacity or one of six always-on stop constraints (Cathode/Anode/Cell × V<sub>max</sub>/V<sub>min</sub>, defaulting to the V<sub>op</sub> windows) is crossed — including the IR drop from the R<sub>eq</sub> input on the cell voltage.
+
+Not modeled (no data for them in the library): reaction kinetics (Butler–Volmer), diffusion limitation, hysteresis beyond ohmic IR, and temperature effects.
+
 By default the target N/P applies to every cycle. Enabling **Different 1st cycle** (next to the target field) exposes a separate formation-cycle target: the sacrificial salt is then sized so the **1st cycle** lands on its own N/P while the electrode masses hold the **reversible (Nth) cycle** at the main target. With this off, the formation cycle simply tracks the reversible target, so solving for either electrode gives the same answer.
 
 ## How it works
