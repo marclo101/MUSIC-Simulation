@@ -51,9 +51,11 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     if (!saltOn) tgSalt();
     document.getElementById("cat-s-c1").value = "300";
     document.getElementById("np-target").value = "1.2"; onNpTargetChange();
+    recalcNow();                                       // manual-recalc mode: edits only mark stale
     const off = R();                                   // toggle off → r1 == rN == 1.2 (fix)
     if (!np1stOn) toggleNp1st();
     document.getElementById("np-target-1st").value = "1.0"; onNp1stChange();
+    recalcNow();
     const on = R();                                    // 1st=1.0, Nth=1.2
     return { off, on, wrap: getComputedStyle(document.getElementById("np-target-1st-wrap")).display };
   });
@@ -118,7 +120,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     g("cat-Vth-hi").value = "4.2"; g("cat-Vth-lo").value = "2.5"; g("cat-ac-ocv").value = "3.0";
     g("cat-ac-c1").value = "55"; g("cat-ac-cN").value = "50";
     g("cat-fp-v").value = "3.45"; g("cat-fp-p").value = "90"; onFpEdit("cat");
-    recalc();
+    recalcNow();                                       // manual-recalc mode
     const out = { editorShown: g("cat-fp-wrap").style.display !== "none" };
     const s = simComputeSeries();
     out.ok = s.ok === true; out.msg = s.msg || "";

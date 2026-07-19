@@ -432,7 +432,14 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .fld-with-clear{display:flex;align-items:center;gap:0}
 
 /* ── Clear-all-masses button in the results header ── */
-.clr-all-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--ruleS);background:var(--paper);color:var(--ink2);border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11px;font-weight:500;line-height:1;transition:all .12s;white-space:nowrap}
+.clr-all-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--ruleS);background:var(--paper);color:var(--ink2);border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11px;font-weight:500;line-height:1;transition:all .12s;white-space:nowrap}
+/* Manual-recalculation button. Input edits only mark the results stale; the
+   solver runs when this is clicked. `.dirty` = inputs changed since last run. */
+.recalc-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border:1px solid var(--cp);background:var(--cp);color:#fff;border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11.5px;font-weight:600;line-height:1;transition:all .12s;white-space:nowrap;margin-right:8px}
+.recalc-btn:hover{filter:brightness(1.08)}
+.recalc-btn.dirty{background:#B7791F;border-color:#B7791F;box-shadow:0 0 0 3px rgba(183,121,31,.18);animation:recalcPulse 1.6s ease-in-out infinite}
+@keyframes recalcPulse{0%,100%{box-shadow:0 0 0 3px rgba(183,121,31,.18)}50%{box-shadow:0 0 0 6px rgba(183,121,31,.06)}}
+.recalc-stale{margin:6px 0 10px;padding:7px 12px;font-size:11.5px;color:#7B341E;background:#FFF5EB;border-left:3px solid #DD6B20;border-radius:3px}
 .clr-all-btn:hover{background:var(--erB);color:var(--er);border-color:rgba(225,90,79,.3)}
 .clr-all-btn:active{transform:translateY(1px)}
 
@@ -635,9 +642,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
          for the given share of the capacity: a REVERSIBLE feature that appears
          in every cycle's GCD trace (unlike the one-shot salt plateau below). -->
     <div id="cat-fp-wrap" style="display:none">
-    <div class="row w2" id="cat-fp-row"><label data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_cat_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="cat-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u" id="cat-fp-v-u">V</span></div><div class="fld"><input type="number" id="cat-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u">%</span></div></div>
+    <div class="row w2" id="cat-fp-row"><label data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_cat_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="cat-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('cat')"><span class="u" id="cat-fp-v-u">V</span></div><div class="fld"><input type="number" id="cat-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('cat')"><span class="u">%</span></div></div>
     <div class="row" id="cat-fp-range-row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)." data-help-key="fld_cat_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-fp-rangeChk" onchange="onFpRangeToggle('cat')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)."></button></label></div>
-    <div class="row" id="cat-fp-v2-row" style="display:none"><label data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity." data-help-key="fld_cat_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity."></button></label><div class="fld"><input type="number" id="cat-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u">V</span></div></div>
+    <div class="row" id="cat-fp-v2-row" style="display:none"><label data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity." data-help-key="fld_cat_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity."></button></label><div class="fld"><input type="number" id="cat-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('cat')"><span class="u">V</span></div></div>
     <div class="trow" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Percentages may sum to ≤100% — the remainder is simulated as a pseudocapacitive sloping contribution." data-help-key="fld_cat_fp_multistage"><div class="tsw" id="cat-fp-ms-sw" onclick="toggleFpMultiStage('cat')"></div><span class="tlbl" id="cat-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Percentages may sum to ≤100% — the remainder is simulated as a pseudocapacitive sloping contribution."></button></div>
     <div id="cat-fp-ms-editor" style="display:none">
       <div id="cat-fp-ms-rows" class="salt-ms-rows"></div>
@@ -728,9 +735,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
          editor (reversible plateaus/bands, e.g. hard carbon's low-V plateau
          plus sloping insertion region). Shown only when Storage type is Faradaic. -->
     <div id="an-fp-wrap" style="display:none">
-    <div class="row w2" id="an-fp-row"><label data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_an_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="an-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u" id="an-fp-v-u">V</span></div><div class="fld"><input type="number" id="an-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u">%</span></div></div>
+    <div class="row w2" id="an-fp-row"><label data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_an_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="an-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('an')"><span class="u" id="an-fp-v-u">V</span></div><div class="fld"><input type="number" id="an-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('an')"><span class="u">%</span></div></div>
     <div class="row" id="an-fp-range-row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)." data-help-key="fld_an_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="an-fp-rangeChk" onchange="onFpRangeToggle('an')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)."></button></label></div>
-    <div class="row" id="an-fp-v2-row" style="display:none"><label data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity." data-help-key="fld_an_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity."></button></label><div class="fld"><input type="number" id="an-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u">V</span></div></div>
+    <div class="row" id="an-fp-v2-row" style="display:none"><label data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity." data-help-key="fld_an_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity."></button></label><div class="fld"><input type="number" id="an-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('an')"><span class="u">V</span></div></div>
     <div class="trow" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Σ ≤ 100% — the remainder is simulated as a pseudocapacitive sloping contribution." data-help-key="fld_an_fp_multistage"><div class="tsw" id="an-fp-ms-sw" onclick="toggleFpMultiStage('an')"></div><span class="tlbl" id="an-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Σ ≤ 100% — the remainder is simulated as a pseudocapacitive sloping contribution."></button></div>
     <div id="an-fp-ms-editor" style="display:none">
       <div id="an-fp-ms-rows" class="salt-ms-rows"></div>
@@ -795,7 +802,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <!-- ══ RESULTS ══ -->
 <div class="res" id="resPanel" style="display:none">
-<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="clr-all-btn" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
+<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="recalc-btn" id="recalcBtn" onclick="recalcNow()" data-help="Runs the balance solver on the current inputs. Edits to the materials, masses, targets or rates never recompute automatically — they mark the results as stale until you click here." title="Compute the balance from the current inputs">⟳ Recalculate</button><button class="clr-all-btn" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
+<div class="recalc-stale" id="recalcStale" style="display:none">Inputs changed — the results below are <strong>stale</strong>. Click <strong>⟳ Recalculate</strong> to update them.</div>
 <div id="r-mode" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)." data-help-key="res_mode_indicator" style="display:none;text-align:center;padding:6px 18px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cp);background:var(--cl);border-bottom:1px solid var(--ruleS)"><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)."></button></div>
 
 <!-- Top-level results tabs -->
@@ -1963,6 +1971,27 @@ function onSaltRangeToggle(){
 // window (that is exactly the map builder's ramp-fraction behaviour).
 // NO → rescale the entered shares proportionally so they total 100%.
 let _fpAskSig = {cat:"", an:""};
+// The check must NOT interrupt typing: it is wired at the EDITOR level, not
+// per field — it fires only when focus leaves the whole plateau editor
+// (focusout whose new focus target sits outside the wrap) or on Enter.
+// Tabbing between the editor's own V / to-V / % fields never triggers it.
+function _fpWireSumCheck(side){
+  const wrap = $(_fpPrefix(side)+"-wrap"); if(!wrap || wrap._fpWired) return;
+  wrap._fpWired = true;
+  wrap.addEventListener("focusout", () => {
+    // Let the browser settle the new focus target first.
+    setTimeout(() => {
+      const ae = document.activeElement;
+      if(!ae || !wrap.contains(ae)) onFpSumCheck(side);
+    }, 0);
+  });
+  wrap.addEventListener("keydown", ev => {
+    if(ev.key === "Enter" && ev.target && ev.target.tagName === "INPUT"){
+      ev.target.blur();          // commit the value, then the check runs once
+      onFpSumCheck(side);
+    }
+  });
+}
 function onFpSumCheck(side){
   const spec = (typeof _simReadPlateauSpec === "function") ? _simReadPlateauSpec(side) : [];
   if(!spec.length) return;
@@ -2033,9 +2062,9 @@ function addFpStage(side, vDefault, pctDefault, v2Default){
   row.className = "ms-row";
   row.innerHTML =
     `<span class="ms-num">${idx}.</span>`+
-    `<div class="fld"><input type="number" class="ms-v" step="0.01" value="${Number.isFinite(vDefault)?vDefault:""}" placeholder="V" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()" onchange="onFpSumCheck('${side}')"><span class="u">V</span></div>`+
-    `<div class="fld"><input type="number" class="ms-v2" step="0.01" value="${Number.isFinite(v2Default)?v2Default:""}" placeholder="to V" title="Optional: fill to make this stage a From→To band" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()" onchange="onFpSumCheck('${side}')"><span class="u">V</span></div>`+
-    `<div class="fld"><input type="number" class="ms-p" step="1" min="0" max="100" value="${Number.isFinite(pctDefault)?pctDefault:""}" placeholder="%" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()" onchange="onFpSumCheck('${side}')"><span class="u">%</span></div>`+
+    `<div class="fld"><input type="number" class="ms-v" step="0.01" value="${Number.isFinite(vDefault)?vDefault:""}" placeholder="V" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="ms-v2" step="0.01" value="${Number.isFinite(v2Default)?v2Default:""}" placeholder="to V" title="Optional: fill to make this stage a From→To band" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="ms-p" step="1" min="0" max="100" value="${Number.isFinite(pctDefault)?pctDefault:""}" placeholder="%" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()"><span class="u">%</span></div>`+
     `<button type="button" class="ms-rm" title="Remove stage" onclick="removeFpStage(this,'${side}')">×</button>`;
   host.appendChild(row);
   _fpUpdateSum(side);
@@ -6315,7 +6344,25 @@ function solve(inp){
 }
 
 /* ══ RENDER ══ */
+// Manual-recalculation gate. Every input edit across the app funnels into
+// recalc() (inline handlers + the global card input listener); under manual
+// mode that only FLAGS the results as stale — the solver itself runs in
+// recalcNow(), triggered by the ⟳ Recalculate button (and by the load/test
+// paths that need an immediate compute). Sim-tab display controls (cycle,
+// R_eq, smoothing, constraints, axis units) stay live: they re-render the
+// existing solution without re-solving.
+let calcDirty=false;
+function _calcStaleUI(dirty){
+  const b=$("recalcBtn"); if(b) b.classList.toggle("dirty",dirty);
+  const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
+}
 function recalc(){
+  calcDirty=true;
+  _calcStaleUI(true);
+}
+function recalcNow(){
+  calcDirty=false;
+  _calcStaleUI(false);
   // Auto-detect mode from inputs
   mode=detectMode();
   updateMassFieldStyles();
@@ -7274,8 +7321,10 @@ window.addEventListener("load",()=>{
   document.body.classList.add("mode-single");
   if(typeof renderStackPresetSelect==="function") renderStackPresetSelect();
   // Sync the faradaic plateau-editor visibility with the storage types the
-  // HTML shipped with (both default to faradaic on a fresh page).
+  // HTML shipped with (both default to faradaic on a fresh page), and wire
+  // the leave-the-editor Σ-check (it must never fire mid-typing).
   if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
+  if(typeof _fpWireSumCheck==="function"){ _fpWireSumCheck("cat"); _fpWireSumCheck("an"); }
   // ── Dev-only: prefill the form with a known scenario for fast iteration.
   // Flip DEV_DEFAULTS_ON to false (or delete this call) to remove. ──
   if(typeof applyDevDefaults==="function") applyDevDefaults();
@@ -7338,7 +7387,9 @@ function applyDevDefaults(force){
     // Storage types were written directly (no onStorageTypeChange), so sync
     // the faradaic plateau-editor visibility with the values set above.
     if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
-    if(typeof recalc==="function") recalc();
+    // Dev/test scenario wants immediate results — run the solver, not the
+    // manual-mode stale marker.
+    if(typeof recalcNow==="function") recalcNow();
   }catch(e){
     // Don't take the page down if a field id is missing after a refactor.
     console.warn("[dev defaults] skipped:",e);
