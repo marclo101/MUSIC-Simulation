@@ -524,4 +524,38 @@ setScenario({ ...lfp,
   }
 }
 
+// ── Test 13: plateau bands touching / exceeding the window edges ──
+// (a) An anode band running down TO the window edge (1.0→0.05 V with
+// V_th_lo = 0.05, the reported case) must be ACCEPTED and span exactly to the
+// edge. (b) A cathode band exceeding the top edge is CLAMPED with a warning.
+setScenario({ ...lfp,
+  inputs: { ...lfp.inputs, 'an-st': 'faradaic',
+            'an-fp-v': '1.0', 'an-fp-p': '90', 'an-fp-v2': '0.05',
+            'cat-fp-v': '4.0', 'cat-fp-p': '50', 'cat-fp-v2': '4.4' },
+  lastInp: { ...lfp.lastInp,
+    an: { st: 'faradaic', c1: 60, cN: 60, wAM: 1, Vth: [2.0, 0.05], Vop: [2.0, 0.05] } },
+});
+{
+  const g13 = _simGatherInputs();
+  check('edge band: gather ok', g13.ok === true, g13.msg || '');
+  if (g13.ok) {
+    const anBand = g13.ctx.mapN_a.segs.find(s => s.band === true);
+    check('edge band: anode 1.0→0.05 V accepted down to the window edge',
+          !!anBand && Math.abs(Math.min(anBand.V0, anBand.V1) - 0.05) < 1e-9 &&
+          Math.abs(Math.max(anBand.V0, anBand.V1) - 1.0) < 1e-9 &&
+          Math.abs((anBand.q1 - anBand.q0) - 54) < 1e-6,
+          anBand ? `V ${anBand.V1}→${anBand.V0} len=${(anBand.q1-anBand.q0).toFixed(2)}` : 'DROPPED');
+    const catBand = g13.ctx.mapN_c.segs.find(s => s.band === true);
+    check('over band: cathode 4.0→4.4 V clamped to the 4.2 V window top',
+          !!catBand && Math.abs(Math.max(catBand.V0, catBand.V1) - 4.2) < 1e-9 &&
+          Math.abs((catBand.q1 - catBand.q0) - 25) < 1e-6,
+          catBand ? `V ${catBand.V0}→${catBand.V1}` : 'DROPPED');
+    check('over band: clamp warning surfaced',
+          Array.isArray(g13.ctx._mapWarn) && g13.ctx._mapWarn.some(w => /clamped/.test(w)),
+          (g13.ctx._mapWarn || []).join(' | '));
+    const ts13 = simComputeTimeSeries();
+    check('edge band: full time series still runs', ts13.ok === true, ts13.msg || '');
+  }
+}
+
 process.exit(fails ? 1 : 0);

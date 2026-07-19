@@ -948,9 +948,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
           <label>Smoothing:</label>
           <select id="simSmoothSel" onchange="onSimCtrlChange()">
             <option value="0">Off</option>
-            <option value="1">Subtle</option>
-            <option value="3" selected>Medium</option>
-            <option value="6">Strong</option>
+            <option value="3">Subtle</option>
+            <option value="6" selected>Medium</option>
+            <option value="12">Strong</option>
           </select>
           <button type="button" class="help-icon hi-field" aria-label="Help" data-help="Visual rounding of the zone transitions (IR step → EDLC ramp, ramp → plateau, …) so the idealized piecewise-linear physics renders like a measured curve. Purely cosmetic — endpoints, capacities and every computed number are untouched. Off = raw piecewise-linear traces."></button>
         </div>
@@ -2670,14 +2670,6 @@ const SIM_X_UNITS=[
   {id:"Ah", label:"A·h", kind:"capacity",toC:3600},
   {id:"mC", label:"mC",  kind:"capacity",toC:0.001},
   {id:"C",  label:"C",   kind:"capacity",toC:1},
-  // Normalized capacity units — divide by the solved cathode-AM mass (mg/g/kg)
-  // or the cathode electrode area (cm²/mm²). Still kind:'capacity' so the
-  // renderer stays in capacity mode; simConvertCapacity applies the denominator.
-  {id:"uAh_mg", label:"µA·h mg⁻¹", kind:"capacity",toC:0.0036,norm:"mass",denom:"mg"},
-  {id:"mAh_g",  label:"mA·h g⁻¹",  kind:"capacity",toC:3.6,   norm:"mass",denom:"g"},
-  {id:"Ah_kg",  label:"A·h kg⁻¹",  kind:"capacity",toC:3600,  norm:"mass",denom:"kg"},
-  {id:"mAh_cm2",label:"mA·h cm⁻²", kind:"capacity",toC:3.6,   norm:"area",denom:"cm2"},
-  {id:"uAh_mm2",label:"µA·h mm⁻²", kind:"capacity",toC:0.0036,norm:"area",denom:"mm2"},
   {id:"s",  label:"s",   kind:"time",    toS:1},
   {id:"min",label:"min", kind:"time",    toS:60},
   {id:"h",  label:"h",   kind:"time",    toS:3600}
@@ -2688,7 +2680,7 @@ const SIM_M_OPTIONS=[
   {id:"Na",label:"Na/Na⁺"},
   {id:"K", label:"K/K⁺"}
 ];
-const simAxisState={M:"Li",capUnit:"mAh"};
+const simAxisState={M:"Li",capUnit:"mAh",norm:"none"};
 // Axis-lock state. null → all axes interactive (default Plotly behavior).
 // "y1" or "y2" → only that axis responds to zoom/drag; others are pinned.
 let simAxisLock=null;
@@ -2702,32 +2694,60 @@ function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];
 // Convert a capacity value between any two SIM_CAP_UNITS ids. Pivot through
 // Coulombs: vB = vA · (toC[A] / toC[B]). Handles both the ×1000 prefix ladder
 // (µA·h ↔ mA·h ↔ A·h, mC ↔ C) and the physical A·h ↔ C conversion (×3600).
-// Normalization denominator for a norm-carrying capacity unit. Mass = the
-// SOLVED cathode-AM mass (lastR.mAC, mg — the balance output the sim already
-// runs on); area = the cathode electrode area input (falls back to the ⌀12 mm
-// punch). NaN ⇒ the caller skips normalization (value shown un-normalized).
-function _simNormDenom(u){
-  if(u.norm==="mass"){
-    const mg=(typeof window!=="undefined"&&window.lastR&&window.lastR.mAC>0)?window.lastR.mAC:NaN;
-    if(!Number.isFinite(mg)) return NaN;
-    return u.denom==="mg"?mg : u.denom==="g"?mg/1000 : mg/1e6; // kg
-  }
-  if(u.norm==="area"){
-    let a=(typeof N==="function")?N("cat-ar"):NaN;
-    if(!(Number.isFinite(a)&&a>0)) a=(typeof A12!=="undefined")?A12:Math.PI*0.6*0.6;
-    return u.denom==="mm2" ? a*100 : a; // cm² → mm²
-  }
-  return NaN;
-}
 function simConvertCapacity(value,fromId,toId){
   if(fromId===toId) return value;
   const a=_simCapUnit(fromId), b=_simCapUnit(toId);
-  let v=value*(a.toC/b.toC);
-  // Normalized units divide by their denominator on the way in and multiply
-  // back on the way out, so conversions between any two units stay exact.
-  if(b.norm){ const d=_simNormDenom(b); if(Number.isFinite(d)&&d>0) v/=d; }
-  if(a.norm){ const d=_simNormDenom(a); if(Number.isFinite(d)&&d>0) v*=d; }
-  return v;
+  return value*(a.toC/b.toC);
+}
+
+// ── Capacity-axis normalization (second X-axis picker) ──
+// When a CAPACITY unit is active, a second pill next to the unit picks what
+// the plotted charge is divided by: nothing (absolute), an active-material
+// mass (g), the total cell film mass (g), or an electrode area (cm²). Masses
+// come from the SOLVED balance (lastR); areas from the electrode area inputs
+// (⌀12 mm punch default). An unavailable denominator falls back to absolute.
+const SIM_NORM_OPTIONS=[
+  {id:"none",   label:"absolute (no normalization)", pill:"abs",        suffix:""},
+  {id:"catAM",  label:"per cathode AM mass (g)",     pill:"g⁻¹ cat AM", suffix:" g⁻¹"},
+  {id:"anAM",   label:"per anode AM mass (g)",       pill:"g⁻¹ an AM",  suffix:" g⁻¹"},
+  {id:"cell",   label:"per total cell mass (g)",     pill:"g⁻¹ cell",   suffix:" g⁻¹"},
+  {id:"catArea",label:"per cathode area (cm²)",      pill:"cm⁻² cat",   suffix:" cm⁻²"},
+  {id:"anArea", label:"per anode area (cm²)",        pill:"cm⁻² an",    suffix:" cm⁻²"}
+];
+function _simNormOpt(id){return SIM_NORM_OPTIONS.find(o=>o.id===id)||SIM_NORM_OPTIONS[0];}
+function _simNormDenom(mode){
+  const r=(typeof window!=="undefined")?window.lastR:null;
+  const inp=(typeof window!=="undefined")?window.lastInp:null;
+  const area=id=>{
+    let a=(typeof N==="function")?N(id):NaN;
+    if(!(Number.isFinite(a)&&a>0)) a=(typeof A12!=="undefined")?A12:Math.PI*0.6*0.6;
+    return a;
+  };
+  switch(mode){
+    case "catAM": return (r&&r.mAC>0)? r.mAC/1000 : NaN;                       // g of cathode AM
+    case "anAM": {
+      const w=(inp&&inp.an&&Number.isFinite(inp.an.wAM))?inp.an.wAM:NaN;
+      return (r&&r.mAn>0&&w>0)? r.mAn*w/1000 : NaN;                            // g of anode AM
+    }
+    case "cell":  return (r&&(r.mCat>0||r.mAn>0))? ((r.mCat||0)+(r.mAn||0))/1000 : NaN; // g, both films
+    case "catArea": return area("cat-ar");                                     // cm²
+    case "anArea":  return area("an-ar");
+    default: return NaN;
+  }
+}
+// Multiplier applied to converted capacity values (1 when absolute or when
+// the denominator isn't available yet).
+function _simNormFactor(){
+  const mode=simAxisState.norm||"none";
+  if(mode==="none") return 1;
+  const d=_simNormDenom(mode);
+  return (Number.isFinite(d)&&d>0)? 1/d : 1;
+}
+// Full X-axis capacity label: unit + normalization suffix (e.g. "mA·h g⁻¹").
+function _simCapAxisLabel(){
+  const xu=_simCapUnit(simAxisState.capUnit);
+  const no=_simNormOpt(simAxisState.norm||"none");
+  return xu.label+((_simNormFactor()!==1)?no.suffix:"");
 }
 
 function syncSimAxisFromInputs(){
@@ -2833,9 +2853,17 @@ function simRenderAxisLabels(){
   const xu=_simXUnit(simAxisState.capUnit);
   const xLabel=xu.kind==='time'?"Time":"Capacity";
   const ax=$("simAxisX"),ay=$("simAxisY"),ay2=$("simAxisY2");
-  if(ax) ax.innerHTML=
-    `<span class="ax-pre">${xLabel}</span>`+
-    `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to switch X axis (Capacity ↔ Time)">${xu.label}<span class="ax-pill-arrow">▾</span></button>`;
+  if(ax){
+    // Capacity mode gets a SECOND pill: what the charge is normalized by
+    // (absolute, an AM mass, the cell film mass, or an electrode area).
+    const normPill = xu.kind==='capacity'
+      ? `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'norm')" title="Click to normalize the capacity axis by a mass or an area">${_simNormOpt(simAxisState.norm).pill}<span class="ax-pill-arrow">▾</span></button>`
+      : "";
+    ax.innerHTML=
+      `<span class="ax-pre">${xLabel}</span>`+
+      `<button type="button" class="ax-pill" onclick="openSimUnitMenu(event,'capUnit')" title="Click to switch X axis (Capacity ↔ Time)">${xu.label}<span class="ax-pill-arrow">▾</span></button>`+
+      normPill;
+  }
   if(ay){
     ay.innerHTML=
       `<span class="ax-pre">Potential (V vs</span>`+
@@ -3095,8 +3123,17 @@ function _simBuildElectrodeMap(side, phase, ctx){
     const f=(p&&Number.isFinite(p.frac))?p.frac:0;
     if(!Number.isFinite(V)||f<=0) continue;
     const V2=(p&&Number.isFinite(p.V2))?p.V2:V;
-    const Vl=Math.min(V,V2), Vh=Math.max(V,V2);
-    if(Vl<=Vlo+1e-9 || Vh>=Vhi-1e-9) continue;
+    let Vl=Math.min(V,V2), Vh=Math.max(V,V2);
+    // Stages may touch the window edges (e.g. hard carbon's band running down
+    // to V_th_lo) or extend past them: clamp to the window and keep the full
+    // % share; drop only stages that lie ENTIRELY outside.
+    if(Vh<Vlo-1e-12 || Vl>Vhi+1e-12){
+      (ctx._mapWarn=ctx._mapWarn||[]).push(side+' plateau stage at '+Vl.toFixed(2)+(Vh>Vl?('–'+Vh.toFixed(2)):'')+' V lies outside the V_th window — skipped');
+      continue;
+    }
+    if(Vl<Vlo-1e-12 || Vh>Vhi+1e-12)
+      (ctx._mapWarn=ctx._mapWarn||[]).push(side+' plateau stage clamped to the V_th window ('+Math.max(Vl,Vlo).toFixed(2)+'–'+Math.min(Vh,Vhi).toFixed(2)+' V)');
+    Vl=Math.max(Vl,Vlo); Vh=Math.min(Vh,Vhi);
     plats.push({Vl, Vh, f}); sumF+=f;
   }
   plats.sort((a,b)=>a.Vl-b.Vl);
@@ -4081,12 +4118,14 @@ function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
 // EXACTLY — curves still start and stop where the physics says — and the
 // pull-back is capped to a small fraction of the plotted ranges so long
 // plateaus stay flat. Purely cosmetic: hover/readout still follows the line.
-// Smoothing intensity from the sim-controls select (0 = off, 1 = subtle,
-// 3 = medium (default), 6 = strong). Multiplies the range caps below.
+// Smoothing intensity from the sim-controls select (0 = off, 3 = subtle,
+// 6 = medium (default), 12 = strong). Multiplies the range caps below; the
+// per-segment pull-back stays ≤50%, so "strong" means "round every corner as
+// far as its adjacent segments allow".
 function _simSmoothFactor(){
   const el=(typeof $==="function")?$("simSmoothSel"):null;
-  const v=el?parseFloat(el.value):3;
-  return Number.isFinite(v)&&v>=0 ? v : 3;
+  const v=el?parseFloat(el.value):6;
+  return Number.isFinite(v)&&v>=0 ? v : 6;
 }
 function _simSmoothPolyline(xs, ys){
   const n = xs.length;
@@ -4136,6 +4175,37 @@ function _simSmoothPolyline(xs, ys){
     } else run.push([xs[i], ys[i]]);
   }
   flushRun();
+  return {xs:ox, ys:oy};
+}
+
+// Clip a (possibly smoothed) polyline to a set of x-intervals, interpolating
+// exact points at each boundary and inserting NaN gaps between intervals.
+// Used to draw the sacrificial-salt overlay ON TOP of the smoothed cathode
+// trace: the overlay is a recolored slice of the very same curve, so the two
+// lines coincide exactly at any smoothing level.
+function _simClipPolyline(xs, ys, intervals){
+  const ox=[], oy=[];
+  const interp=x=>{
+    for(let i=1;i<xs.length;i++){
+      if(!Number.isFinite(xs[i-1])||!Number.isFinite(xs[i])) continue;
+      if(x>=xs[i-1]-1e-12 && x<=xs[i]+1e-12){
+        const w=xs[i]-xs[i-1];
+        return w>1e-15 ? ys[i-1]+(ys[i]-ys[i-1])*(x-xs[i-1])/w : ys[i];
+      }
+    }
+    return NaN;
+  };
+  for(const iv of intervals){
+    const a=iv[0], b=iv[1];
+    if(!(b>a)) continue;
+    const ya=interp(a), yb=interp(b);
+    if(!Number.isFinite(ya)||!Number.isFinite(yb)) continue;
+    if(ox.length){ ox.push(NaN); oy.push(NaN); }
+    ox.push(a); oy.push(ya);
+    for(let i=0;i<xs.length;i++)
+      if(Number.isFinite(xs[i]) && xs[i]>a+1e-12 && xs[i]<b-1e-12){ ox.push(xs[i]); oy.push(ys[i]); }
+    ox.push(b); oy.push(yb);
+  }
   return {xs:ox, ys:oy};
 }
 
@@ -4274,37 +4344,24 @@ function _renderSimPlotTime(host, xUnit){
        hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
 
-    // Salt-plateau overlay — collect all plateau segments across all strokes
-    // (each stroke has its own catSegs and t_start / Iu). Emits NaN-separated
-    // horizontal segments at each V_redox so non-adjacent plateaus don't draw
-    // a connecting line. `prev` is lifted out of the stroke loop so a charge
-    // stroke that ENDS on a plateau followed by another charge stroke that
-    // STARTS with a plateau gets a NaN break inserted at the boundary —
-    // otherwise Plotly would draw a straight horizontal line spanning the
-    // intervening discharge stroke (where V_cat is nowhere near V_redox).
-    const saltX=[], saltY=[];
-    let prev=false;
+    // Salt-plateau overlay — the time intervals where a sacrificial-salt
+    // segment (counts:false) is active, clipped OUT OF THE SMOOTHED CATHODE
+    // TRACE so the orange line is a recolored slice of the very same curve
+    // (it follows the smoothing exactly instead of floating on the raw
+    // piecewise-linear geometry).
+    const saltIv=[];
     for(const s of (series.strokes||[])){
-      if(!s.catSegs || !Number.isFinite(s.Iu) || s.Iu <= 0){
-        if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
-        continue;
-      }
-      const half = s.irHalf || 0;
+      if(!s.catSegs || !Number.isFinite(s.Iu) || s.Iu <= 0) continue;
       const _qToT = q => s.t_start + q * 3600 / s.Iu;
       for(const seg of s.catSegs){
-        if(seg.kind !== 'plateau' || seg.counts !== false){
-          if(prev){ saltX.push(NaN); saltY.push(NaN); prev=false; }
-          continue;
-        }
-        if(prev){ saltX.push(NaN); saltY.push(NaN); }
-        saltX.push(conv(_qToT(seg.Q_start)), conv(_qToT(seg.Q_end)));
-        saltY.push(seg.V_start + half, seg.V_end + half);
-        prev=true;
+        if(seg.kind !== 'plateau' || seg.counts !== false) continue;
+        saltIv.push([conv(_qToT(seg.Q_start)), conv(_qToT(seg.Q_end))]);
       }
     }
-    if(saltX.length){
+    if(saltIv.length){
+      const saltClip=_simClipPolyline(smC.xs, smC.ys, saltIv);
       traces.push({
-        x:saltX, y:saltY, yaxis:'y', mode:'lines',
+        x:saltClip.xs, y:saltClip.ys, yaxis:'y', mode:'lines',
         line:{color:colSalt, width:3.0}, name:'Salt (sacrificial)',
         hovertemplate:'t=%{x:.3g} '+xUnit.label+'<br>V<sub>redox</sub>=%{y:.3f} V<extra>plateau</extra>',
         connectgaps:false
@@ -4476,16 +4533,18 @@ function renderSimPlot(){
     _simSetMsg(series.msg, "warn");
     const emptyEl=$("simEmpty"); if(emptyEl) emptyEl.classList.toggle("hidden",false);
   } else {
-    const conv=q=>simConvertCapacity(q,"uAh",simAxisState.capUnit);
+    // Unit conversion + optional normalization (per AM/cell mass or electrode
+    // area) — every displayed capacity (traces, markers, messages) goes
+    // through this one function so they always rescale together.
+    const _nrm=_simNormFactor();
+    const conv=q=>simConvertCapacity(q,"uAh",simAxisState.capUnit)*_nrm;
     const half = series.irHalf || 0;
     const catPoly = _simSegsToPolyline(series.catSegs, +half);
     const anPoly  = _simSegsToPolyline(series.anSegs,  -half);
     const cellPoly= _simCellPolylineFromSegs(series.catSegs, series.anSegs, +half, -half);
-    const saltPoly= _simSaltPolylineFromSegs(series.catSegs, +half);
     const xCat = catPoly.xs.map(conv);
     const xAn  = anPoly.xs.map(conv);
     const xCell= cellPoly.xs.map(conv);
-    const xSalt= saltPoly.xs.map(q => Number.isFinite(q) ? conv(q) : NaN);
     const vc_cat = catPoly.ys, vc_an = anPoly.ys, v_cell = cellPoly.ys;
 
     const colC="#1A8A6E", colA="#2D7AB6", colCell="#1A202C";
@@ -4511,18 +4570,27 @@ function renderSimPlot(){
        hovertemplate:'Q=%{x:.3g}<br>V<sub>cell</sub>=%{y:.3f} V<extra></extra>'}
     ];
 
-    // Salt-plateau overlay — orange horizontal segments at each V_redox where
-    // the cathode trace flattens. Drawn AFTER the cathode trace so it sits on
-    // top. Only added when at least one plateau actually appears in this
-    // stroke (no salt → no segments → no overlay → no spurious legend item).
-    if(saltPoly.xs.length){
-      traces.push({
-        x:xSalt, y:saltPoly.ys, yaxis:'y', mode:'lines',
-        line:{color:colSalt, width:3.0, shape:'linear'},
-        name:'Salt (sacrificial)',
-        hovertemplate:'Q=%{x:.3g}<br>V<sub>redox</sub>=%{y:.3f} V<extra>plateau</extra>',
-        connectgaps:false
-      });
+    // Salt-plateau overlay — the Q-intervals where a sacrificial-salt segment
+    // (counts:false) is active, clipped OUT OF THE SMOOTHED CATHODE TRACE so
+    // the orange line is a recolored slice of the very same curve (it follows
+    // the smoothing exactly). Drawn AFTER the cathode trace so it sits on top;
+    // no salt → no intervals → no overlay → no spurious legend item.
+    {
+      const saltIv=[];
+      for(const seg of (series.catSegs||[])){
+        if(seg.kind !== 'plateau' || seg.counts !== false) continue;
+        saltIv.push([conv(seg.Q_start), conv(seg.Q_end)]);
+      }
+      if(saltIv.length){
+        const saltClip=_simClipPolyline(smCat.xs, smCat.ys, saltIv);
+        traces.push({
+          x:saltClip.xs, y:saltClip.ys, yaxis:'y', mode:'lines',
+          line:{color:colSalt, width:3.0, shape:'linear'},
+          name:'Salt (sacrificial)',
+          hovertemplate:'Q=%{x:.3g}<br>V<sub>redox</sub>=%{y:.3f} V<extra>plateau</extra>',
+          connectgaps:false
+        });
+      }
     }
 
     // The legacy "vc_an[2]" / "vc_cat[2]" references below mean "the V at
@@ -4726,7 +4794,7 @@ function renderSimPlot(){
     };
     const notesHtml=_simNotesSuffix(series);
     if(series.consHit){
-      const capLab = _simCapUnit(simAxisState.capUnit).label;
+      const capLab = _simCapAxisLabel();
       const stop_disp = conv(series.Qmin);
       const c=series.constraints[series.consHit];
       const op = (c.def.bound==='max') ? "≤" : "≥";
@@ -4749,7 +4817,7 @@ function renderSimPlot(){
       // limited electrode so the message quotes the physical V (not the
       // visual line value).
       const limitedV_phys = limCat ? (limitedV + irHalf) : (limitedV - irHalf);
-      const capLab = _simCapUnit(simAxisState.capUnit).label;
+      const capLab = _simCapAxisLabel();
       const stop_disp = conv(series.Qmin);
       const fmt=v=>{
         if(!Number.isFinite(v)) return "—";
@@ -4832,18 +4900,21 @@ function simInstallResizeWatcher(host){
 function openSimUnitMenu(ev,kind){
   ev.stopPropagation();
   const menu=$("simUnitMenu"); if(!menu) return;
-  const cur =kind==="capUnit"?simAxisState.capUnit:simAxisState.M;
+  const cur =kind==="capUnit"?simAxisState.capUnit:kind==="norm"?(simAxisState.norm||"none"):simAxisState.M;
   const _btn=o=>`<button type="button" class="sim-unit-opt${o.id===cur?" act":""}" onclick="pickSimUnit('${kind}','${o.id}')">${o.label}</button>`;
   let html="";
   if(kind==="capUnit"){
     // Two sections — Capacity (default) and Time. Picking a time unit
     // switches the simulation to multi-cycle continuous time-series mode.
     html += `<div class="sim-unit-hdr">Capacity</div>`;
-    html += SIM_X_UNITS.filter(o=>o.kind==='capacity'&&!o.norm).map(_btn).join("");
-    html += `<div class="sim-unit-hdr" title="Normalized by the solved cathode-AM mass (mg/g/kg) or the cathode electrode area (cm²/mm²)">Normalized (per cat. AM mass / area)</div>`;
-    html += SIM_X_UNITS.filter(o=>o.kind==='capacity'&&o.norm).map(_btn).join("");
+    html += SIM_X_UNITS.filter(o=>o.kind==='capacity').map(_btn).join("");
     html += `<div class="sim-unit-hdr">Time</div>`;
     html += SIM_X_UNITS.filter(o=>o.kind==='time').map(_btn).join("");
+  } else if(kind==="norm"){
+    // Normalization picker (second capacity pill): masses from the solved
+    // balance, areas from the electrode area inputs.
+    html += `<div class="sim-unit-hdr">Normalize capacity by</div>`;
+    html += SIM_NORM_OPTIONS.map(_btn).join("");
   } else {
     html = SIM_M_OPTIONS.map(_btn).join("");
   }
@@ -4877,6 +4948,7 @@ function _simMenuKey(ev){
 }
 function pickSimUnit(kind,id){
   if(kind==="capUnit") simAxisState.capUnit=id;
+  else if(kind==="norm") simAxisState.norm=id;
   else if(kind==="mRef"){ simAxisState.M=id; simUserOverrodeM=true; }
   const menu=$("simUnitMenu"); if(menu) menu.style.display="none";
   simRenderAxisLabels();
