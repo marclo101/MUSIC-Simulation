@@ -642,6 +642,21 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
       <span class="rate-eq" id="cat-ac-rN-eq"></span>
       <input type="hidden" id="cat-ac-rN" value="">
       <input type="hidden" id="cat-ac-rN-ru" value=""></div>
+    <!-- Faradaic redox plateau(s) of the AM — shown only when Storage type is
+         Faradaic. The simulator pins V_cat here for the given share of the
+         capacity: a REVERSIBLE plateau that appears in every cycle's GCD trace
+         (unlike the one-shot sacrificial-salt plateau below). -->
+    <div id="cat-fp-wrap" style="display:none">
+    <div class="row w2" id="cat-fp-row"><label data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is drawn as sloping ramps split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_cat_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is drawn as sloping ramps split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="cat-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('cat')"><span class="u">V</span></div><div class="fld"><input type="number" id="cat-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('cat')"><span class="u">%</span></div></div>
+    <div class="trow" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; the percentages may sum to ≤100% — the remainder is sloping capacity." data-help-key="fld_cat_fp_multistage"><div class="tsw" id="cat-fp-ms-sw" onclick="toggleFpMultiStage('cat')"></div><span class="tlbl" id="cat-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; the percentages may sum to ≤100% — the remainder is sloping capacity."></button></div>
+    <div id="cat-fp-ms-editor" style="display:none">
+      <div id="cat-fp-ms-rows" class="salt-ms-rows"></div>
+      <div class="salt-ms-foot">
+        <button type="button" class="salt-ms-add" onclick="addFpStage('cat')">+ Add stage</button>
+        <span class="salt-ms-sum" id="cat-fp-ms-sum">Σ = 0%</span>
+      </div>
+    </div>
+    </div>
   </div></div>
   <div class="sec cld s-optional" data-step="cat-salt"><div class="st" onclick="tgS(this)" data-help="Optional irreversible additive (e.g. Na₂C₄O₄, Na₂C₂O₄, Li-salt analogues) blended into the cathode film to release extra working ions on the very first charge. It contributes to Qc1 only — Cₙₜₕ ≈ 0 by design — which decouples 1st-cycle balance (used to compensate the anode's SEI loss) from Nth-cycle balance." data-help-key="sec_cat_salt"><span class="sl"><span class="bg bs">2</span> Sacrificial additive</span><span class="sh">optional</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Optional irreversible additive (e.g. Na₂C₄O₄, Na₂C₂O₄, Li-salt analogues) blended into the cathode film to release extra working ions on the very first charge. It contributes to Qc1 only — Cₙₜₕ ≈ 0 by design — which decouples 1st-cycle balance (used to compensate the anode's SEI loss) from Nth-cycle balance."></button></div><div class="sb">
     <div class="trow" data-help="Master switch for the sacrificial salt. When &lt;strong&gt;off&lt;/strong&gt;, Qc comes from AM₁ alone and only one cycle can be balanced at a time; when &lt;strong&gt;on&lt;/strong&gt;, the AM₁/Salt mass split inside the cathode AM-zone becomes a second knob the solver uses to satisfy both 1st-cycle and Nth-cycle balance simultaneously." data-help-key="fld_salt_toggle"><div class="tsw" id="salt-sw" onclick="tgSalt()"></div><span class="tlbl" id="salt-lbl"><strong>No salt</strong></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Master switch for the sacrificial salt. When &lt;strong&gt;off&lt;/strong&gt;, Qc comes from AM₁ alone and only one cycle can be balanced at a time; when &lt;strong&gt;on&lt;/strong&gt;, the AM₁/Salt mass split inside the cathode AM-zone becomes a second knob the solver uses to satisfy both 1st-cycle and Nth-cycle balance simultaneously."></button></div>
@@ -713,6 +728,20 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
       <span class="rate-eq" id="an-rN-eq"></span>
       <input type="hidden" id="an-rN" value="">
       <input type="hidden" id="an-rN-ru" value=""></div>
+    <!-- Faradaic redox plateau(s) of the anode AM — mirror of the cathode
+         editor above (reversible plateaus, e.g. hard carbon's low-V plateau
+         or graphite staging). Shown only when Storage type is Faradaic. -->
+    <div id="an-fp-wrap" style="display:none">
+    <div class="row w2" id="an-fp-row"><label data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%, graphite ≈ 0.1–0.2 V). The remaining share is drawn as sloping ramps. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_an_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%, graphite ≈ 0.1–0.2 V). The remaining share is drawn as sloping ramps. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="an-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('an')"><span class="u">V</span></div><div class="fld"><input type="number" id="an-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('an')"><span class="u">%</span></div></div>
+    <div class="trow" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; Σ ≤ 100% — the remainder is sloping capacity." data-help-key="fld_an_fp_multistage"><div class="tsw" id="an-fp-ms-sw" onclick="toggleFpMultiStage('an')"></div><span class="tlbl" id="an-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; Σ ≤ 100% — the remainder is sloping capacity."></button></div>
+    <div id="an-fp-ms-editor" style="display:none">
+      <div id="an-fp-ms-rows" class="salt-ms-rows"></div>
+      <div class="salt-ms-foot">
+        <button type="button" class="salt-ms-add" onclick="addFpStage('an')">+ Add stage</button>
+        <span class="salt-ms-sum" id="an-fp-ms-sum">Σ = 0%</span>
+      </div>
+    </div>
+    </div>
   </div></div>
   <div class="sec cld s-pending" data-step="an-mass"><div class="st" onclick="tgS(this)" data-help="Total anode film mass (AM + Conductive + Binder). Either an explicit input or the solver's output, depending on which side is pinned." data-help-key="sec_an_mass"><span class="sl"><span class="bg ba">m</span> Mass</span><span class="sh">electrode total</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Total anode film mass (AM + Conductive + Binder). Either an explicit input or the solver's output, depending on which side is pinned."></button></div><div class="sb">
     <div class="mmbar" id="an-mmb" data-help="Choose &lt;strong&gt;Direct&lt;/strong&gt; (mg) or &lt;strong&gt;Loading&lt;/strong&gt; (mg/cm²). Both yield the same total anode mass to the solver — pick whichever you actually measured." data-help-key="fld_an_mass_method"><button class="mmb act" onclick="sMM('an','d',this)">Direct</button><button class="mmb" onclick="sMM('an','l',this)">Loading</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Choose &lt;strong&gt;Direct&lt;/strong&gt; (mg) or &lt;strong&gt;Loading&lt;/strong&gt; (mg/cm²). Both yield the same total anode mass to the solver — pick whichever you actually measured."></button></div>
@@ -943,7 +972,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <div class="sim-ax sim-ax-y2" id="simAxisY2"></div>
         <div id="simPlot"></div>
         <div class="sim-ax sim-ax-x" id="simAxisX"></div>
-        <div class="sim-empty" id="simEmpty">Plot template ready — physics not wired yet. Pick a 1<sup>st</sup>-cycle and N<sup>th</sup>-cycle rate in the Rates &amp; current densities tab to anchor the simulation currents.</div>
+        <div class="sim-empty" id="simEmpty">Run a calculation in Single mode to provide masses and capacities, then pick a 1<sup>st</sup>-cycle and N<sup>th</sup>-cycle rate in the Rates &amp; current densities tab to anchor the simulation currents. The plot draws V<sub>cat</sub>, V<sub>an</sub> and V<sub>cell</sub> per cycle — EDLC, pseudocapacitive and faradaic (redox-plateau) electrodes are all supported.</div>
       </div>
       <div class="sim-unit-menu" id="simUnitMenu" role="menu"></div>
     </div>
@@ -1635,7 +1664,10 @@ function onStorageTypeChange(side){
     // Capacitive/pseudocapacitive — apply scaling
     scaleVW(side);
   }
+  // The faradaic redox-plateau editor only applies to faradaic storage.
+  if(typeof updateFpVisibility==="function") updateFpVisibility(side);
   recalc();
+  if(typeof renderSimPlot==="function") renderSimPlot();
 }
 
 function restoreOrigCap(side){
@@ -1849,6 +1881,116 @@ function _simSaltUpdateSum(){
   sum.textContent = `Σ = ${total.toFixed(0)}%`;
   sum.classList.toggle("ok", Math.abs(total - 100) < 0.5);
   sum.classList.toggle("bad", total > 0 && Math.abs(total - 100) >= 0.5);
+}
+
+/* ── Faradaic AM redox-plateau editor (cat-fp-* / an-fp-*) ──
+   The AM analogue of the sacrificial-salt V_redox widget above (same row
+   markup / CSS). Single mode: one V_plateau + one % share (of the electrode's
+   capacity delivered on the plateau; the remainder is sloping ramp).
+   Multi-stage: (V, %) rows. The spec feeds _simReadPlateauSpec → the sim's
+   canonical map builder; unlike the salt these plateaus are REVERSIBLE
+   (counts:true) and appear in every cycle. Only shown for faradaic storage.
+   fpDirty mirrors saltVRedoxDirty: a hand-edited editor stops auto-filling
+   from library rate rows until the user clears it. Unlike the salt (whose
+   stages must partition 100% of the reservoir) plateau shares may sum to
+   <100% — the remainder is sloping capacity; only Σ>100% is flagged. */
+let fpDirty = {cat:false, an:false};
+function _fpPrefix(side){ return side === "an" ? "an-fp" : "cat-fp"; }
+function updateFpVisibility(side){
+  const st = $(side === "cat" ? "cat-ac-st" : "an-st");
+  const wrap = $(_fpPrefix(side) + "-wrap");
+  if(wrap) wrap.style.display = (st && st.value === "faradaic") ? "" : "none";
+}
+function onFpEdit(side){
+  const p = _fpPrefix(side);
+  const vEl = $(p+"-v"), pEl = $(p+"-p");
+  fpDirty[side] = !!((vEl && vEl.value !== "") || (pEl && pEl.value !== ""));
+  _fpUpdateSum(side);
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function toggleFpMultiStage(side){
+  const p = _fpPrefix(side);
+  const sw = $(p+"-ms-sw"); if(!sw) return;
+  const on = !sw.classList.contains("on");
+  sw.classList.toggle("on", on);
+  const lbl = $(p+"-ms-lbl");
+  if(lbl) lbl.innerHTML = on
+    ? "Multi-stage plateau — <strong>on</strong>"
+    : "Multi-stage plateau — <em>off</em>";
+  const row = $(p+"-row"); if(row) row.style.display = on ? "none" : "";
+  const ed = $(p+"-ms-editor"); if(ed) ed.style.display = on ? "" : "none";
+  if(on){
+    // Seed with one row from the single V/% inputs so the list isn't empty.
+    const host = $(p+"-ms-rows");
+    if(host && !host.querySelector(".ms-row")){
+      const v = parseFloat($(p+"-v")?.value);
+      const pct = parseFloat($(p+"-p")?.value);
+      addFpStage(side, Number.isFinite(v) ? v : null, Number.isFinite(pct) ? pct : 90);
+    }
+  }
+  _fpUpdateSum(side);
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function addFpStage(side, vDefault, pctDefault){
+  const p = _fpPrefix(side);
+  const host = $(p+"-ms-rows"); if(!host) return;
+  const idx = host.querySelectorAll(".ms-row").length + 1;
+  const row = document.createElement("div");
+  row.className = "ms-row";
+  row.innerHTML =
+    `<span class="ms-num">${idx}.</span>`+
+    `<div class="fld"><input type="number" class="ms-v" step="0.01" value="${Number.isFinite(vDefault)?vDefault:""}" placeholder="V" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="ms-p" step="1" min="0" max="100" value="${Number.isFinite(pctDefault)?pctDefault:""}" placeholder="%" oninput="fpDirty['${side}']=true;_fpUpdateSum('${side}');renderSimPlot&&renderSimPlot()"><span class="u">%</span></div>`+
+    `<button type="button" class="ms-rm" title="Remove stage" onclick="removeFpStage(this,'${side}')">×</button>`;
+  host.appendChild(row);
+  _fpUpdateSum(side);
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function removeFpStage(btn, side){
+  const row = btn.closest(".ms-row"); if(!row) return;
+  row.remove();
+  document.querySelectorAll("#"+_fpPrefix(side)+"-ms-rows .ms-row").forEach((r, i) => {
+    const num = r.querySelector(".ms-num"); if(num) num.textContent = (i+1) + ".";
+  });
+  fpDirty[side] = true;
+  _fpUpdateSum(side);
+  if(typeof renderSimPlot === "function") renderSimPlot();
+}
+function _fpUpdateSum(side){
+  const p = _fpPrefix(side);
+  const sum = $(p+"-ms-sum"); if(!sum) return;
+  let total = 0;
+  document.querySelectorAll("#"+p+"-ms-rows .ms-row .ms-p").forEach(inp => {
+    const v = parseFloat(inp.value); if(Number.isFinite(v)) total += v;
+  });
+  sum.textContent = `Σ = ${total.toFixed(0)}%`;
+  sum.classList.toggle("ok", total > 0 && total <= 100.5);
+  sum.classList.toggle("bad", total > 100.5);
+}
+// Push a library rate row's plateau data (vPlateau/pPlateau or plateaus[])
+// into the editor — called when a rate row is picked. A hand-edited editor
+// (fpDirty) is left alone until the user clears it; a library fill keeps the
+// editor auto-tracking (dirty stays false).
+function _fpApplyFromLibrary(side, row){
+  if(!row || fpDirty[side]) return;
+  const p = _fpPrefix(side);
+  const stages = Array.isArray(row.plateaus)
+    ? row.plateaus.filter(s => s && Number.isFinite(s.v) && s.pct > 0) : [];
+  const sw = $(p+"-ms-sw");
+  if(stages.length > 1){
+    if(sw && !sw.classList.contains("on")) toggleFpMultiStage(side);
+    const host = $(p+"-ms-rows");
+    if(host){ host.innerHTML = ""; stages.forEach(s => addFpStage(side, s.v, s.pct)); }
+  } else {
+    if(sw && sw.classList.contains("on")) toggleFpMultiStage(side);
+    const v  = stages.length === 1 ? stages[0].v   : row.vPlateau;
+    const pc = stages.length === 1 ? stages[0].pct : row.pPlateau;
+    const vEl = $(p+"-v"), pEl = $(p+"-p");
+    if(vEl) vEl.value = Number.isFinite(v)  ? v  : "";
+    if(pEl) pEl.value = Number.isFinite(pc) ? pc : "";
+  }
+  fpDirty[side] = false;
+  _fpUpdateSum(side);
 }
 function sMM(s,m,btn){if(s==="cat")catMM=m;else anMM=m;$(s+"-mmb").querySelectorAll(".mmb").forEach(b=>b.classList.toggle("act",b===btn));$(s+"-md").style.display=m==="d"?"":"none";$(s+"-ml").style.display=m==="l"?"":"none";recalc()}
 
@@ -3305,11 +3447,13 @@ function _simGatherInputs(){
   if(!inp||!r) return {ok:false, msg:"Run a calculation in Single mode first to provide masses and capacities."};
   if(!r.sane||!(r.mCat>0)||!(r.mAn>0)) return {ok:false, msg:"Balance result is not valid — check the Single-mode inputs."};
 
+  // All three storage types simulate (plan §1.1): EDLC and pseudocapacitive
+  // as linear ramps, faradaic as a plateau staircase from the electrode's
+  // redox-plateau spec. Mixed pairs are allowed. A faradaic electrode with no
+  // plateau set runs as a pure linear sweep — an informational note, not an
+  // error (collected in simNotes and surfaced by the renderers).
   const stCat=inp.cat.ac.st,stAn=inp.an.st;
-  if(stCat!=="capacitive"||stAn!=="capacitive"){
-    const lab=s=>s==="capacitive"?"EDLC":s==="pseudocapacitive"?"pseudocapacitive":"faradaic";
-    return {ok:false, msg:"Simulation currently supports EDLC on both electrodes (cathode is "+lab(stCat)+", anode is "+lab(stAn)+"). Pseudocapacitive and faradaic models will be added later."};
-  }
+  const simNotes=[];
 
   // Split the cathode first-cycle capacity into AM-only (counts toward EDLC
   // budget, defines the slope) and salt (delivered at fixed V_redox plateau).
@@ -3343,12 +3487,14 @@ function _simGatherInputs(){
   const constraints=_simReadConstraints();
   const plateaus=_simBuildPlateauState(Q_salt_1st);
 
-  // Reversible AM redox plateau specs (faradaic electrodes). The UI editor is
-  // a later step, so these are empty for now (EDLC/pseudocap ⇒ pure ramps),
-  // but the map path is fully wired: tests exercise it by injecting specs into
-  // ctx before building the maps.
+  // Reversible AM redox plateau specs (faradaic electrodes) from the per-
+  // electrode plateau editors; [] for EDLC/pseudocap ⇒ pure ramps.
   const plateauSpecCat=_simReadPlateauSpec('cat');
   const plateauSpecAn =_simReadPlateauSpec('an');
+  if(stCat==="faradaic" && !plateauSpecCat.length)
+    simNotes.push("Cathode is faradaic with no redox plateau set — simulating as a linear sweep. Set V_plateau / % share in the cathode Active material panel.");
+  if(stAn==="faradaic" && !plateauSpecAn.length)
+    simNotes.push("Anode is faradaic with no redox plateau set — simulating as a linear sweep. Set V_plateau / % share in the anode Active material panel.");
 
   // ── Rate-dependent capacity (plan §1.5): scale the four AM budgets by φ ──
   // i_app = I_µA / m_AM[mg] (µA/mg ≡ mA/g). Cathode AM mass = r.mAC; anode AM
@@ -3388,20 +3534,56 @@ function _simGatherInputs(){
   ctx.mapN_c=_simBuildElectrodeMap('cat','Nth',ctx);
   ctx.map1_a=_simBuildElectrodeMap('an','1st',ctx);
   ctx.mapN_a=_simBuildElectrodeMap('an','Nth',ctx);
+  if(Array.isArray(ctx._mapWarn)) for(const w of ctx._mapWarn) simNotes.push("Map: "+w);
 
-  return {ok:true, ctx, rateInfo,
+  // Surface the rate adjustment whenever any usable φ actually moved a budget.
+  const _phiPieces=[];
+  const _phiTxt=(lbl,f)=>{
+    if(!f || !f.usable || Math.abs(f.phi-1)<1e-3) return;
+    _phiPieces.push(`${lbl} ×${f.phi.toFixed(3)} (i = ${f.i_app.toFixed(1)} mA/g${f.clamped?", clamped at ladder edge":""})`);
+  };
+  _phiTxt("cathode C_1st", rateInfo.cat.c1); _phiTxt("cathode C_Nth", rateInfo.cat.cN);
+  _phiTxt("anode C_1st",   rateInfo.an.c1);  _phiTxt("anode C_Nth",   rateInfo.an.cN);
+  if(_phiPieces.length)
+    simNotes.push("Rate-adjusted capacity: "+_phiPieces.join(" · ")+".");
+
+  return {ok:true, ctx, rateInfo, notes:simNotes,
     Req, I1_uA, IN_uA, Q_salt_1st, constraints, plateaus,
     Vop_c_hi:inp.cat.Vop[0], Vop_c_lo:inp.cat.Vop[1],
     Vop_a_hi:inp.an.Vop[0],  Vop_a_lo:inp.an.Vop[1]};
 }
 
-// Reversible AM redox plateau spec [{V,frac}] per electrode (faradaic). The
-// per-electrode editor arrives with the UI step; until then this returns [] so
-// AM maps stay single ramps (EDLC / pseudocapacitive). Σfrac≤1; the builder
-// skips plateaus outside the V_th window and renormalizes an over-committed
-// sum.
+// Reversible AM redox plateau spec [{V,frac}] per electrode, read from the
+// faradaic plateau editor (cat-fp-* / an-fp-*). Non-faradaic storage → [] (a
+// single EDLC/pseudocap ramp). Single mode: one {V, frac} from the V/% pair
+// (% defaults to 90 when V is set but % is blank); multi-stage mode: one entry
+// per valid (V, %) row. The map builder skips plateaus outside the V_th
+// window and renormalizes an over-committed sum, so this stays a plain read.
+// typeof/null-guarded so it is inert under the stubbed test DOM.
 function _simReadPlateauSpec(side){
-  return [];
+  const get=(typeof $==="function")?$:(()=>null);
+  const st=get(side==="cat"?"cat-ac-st":"an-st");
+  if(!st || st.value!=="faradaic") return [];
+  const p=(side==="an")?"an-fp":"cat-fp";
+  const multi=get(p+"-ms-sw")?.classList?.contains("on");
+  if(!multi){
+    const v=parseFloat(get(p+"-v")?.value);
+    if(!Number.isFinite(v)) return [];
+    let pct=parseFloat(get(p+"-p")?.value);
+    if(!Number.isFinite(pct)) pct=90;   // default plateau share
+    if(pct<=0) return [];
+    return [{V:v, frac:Math.min(pct,100)/100}];
+  }
+  const rows=(typeof document!=="undefined"&&document.querySelectorAll)
+    ? document.querySelectorAll("#"+p+"-ms-rows .ms-row") : [];
+  const out=[];
+  rows.forEach(row=>{
+    const v=parseFloat(row.querySelector(".ms-v")?.value);
+    const pc=parseFloat(row.querySelector(".ms-p")?.value);
+    if(!Number.isFinite(v)||!Number.isFinite(pc)||pc<=0) return;
+    out.push({V:v, frac:pc/100});
+  });
+  return out;
 }
 
 function simComputeSeries(){
@@ -3434,6 +3616,8 @@ function simComputeSeries(){
   let stroke=null;
   for(let k=1;k<=k_target;k++){
     stroke=_simAdvanceOneStroke(k, x_c, x_a, ctx);
+    if(k===1 && stroke.Qmin<=1e-12 && stroke.dir==="discharge")
+      g.notes.push("Discharge-first start: the as-assembled cell has no discharge capacity — both electrodes sit at their assembled state of charge. Start in the charge direction instead.");
     if(k<k_target){ x_c=stroke.x_c_end; x_a=stroke.x_a_end; }
   }
 
@@ -3466,6 +3650,7 @@ function simComputeSeries(){
     limiting:stroke.limiting, consHit:stroke.consHit,
     constraints,
     plateaus,
+    notes:g.notes,
     Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo,
     Q_salt_1st
   };
@@ -3569,6 +3754,8 @@ function simComputeTimeSeries(){
     if(!Number.isFinite(Qmin) || Qmin<=1e-12){
       strokes.push({k, t_start:t, t_end:t, dir:stroke.dir, Iu, limiting:stroke.limiting, consHit:stroke.consHit, frozen:true,
                     catSegs:[], anSegs:[], V_c_in, V_a_in});
+      if(k===1 && stroke.dir==="discharge")
+        g.notes.push("Discharge-first start: the as-assembled cell has no discharge capacity — both electrodes sit at their assembled state of charge. Start in the charge direction instead.");
       frozen=true; break;
     }
     const dt = Qmin * 3600 / Iu;
@@ -3613,6 +3800,7 @@ function simComputeTimeSeries(){
     I1_uA, IN_uA,
     constraints,
     plateaus,
+    notes:g.notes,
     Vop_c_hi, Vop_c_lo, Vop_a_hi, Vop_a_lo,
     Q_salt_1st
   };
@@ -3716,6 +3904,15 @@ function _simSubscriptLabel(s){
   if(!s) return s;
   return String(s).replace(/\b([VQ])_(th|cell|cat|an|max|min|op|OCV|ocv|c|a|1st|Nth)\b/g,
                             '$1<sub>$2</sub>');
+}
+
+// Assemble the informational notes suffix (faradaic pure-ramp hints, rate-φ
+// adjustments, map-builder warnings, frozen-cell hints) that renderers append
+// to whichever main message they chose. Returns "" or "<br>…"-joined HTML.
+function _simNotesSuffix(series){
+  const notes=Array.isArray(series&&series.notes)?series.notes:[];
+  if(!notes.length) return "";
+  return notes.map(n=>`<br><span style="color:var(--ink3)">ℹ ${_simSubscriptLabel(n)}</span>`).join("");
 }
 
 function _simSetMsg(text,kind){
@@ -3902,13 +4099,17 @@ function _renderSimPlotTime(host, xUnit){
                           (series.frozen?" · cell froze (no advance possible)":"");
     }
 
-    // Surface any per-cycle stop messages (constraints / V_th) summarised.
+    // Surface any per-cycle stop messages (constraints / V_th) summarised,
+    // with the informational notes (φ, plateau hints, map warnings) appended.
+    const notesHtml=_simNotesSuffix(series);
     const last = series.strokes[series.strokes.length-1];
     if(last && last.consHit && series.constraints[last.consHit]){
       const c=series.constraints[last.consHit];
-      _simSetMsg(`Last cycle (k=${last.k}, ${last.dir}) ended on user constraint ${_simSubscriptLabel(c.def.label)} (${c.V.toFixed(3)} V). Earlier cycles may have hit other limits — switch to a Capacity unit and step through cycles to inspect.`, "warn");
+      _simSetMsg(`Last cycle (k=${last.k}, ${last.dir}) ended on user constraint ${_simSubscriptLabel(c.def.label)} (${c.V.toFixed(3)} V). Earlier cycles may have hit other limits — switch to a Capacity unit and step through cycles to inspect.`+notesHtml, "warn");
     } else if(last && last.limiting){
-      _simSetMsg(`${last.limiting.charAt(0).toUpperCase()+last.limiting.slice(1)} is limiting cell capacity on the last cycle (k=${last.k}, ${last.dir}). Switch to a Capacity unit and step through cycles to inspect any imbalance propagation.`, "warn");
+      _simSetMsg(`${last.limiting.charAt(0).toUpperCase()+last.limiting.slice(1)} is limiting cell capacity on the last cycle (k=${last.k}, ${last.dir}). Switch to a Capacity unit and step through cycles to inspect any imbalance propagation.`+notesHtml, "warn");
+    } else if(notesHtml){
+      _simSetMsg(notesHtml.replace(/^<br>/,""), "");
     } else {
       _simSetMsg("","");
     }
@@ -4217,6 +4418,7 @@ function renderSimPlot(){
       if(a>=1)  return v.toFixed(2);
       return v.toFixed(3);
     };
+    const notesHtml=_simNotesSuffix(series);
     if(series.consHit){
       const capLab = _simCapUnit(simAxisState.capUnit).label;
       const stop_disp = conv(series.Qmin);
@@ -4227,7 +4429,7 @@ function renderSimPlot(){
       _simSetMsg(
         `Cycle stopped by user constraint ${consLabel} (${sigLab} ${op} ${_fmtV(c.V)} V) `+
         `at ${stop_disp.toFixed(3)} ${capLab} — both electrodes truncated. `+
-        `That capacity is the cycle's Q<sub>max</sub>; subsequent cycles start from these partial voltages.`,
+        `That capacity is the cycle's Q<sub>max</sub>; subsequent cycles start from these partial voltages.`+notesHtml,
         "warn"
       );
     } else if(series.limiting){
@@ -4271,9 +4473,11 @@ function renderSimPlot(){
         `${Lcap(limiter)} is limiting cell capacity — `+
         `${limited} forced to stop short at ${fmt(stop_disp)} ${capLab}. ${Lcap(tail)} `+
         `The next cycle starts from these partial voltages, which is how `+
-        `the unbalance propagates through later cycles.`,
+        `the unbalance propagates through later cycles.`+notesHtml,
         "warn"
       );
+    } else if(notesHtml){
+      _simSetMsg(notesHtml.replace(/^<br>/,""), "");
     } else {
       _simSetMsg("", "");
     }
@@ -5245,6 +5449,13 @@ function openRatePicker(prefix,cycle){
         if(vhi!=null)$(sidePref+"-Vth-hi").value=vhi;
         if(vlo!=null)$(sidePref+"-Vth-lo").value=vlo;
         if(st){const stEl=$(sidePref==="cat"?"cat-ac-st":"an-st");if(stEl)stEl.value=st}
+        // Push the row's faradaic plateau data into the plateau editor and
+        // sync its visibility with the storage type set just above (which was
+        // written directly, without firing onStorageTypeChange).
+        if(typeof _fpApplyFromLibrary==="function"){
+          _fpApplyFromLibrary(sidePref, rates[ridx]);
+          updateFpVisibility(sidePref);
+        }
         // If the picked row only reports the cycle the user clicked on, seed the
         // *other* cycle's capacity from this one so the calculation isn't blocked
         // by a null value coming straight out of the library.
@@ -6274,7 +6485,20 @@ function openMM(ex,cat,asNew){const isN=asNew||!ex;const m=ex?migMat(ex):{id:"",
       const electrolyte=row.querySelector(".mel")?.value.trim()||"";
       const pickedRfi=row.querySelector(".mrefsel")?.value||"";
       const refId=pickedRfi&&idMap[pickedRfi]?idMap[pickedRfi]:"";
-      newRates.push({rv,ru,c1:Number.isFinite(c1)?c1:null,cN:Number.isFinite(cN)?cN:null,vhi:Number.isFinite(vhi)?vhi:null,vlo:Number.isFinite(vlo)?vlo:null,sType,electrolyte,refId,ref:null});
+      // Faradaic plateau fields. The modal edits the single-plateau pair; a
+      // multi-stage plateaus[] array (file-edited) rides through untouched via
+      // the row's data-plateaus stash so saving from the modal can't drop it.
+      const vplraw=row.querySelector(".mvpl")?.value;const pplraw=row.querySelector(".mppl")?.value;
+      const vPlateau=(vplraw===""||vplraw==null)?null:parseFloat(vplraw);
+      const pPlateau=(pplraw===""||pplraw==null)?null:parseFloat(pplraw);
+      let plateaus=null;
+      const platRaw=row.querySelector("[data-plateaus]")?.dataset.plateaus;
+      if(platRaw){ try{ plateaus=JSON.parse(decodeURIComponent(platRaw)); }catch{ plateaus=null; } }
+      const entry={rv,ru,c1:Number.isFinite(c1)?c1:null,cN:Number.isFinite(cN)?cN:null,vhi:Number.isFinite(vhi)?vhi:null,vlo:Number.isFinite(vlo)?vlo:null,sType,electrolyte,refId,ref:null};
+      if(Number.isFinite(vPlateau))entry.vPlateau=vPlateau;
+      if(Number.isFinite(pPlateau))entry.pPlateau=pPlateau;
+      if(Array.isArray(plateaus)&&plateaus.length)entry.plateaus=plateaus;
+      newRates.push(entry);
     });
     const ocvVal=parseFloat($("m-ocv").value);
     const d={id:(ex&&ex.id&&!asNew)?ex.id:"u_"+Date.now().toString(36),name:$("m-name").value.trim()||"Untitled",sys:$("m-sys").value,ocv:Number.isFinite(ocvVal)?ocvVal:null,ocvRef:$("m-ocvRef").value,note:$("m-note").value.trim(),refs:newRefs,rates:newRates};
@@ -6427,6 +6651,7 @@ function buildRateRowHTML(r,i){
     <div class="row w2"><label>Rate</label><div class="fld"><input type="number" class="mr" step=".01" value="${r.rv??""}"></div><div class="fld"><select class="mru"><option value="C"${ru==="C"?" selected":""}>C-rate</option><option value="mA/g"${ru==="mA/g"?" selected":""}>mA/g</option><option value="A/g"${ru==="A/g"?" selected":""}>A/g</option><option value="mA/cm²"${ru==="mA/cm²"?" selected":""}>mA/cm²</option></select></div></div>
     <div class="row w2"><label>Capacity</label><div class="fld"><input type="number" class="mc1" step="1" placeholder="empty if not reported" value="${r.c1??""}"><span class="u">C₁ mAh/g</span></div><div class="fld"><input type="number" class="mcN" step="1" placeholder="empty if not reported" value="${r.cN??""}"><span class="u">Cₙ mAh/g</span></div></div>
     <div class="row w3"><label>Window / Type</label><div class="fld"><input type="number" class="mvhi" step=".01" placeholder="empty if not reported" value="${r.vhi??""}"><span class="u">V hi</span></div><div class="fld"><input type="number" class="mvlo" step=".01" placeholder="empty if not reported" value="${r.vlo??""}"><span class="u">V lo</span></div><div class="fld"><select class="mst"><option value="capacitive"${r.sType==="capacitive"?" selected":""}>Capacitive</option><option value="pseudocapacitive"${r.sType==="pseudocapacitive"?" selected":""}>Pseudocap.</option><option value="faradaic"${(r.sType==="faradaic"||!r.sType)?" selected":""}>Faradaic</option></select></div></div>
+    <div class="row w2" data-plateaus="${r.plateaus?encodeURIComponent(JSON.stringify(r.plateaus)):""}"><label>Redox plateau <span style="font-size:8px;color:var(--ink3)">(faradaic sim)</span></label><div class="fld"><input type="number" class="mvpl" step=".01" placeholder="empty if none" value="${r.vPlateau??""}"><span class="u">V</span></div><div class="fld"><input type="number" class="mppl" step="1" min="0" max="100" placeholder="% of C" value="${r.pPlateau??""}"><span class="u">%</span></div></div>
     <div class="row"><label>Electrolyte</label><div class="fld"><input type="text" class="mel" placeholder="e.g. 1 M LiPF6 in EC:DMC (1:1 v/v)" value="${esc(elec)}"></div></div>
     <div class="row"><label>Reference</label><div class="fld"><select class="mrefsel">${buildRefOptionsHTML(selRfi)}</select></div></div>
   </div>`;
@@ -6444,8 +6669,12 @@ function duplicateModalRate(btn){
     vlo:num(row.querySelector(".mvlo")?.value),
     sType:row.querySelector(".mst")?.value||"faradaic",
     electrolyte:row.querySelector(".mel")?.value||"",
+    vPlateau:num(row.querySelector(".mvpl")?.value),
+    pPlateau:num(row.querySelector(".mppl")?.value),
     refId:"",ref:null
   };
+  const platRaw=row.querySelector("[data-plateaus]")?.dataset.plateaus;
+  if(platRaw){ try{ const p=JSON.parse(decodeURIComponent(platRaw)); if(Array.isArray(p)&&p.length) r.plateaus=p; }catch{} }
   // The dropdown holds an rfi (modal-local index); resolve it to the canonical refId.
   const refs=$("mBo")?._modalRefs||[];
   const rfi=row.querySelector(".mrefsel")?.value||"";
@@ -6632,6 +6861,9 @@ window.addEventListener("load",()=>{
   // it's ready as soon as the user toggles.
   document.body.classList.add("mode-single");
   if(typeof renderStackPresetSelect==="function") renderStackPresetSelect();
+  // Sync the faradaic plateau-editor visibility with the storage types the
+  // HTML shipped with (both default to faradaic on a fresh page).
+  if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
   // ── Dev-only: prefill the form with a known scenario for fast iteration.
   // Flip DEV_DEFAULTS_ON to false (or delete this call) to remove. ──
   if(typeof applyDevDefaults==="function") applyDevDefaults();
@@ -6645,10 +6877,12 @@ window.addEventListener("load",()=>{
    To remove for production: set DEV_DEFAULTS_ON=false (one-line undo) or
    delete this whole block plus the applyDevDefaults() call above.
    ══════════════════════════════════════════════════════════════ */
-const DEV_DEFAULTS_ON = true;
+const DEV_DEFAULTS_ON = false;
 
-function applyDevDefaults(){
-  if(!DEV_DEFAULTS_ON) return;
+// `force` bypasses the flag — used by the headless regression tests to load
+// the known scenario on demand without shipping auto-filled forms to users.
+function applyDevDefaults(force){
+  if(!DEV_DEFAULTS_ON && !force) return;
   try{
     // Cathode AM — Custom preset, Activated carbon (YP50), EDLC.
     if($("cat-ac-ps"))   $("cat-ac-ps").value="";
@@ -6689,6 +6923,9 @@ function applyDevDefaults(){
     if($("an-ar"))  $("an-ar").value="1";
     if($("an-dia")) $("an-dia").value="11.28";
 
+    // Storage types were written directly (no onStorageTypeChange), so sync
+    // the faradaic plateau-editor visibility with the values set above.
+    if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
     if(typeof recalc==="function") recalc();
   }catch(e){
     // Don't take the page down if a field id is missing after a refactor.

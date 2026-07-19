@@ -39,6 +39,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   });
 
   await page.goto(APP, { waitUntil: "domcontentloaded", timeout: 90000 });
+  // Production ships with DEV_DEFAULTS_ON=false (empty form, no lastR), so the
+  // test loads the known dev scenario explicitly via the force parameter.
+  await page.waitForFunction(() => typeof applyDevDefaults === "function", { timeout: 30000 });
+  await page.evaluate(() => applyDevDefaults(true));
   await page.waitForFunction(() => typeof window.lastR !== "undefined", { timeout: 30000 });
 
   // ── Feature 1: "Different 1st cycle" target (and the salt-mode N/P symmetry fix) ──
