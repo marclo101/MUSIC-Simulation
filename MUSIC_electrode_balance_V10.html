@@ -195,6 +195,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .sim-ctrl .sim-cg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
 .sim-ctrl .sim-cg label{font-weight:500;color:var(--ink2)}
 .sim-ctrl .sim-cg input[type=number]{width:62px;padding:3px 6px;font-family:var(--fm);font-size:11px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
+.sim-ctrl .sim-cg select{padding:3px 6px;font-family:var(--fb);font-size:11px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
 .sim-ctrl .sim-cg .u{font-size:10px;color:var(--ink3);font-family:var(--fm)}
 .sim-tg{display:inline-flex;border:1px solid var(--rule);border-radius:5px;padding:2px;background:var(--paper)}
 .sim-tg button{padding:3px 12px;font-size:10.5px;font-weight:500;color:var(--ink2);border:none;background:none;border-radius:3px;cursor:pointer;font-family:var(--fb)}
@@ -635,7 +636,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
          in every cycle's GCD trace (unlike the one-shot salt plateau below). -->
     <div id="cat-fp-wrap" style="display:none">
     <div class="row w2" id="cat-fp-row"><label data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_cat_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic AM: the potential the cathode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. LFP ≈ 3.45 V / ~95%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution split across the V&lt;sub&gt;th&lt;/sub&gt; window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="cat-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u" id="cat-fp-v-u">V</span></div><div class="fld"><input type="number" id="cat-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u">%</span></div></div>
-    <div class="row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)." data-help-key="fld_cat_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-fp-rangeChk" onchange="onFpRangeToggle('cat')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)."></button></label></div>
+    <div class="row" id="cat-fp-range-row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)." data-help-key="fld_cat_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-fp-rangeChk" onchange="onFpRangeToggle('cat')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the electrode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region, croconate's 3.6–3.7 V oxidation)."></button></label></div>
     <div class="row" id="cat-fp-v2-row" style="display:none"><label data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity." data-help-key="fld_cat_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Upper end of the potential range. The V field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the band sweeps linearly From→To over its % share of the capacity."></button></label><div class="fld"><input type="number" id="cat-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('cat')" onchange="onFpSumCheck('cat')"><span class="u">V</span></div></div>
     <div class="trow" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Percentages may sum to ≤100% — the remainder is simulated as a pseudocapacitive sloping contribution." data-help-key="fld_cat_fp_multistage"><div class="tsw" id="cat-fp-ms-sw" onclick="toggleFpMultiStage('cat')"></div><span class="tlbl" id="cat-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Percentages may sum to ≤100% — the remainder is simulated as a pseudocapacitive sloping contribution."></button></div>
     <div id="cat-fp-ms-editor" style="display:none">
@@ -685,7 +686,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
          splits the salt's capacity across several V_redox values. -->
     <div style="margin:6px 0 4px"><button class="btn gho" style="padding:3px 10px;font-size:10px" onclick="this.nextElementSibling.classList.toggle('hid');this.textContent=this.nextElementSibling.classList.contains('hid')?'▸ Advanced Options':'▾ Advanced Options'">▸ Advanced Options</button><div class="hid" style="margin-top:6px">
     <div class="row" id="salt-vredox-row"><label data-help="Oxidation potential at which the sacrificial salt decomposes — the cathode V is pinned here while the salt's charge is delivered (a flat plateau in the cycle-1 charge curve). Auto-fills from the salt preset (e.g. squarate 3.6 V vs Na); override per cell. Cleared field falls back to the library default." data-help-key="fld_salt_vredox"><em>V</em><sub>redox</sub> <span class="su">salt plateau</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Oxidation potential at which the sacrificial salt decomposes — the cathode V is pinned here while the salt's charge is delivered (a flat plateau in the cycle-1 charge curve). Auto-fills from the salt preset (e.g. squarate 3.6 V vs Na); override per cell. Cleared field falls back to the library default."></button></label><div class="fld"><input type="number" id="cat-s-vredox" step="0.01" value="" placeholder="V" oninput="onSaltVRedoxEdit()"><span class="u">V</span></div></div>
-    <div class="row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the salt's oxidation as a potential &lt;strong&gt;range&lt;/strong&gt;: the plateau sweeps From→To as the reservoir is consumed (e.g. croconate oxidizes between 3.6 and 3.7 V vs Na). A partially consumed reservoir resumes at the interpolated potential on the next charge." data-help-key="fld_salt_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-s-rangeChk" onchange="onSaltRangeToggle()"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the salt's oxidation as a potential &lt;strong&gt;range&lt;/strong&gt;: the plateau sweeps From→To as the reservoir is consumed (e.g. croconate oxidizes between 3.6 and 3.7 V vs Na). A partially consumed reservoir resumes at the interpolated potential on the next charge."></button></label></div>
+    <div class="row" id="salt-range-row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the salt's oxidation as a potential &lt;strong&gt;range&lt;/strong&gt;: the plateau sweeps From→To as the reservoir is consumed (e.g. croconate oxidizes between 3.6 and 3.7 V vs Na). A partially consumed reservoir resumes at the interpolated potential on the next charge." data-help-key="fld_salt_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-s-rangeChk" onchange="onSaltRangeToggle()"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the salt's oxidation as a potential &lt;strong&gt;range&lt;/strong&gt;: the plateau sweeps From→To as the reservoir is consumed (e.g. croconate oxidizes between 3.6 and 3.7 V vs Na). A partially consumed reservoir resumes at the interpolated potential on the next charge."></button></label></div>
     <div class="row" id="salt-vredox2-row" style="display:none"><label data-help="Upper end of the salt's oxidation range. The V_redox field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the plateau sweeps linearly From→To as the reservoir drains." data-help-key="fld_salt_vredox2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Upper end of the salt's oxidation range. The V_redox field above becomes the &lt;em&gt;From&lt;/em&gt; edge; the plateau sweeps linearly From→To as the reservoir drains."></button></label><div class="fld"><input type="number" id="cat-s-vredox2" step="0.01" value="" placeholder="V (to)" oninput="onSaltVRedoxEdit()"><span class="u">V</span></div></div>
     <div class="trow" data-help="Split the salt's irreversible capacity across multiple redox plateaus. Off → one V_redox. On → list of (V_redox, %) rows; each row's second V is optional (fill it to make that stage a From→To band). The percentages must sum to 100%." data-help-key="fld_salt_multistage"><div class="tsw" id="salt-ms-sw" onclick="toggleSaltMultiStage()"></div><span class="tlbl" id="salt-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the salt's irreversible capacity across multiple redox plateaus. Off → one V_redox. On → list of (V_redox, %) rows; each row's second V is optional (fill it to make that stage a From→To band). The percentages must sum to 100%."></button></div>
     <div id="salt-ms-editor" style="display:none">
@@ -728,7 +729,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
          plus sloping insertion region). Shown only when Storage type is Faradaic. -->
     <div id="an-fp-wrap" style="display:none">
     <div class="row w2" id="an-fp-row"><label data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep." data-help-key="fld_an_fp"><em>V</em><sub>plateau</sub> <span class="su">/ % share</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Redox plateau of the faradaic anode AM: the potential the anode sits at while the given &lt;strong&gt;% share&lt;/strong&gt; of its capacity is delivered (e.g. hard carbon ≈ 0.1 V / ~50%). The remaining share is simulated as a pseudocapacitive (EDLC-like) sloping contribution across the window. Auto-fills from a library rate row; hand-edits stick until cleared. Leave V empty to simulate a pure linear sweep."></button></label><div class="fld"><input type="number" id="an-fp-v" step="0.01" value="" placeholder="V" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u" id="an-fp-v-u">V</span></div><div class="fld"><input type="number" id="an-fp-p" step="1" min="0" max="100" value="" placeholder="90" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u">%</span></div></div>
-    <div class="row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)." data-help-key="fld_an_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="an-fp-rangeChk" onchange="onFpRangeToggle('an')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)."></button></label></div>
+    <div class="row" id="an-fp-range-row" style="grid-template-columns:1fr;margin:-2px 0 2px"><label data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)." data-help-key="fld_an_fp_range" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="an-fp-rangeChk" onchange="onFpRangeToggle('an')"> Potential range (From → To)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tick to define the feature as a potential &lt;strong&gt;range&lt;/strong&gt; instead of a flat plateau: the anode sweeps From→To while the % share of its capacity is delivered — a sloped band (e.g. hard carbon's sloping insertion region above its low-V plateau)."></button></label></div>
     <div class="row" id="an-fp-v2-row" style="display:none"><label data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity." data-help-key="fld_an_fp_v2">To<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Second edge of the potential range. The V field above is one edge; the band sweeps linearly between the two edges over its % share of the capacity."></button></label><div class="fld"><input type="number" id="an-fp-v2" step="0.01" value="" placeholder="V (to)" oninput="onFpEdit('an')" onchange="onFpSumCheck('an')"><span class="u">V</span></div></div>
     <div class="trow" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Σ ≤ 100% — the remainder is simulated as a pseudocapacitive sloping contribution." data-help-key="fld_an_fp_multistage"><div class="tsw" id="an-fp-ms-sw" onclick="toggleFpMultiStage('an')"></div><span class="tlbl" id="an-fp-ms-lbl">Multi-stage plateau — <em>off</em></span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the anode AM's capacity across several redox plateaus (e.g. graphite staging). Off → one V_plateau. On → list of (V, %) rows; each row's second V is optional (fill it to make that stage a From→To band). Σ ≤ 100% — the remainder is simulated as a pseudocapacitive sloping contribution."></button></div>
     <div id="an-fp-ms-editor" style="display:none">
@@ -942,6 +943,16 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
         <div class="sim-cg" id="simIShowGrp" title="Galvanostatic current applied during the displayed cycle/stroke. Read from the row(s) selected in the Rates &amp; current densities tab (1st-cycle row drives stroke 1, Nth-cycle row drives all later strokes).">
           <label>I:</label>
           <span class="u" id="simIShowTxt" style="color:var(--ink);font-style:normal;font-family:var(--fm)">—</span>
+        </div>
+        <div class="sim-cg" id="simSmoothGrp" data-help="Visual rounding of the zone transitions (IR step → EDLC ramp, ramp → plateau, …) so the idealized piecewise-linear physics renders like a measured curve. Purely cosmetic — endpoints, capacities and every computed number are untouched. Off = raw piecewise-linear traces.">
+          <label>Smoothing:</label>
+          <select id="simSmoothSel" onchange="onSimCtrlChange()">
+            <option value="0">Off</option>
+            <option value="1">Subtle</option>
+            <option value="3" selected>Medium</option>
+            <option value="6">Strong</option>
+          </select>
+          <button type="button" class="help-icon hi-field" aria-label="Help" data-help="Visual rounding of the zone transitions (IR step → EDLC ramp, ramp → plateau, …) so the idealized piecewise-linear physics renders like a measured curve. Purely cosmetic — endpoints, capacities and every computed number are untouched. Off = raw piecewise-linear traces."></button>
         </div>
       </div>
       <div class="sim-ctrl sim-ctrl-cons" id="simConsCtrl" data-help="Galvanostatic stop conditions in MUSIC's electrode notation. Always active: when the relevant signal crosses its bound during a stroke, the stroke ends at the crossing point and that capacity becomes the stroke's Q_max. Six bounds — upper/lower on V_cat, V_an and V_cell. Defaults track the V_op inputs (Cathode V_max/V_min from the cathode V_op window, Anode V_max/V_min from the anode V_op window, Cell V_max from the cathode V_max, Cell V_min from the anode V_min). Edit any value to override; clear the field to fall back to the V_op default. Constraints only fire when the signal is moving toward the bound, so an out-of-spec value left over from a prior unbalanced stroke does not freeze the next stroke at Q=0." data-help-key="fld_sim_constraints">
@@ -1846,6 +1857,11 @@ function toggleSaltMultiStage(){
     ? "Multi-stage plateau — <strong>on</strong>"
     : "Multi-stage plateau — <em>off</em>";
   $("salt-vredox-row").style.display = on ? "none" : "";
+  // Hide the single-mode range controls in multi-stage mode (rows carry
+  // their own optional "to V").
+  const srr = $("salt-range-row"); if(srr) srr.style.display = on ? "none" : "";
+  const sv2 = $("salt-vredox2-row");
+  if(sv2) sv2.style.display = (on || !$("cat-s-rangeChk")?.checked) ? "none" : "";
   $("salt-ms-editor").style.display = on ? "" : "none";
   if(on){
     // Seed the editor with one row pre-filled from the single V_redox so
@@ -1853,7 +1869,8 @@ function toggleSaltMultiStage(){
     const rowsHost = $("salt-ms-rows");
     if(rowsHost && !rowsHost.querySelector(".ms-row")){
       const v = parseFloat($("cat-s-vredox")?.value);
-      addSaltStage(Number.isFinite(v) ? v : null, 100);
+      const v2 = parseFloat($("cat-s-vredox2")?.value);
+      addSaltStage(Number.isFinite(v) ? v : null, 100, Number.isFinite(v2) ? v2 : null);
     }
   }
   _simSaltUpdateSum();
@@ -1988,6 +2005,11 @@ function toggleFpMultiStage(side){
     ? "Multi-stage plateau — <strong>on</strong>"
     : "Multi-stage plateau — <em>off</em>";
   const row = $(p+"-row"); if(row) row.style.display = on ? "none" : "";
+  // The single-mode range controls make no sense in multi-stage mode (each
+  // row has its own optional "to V") — hide them together with the V/% pair.
+  const rr = $(p+"-range-row"); if(rr) rr.style.display = on ? "none" : "";
+  const v2r = $(p+"-v2-row");
+  if(v2r) v2r.style.display = (on || !$(p+"-rangeChk")?.checked) ? "none" : "";
   const ed = $(p+"-ms-editor"); if(ed) ed.style.display = on ? "" : "none";
   if(on){
     // Seed with one row from the single V/% inputs so the list isn't empty.
@@ -1995,7 +2017,9 @@ function toggleFpMultiStage(side){
     if(host && !host.querySelector(".ms-row")){
       const v = parseFloat($(p+"-v")?.value);
       const pct = parseFloat($(p+"-p")?.value);
-      addFpStage(side, Number.isFinite(v) ? v : null, Number.isFinite(pct) ? pct : 90);
+      const v2 = parseFloat($(p+"-v2")?.value);
+      addFpStage(side, Number.isFinite(v) ? v : null, Number.isFinite(pct) ? pct : 90,
+                 Number.isFinite(v2) ? v2 : null);
     }
   }
   _fpUpdateSum(side);
@@ -2646,6 +2670,14 @@ const SIM_X_UNITS=[
   {id:"Ah", label:"A·h", kind:"capacity",toC:3600},
   {id:"mC", label:"mC",  kind:"capacity",toC:0.001},
   {id:"C",  label:"C",   kind:"capacity",toC:1},
+  // Normalized capacity units — divide by the solved cathode-AM mass (mg/g/kg)
+  // or the cathode electrode area (cm²/mm²). Still kind:'capacity' so the
+  // renderer stays in capacity mode; simConvertCapacity applies the denominator.
+  {id:"uAh_mg", label:"µA·h mg⁻¹", kind:"capacity",toC:0.0036,norm:"mass",denom:"mg"},
+  {id:"mAh_g",  label:"mA·h g⁻¹",  kind:"capacity",toC:3.6,   norm:"mass",denom:"g"},
+  {id:"Ah_kg",  label:"A·h kg⁻¹",  kind:"capacity",toC:3600,  norm:"mass",denom:"kg"},
+  {id:"mAh_cm2",label:"mA·h cm⁻²", kind:"capacity",toC:3.6,   norm:"area",denom:"cm2"},
+  {id:"uAh_mm2",label:"µA·h mm⁻²", kind:"capacity",toC:0.0036,norm:"area",denom:"mm2"},
   {id:"s",  label:"s",   kind:"time",    toS:1},
   {id:"min",label:"min", kind:"time",    toS:60},
   {id:"h",  label:"h",   kind:"time",    toS:3600}
@@ -2670,10 +2702,32 @@ function _simMOpt(id){return SIM_M_OPTIONS.find(o=>o.id===id)||SIM_M_OPTIONS[0];
 // Convert a capacity value between any two SIM_CAP_UNITS ids. Pivot through
 // Coulombs: vB = vA · (toC[A] / toC[B]). Handles both the ×1000 prefix ladder
 // (µA·h ↔ mA·h ↔ A·h, mC ↔ C) and the physical A·h ↔ C conversion (×3600).
+// Normalization denominator for a norm-carrying capacity unit. Mass = the
+// SOLVED cathode-AM mass (lastR.mAC, mg — the balance output the sim already
+// runs on); area = the cathode electrode area input (falls back to the ⌀12 mm
+// punch). NaN ⇒ the caller skips normalization (value shown un-normalized).
+function _simNormDenom(u){
+  if(u.norm==="mass"){
+    const mg=(typeof window!=="undefined"&&window.lastR&&window.lastR.mAC>0)?window.lastR.mAC:NaN;
+    if(!Number.isFinite(mg)) return NaN;
+    return u.denom==="mg"?mg : u.denom==="g"?mg/1000 : mg/1e6; // kg
+  }
+  if(u.norm==="area"){
+    let a=(typeof N==="function")?N("cat-ar"):NaN;
+    if(!(Number.isFinite(a)&&a>0)) a=(typeof A12!=="undefined")?A12:Math.PI*0.6*0.6;
+    return u.denom==="mm2" ? a*100 : a; // cm² → mm²
+  }
+  return NaN;
+}
 function simConvertCapacity(value,fromId,toId){
   if(fromId===toId) return value;
   const a=_simCapUnit(fromId), b=_simCapUnit(toId);
-  return value*(a.toC/b.toC);
+  let v=value*(a.toC/b.toC);
+  // Normalized units divide by their denominator on the way in and multiply
+  // back on the way out, so conversions between any two units stay exact.
+  if(b.norm){ const d=_simNormDenom(b); if(Number.isFinite(d)&&d>0) v/=d; }
+  if(a.norm){ const d=_simNormDenom(a); if(Number.isFinite(d)&&d>0) v*=d; }
+  return v;
 }
 
 function syncSimAxisFromInputs(){
@@ -4027,18 +4081,26 @@ function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
 // EXACTLY — curves still start and stop where the physics says — and the
 // pull-back is capped to a small fraction of the plotted ranges so long
 // plateaus stay flat. Purely cosmetic: hover/readout still follows the line.
+// Smoothing intensity from the sim-controls select (0 = off, 1 = subtle,
+// 3 = medium (default), 6 = strong). Multiplies the range caps below.
+function _simSmoothFactor(){
+  const el=(typeof $==="function")?$("simSmoothSel"):null;
+  const v=el?parseFloat(el.value):3;
+  return Number.isFinite(v)&&v>=0 ? v : 3;
+}
 function _simSmoothPolyline(xs, ys){
   const n = xs.length;
-  if(n < 3) return {xs, ys};
-  // Range caps: the rounding never reaches further than ~1.5% of the x-range
-  // / ~3% of the y-range from a corner.
+  const f = _simSmoothFactor();
+  if(n < 3 || f <= 0) return {xs, ys};
+  // Range caps: the rounding reaches at most ~1.5%·f of the x-range /
+  // ~3%·f of the y-range from a corner (f = user-selected intensity).
   let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
   for(let i=0;i<n;i++){
     if(Number.isFinite(xs[i])){ if(xs[i]<xmin)xmin=xs[i]; if(xs[i]>xmax)xmax=xs[i]; }
     if(Number.isFinite(ys[i])){ if(ys[i]<ymin)ymin=ys[i]; if(ys[i]>ymax)ymax=ys[i]; }
   }
-  const capX=Math.max((xmax-xmin)*0.015,1e-12), capY=Math.max((ymax-ymin)*0.03,1e-12);
-  const SAMP=6;              // Bézier samples per rounded corner
+  const capX=Math.max((xmax-xmin)*0.015*f,1e-12), capY=Math.max((ymax-ymin)*0.03*f,1e-12);
+  const SAMP=8;              // Bézier samples per rounded corner
   const ox=[], oy=[];
   // Split into NaN-delimited runs; smooth each run independently.
   let run=[];
@@ -4777,7 +4839,9 @@ function openSimUnitMenu(ev,kind){
     // Two sections — Capacity (default) and Time. Picking a time unit
     // switches the simulation to multi-cycle continuous time-series mode.
     html += `<div class="sim-unit-hdr">Capacity</div>`;
-    html += SIM_X_UNITS.filter(o=>o.kind==='capacity').map(_btn).join("");
+    html += SIM_X_UNITS.filter(o=>o.kind==='capacity'&&!o.norm).map(_btn).join("");
+    html += `<div class="sim-unit-hdr" title="Normalized by the solved cathode-AM mass (mg/g/kg) or the cathode electrode area (cm²/mm²)">Normalized (per cat. AM mass / area)</div>`;
+    html += SIM_X_UNITS.filter(o=>o.kind==='capacity'&&o.norm).map(_btn).join("");
     html += `<div class="sim-unit-hdr">Time</div>`;
     html += SIM_X_UNITS.filter(o=>o.kind==='time').map(_btn).join("");
   } else {

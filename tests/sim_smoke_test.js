@@ -456,6 +456,13 @@ setScenario({ ...lfp,
     check('multi-stage: each plateau holds 30% of Q_tot (18 µAh)',
           plats.every(p => Math.abs((p.q1 - p.q0) - 18) < 1e-9),
           plats.map(p => (p.q1 - p.q0).toFixed(3)).join(','));
+    // Reversibility guard: AM plateaus are NOT one-shot — the anode's
+    // staircase must appear on the reverse (discharge) stroke too.
+    const s1 = _simAdvanceOneStroke(1, gM.ctx.map1_c.x0, gM.ctx.map1_a.x0, gM.ctx);
+    const s2 = _simAdvanceOneStroke(2, s1.x_c_end, s1.x_a_end, gM.ctx);
+    check('multi-stage: anode plateaus REAPPEAR on the discharge stroke (reversible)',
+          (s2.anSegs || []).filter(x => x.kind === 'plateau').length >= 1,
+          `k2 anode plateaus=${(s2.anSegs || []).filter(x => x.kind === 'plateau').length}`);
   }
 }
 
