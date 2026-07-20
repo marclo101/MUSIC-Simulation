@@ -433,12 +433,12 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 /* ── Clear-all-masses button in the results header ── */
 .clr-all-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--ruleS);background:var(--paper);color:var(--ink2);border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11px;font-weight:500;line-height:1;transition:all .12s;white-space:nowrap}
-/* Manual-recalculation button. Input edits only mark the results stale; the
-   solver runs when this is clicked. `.dirty` = inputs changed since last run. */
-.recalc-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border:1px solid var(--cp);background:var(--cp);color:#fff;border-radius:5px;cursor:pointer;font-family:var(--fb);font-size:11.5px;font-weight:600;line-height:1;transition:all .12s;white-space:nowrap;margin-right:8px}
-.recalc-btn:hover{filter:brightness(1.08)}
-.recalc-btn.dirty{background:#B7791F;border-color:#B7791F;box-shadow:0 0 0 3px rgba(183,121,31,.18);animation:recalcPulse 1.6s ease-in-out infinite}
-@keyframes recalcPulse{0%,100%{box-shadow:0 0 0 3px rgba(183,121,31,.18)}50%{box-shadow:0 0 0 6px rgba(183,121,31,.06)}}
+/* Manual recalculation: input edits only mark the results stale; the solver
+   runs when the big Calculate/Recalculate button (#calcBtn) is clicked.
+   `.dirty` = inputs changed since the last run — the big button turns amber
+   and pulses until clicked. */
+#calcBtn.dirty{background:#B7791F;border-color:#B7791F;box-shadow:0 0 0 4px rgba(183,121,31,.18);animation:recalcPulse 1.6s ease-in-out infinite}
+@keyframes recalcPulse{0%,100%{box-shadow:0 0 0 4px rgba(183,121,31,.18)}50%{box-shadow:0 0 0 8px rgba(183,121,31,.06)}}
 .recalc-stale{margin:6px 0 10px;padding:7px 12px;font-size:11.5px;color:#7B341E;background:#FFF5EB;border-left:3px solid #DD6B20;border-radius:3px}
 .clr-all-btn:hover{background:var(--erB);color:var(--er);border-color:rgba(225,90,79,.3)}
 .clr-all-btn:active{transform:translateY(1px)}
@@ -802,8 +802,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <!-- ══ RESULTS ══ -->
 <div class="res" id="resPanel" style="display:none">
-<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="recalc-btn" id="recalcBtn" onclick="recalcNow()" data-help="Runs the balance solver on the current inputs. Edits to the materials, masses, targets or rates never recompute automatically — they mark the results as stale until you click here." title="Compute the balance from the current inputs">⟳ Recalculate</button><button class="clr-all-btn" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
-<div class="recalc-stale" id="recalcStale" style="display:none">Inputs changed — the results below are <strong>stale</strong>. Click <strong>⟳ Recalculate</strong> to update them.</div>
+<div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="clr-all-btn" style="margin-left:auto" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
+<div class="recalc-stale" id="recalcStale" style="display:none">Inputs changed — the results below are <strong>stale</strong>. Click <strong>Recalculate</strong> (the button above the results) to update them.</div>
 <div id="r-mode" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)." data-help-key="res_mode_indicator" style="display:none;text-align:center;padding:6px 18px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cp);background:var(--cl);border-bottom:1px solid var(--ruleS)"><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)."></button></div>
 
 <!-- Top-level results tabs -->
@@ -957,8 +957,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
           <select id="simSmoothSel" onchange="onSimCtrlChange()">
             <option value="0">Off</option>
             <option value="3">Subtle</option>
-            <option value="6" selected>Medium</option>
-            <option value="12">Strong</option>
+            <option value="6">Medium</option>
+            <option value="12" selected>Strong</option>
           </select>
           <button type="button" class="help-icon hi-field" aria-label="Help" data-help="Visual rounding of the zone transitions (IR step → EDLC ramp, ramp → plateau, …) so the idealized piecewise-linear physics renders like a measured curve. Purely cosmetic — endpoints, capacities and every computed number are untouched. Off = raw piecewise-linear traces."></button>
         </div>
@@ -1614,7 +1614,11 @@ document.addEventListener("click",e=>{
 // Hide bubble on scroll/resize (positions become stale).
 window.addEventListener("scroll",()=>{ if(_helpAnchor) hbHide() }, true);
 window.addEventListener("resize",()=>{ if(_helpAnchor) hbHide() });
-function doCalc(){$("resPanel").style.display="";recalc();$("resPanel").scrollIntoView({behavior:"smooth",block:"start"});$("calcBtn").textContent="Recalculate"}
+// The big Calculate/Recalculate button between the inputs and the results is
+// THE manual-recalculation trigger: it reveals the results panel and runs the
+// solver (recalcNow — under manual mode a plain recalc() only marks stale,
+// which is why this must not call it).
+function doCalc(){$("resPanel").style.display="";recalcNow();$("resPanel").scrollIntoView({behavior:"smooth",block:"start"});$("calcBtn").textContent="Recalculate"}
 
 /* ══ VOLTAGE WINDOW SCALING ══ */
 // Store original (measured) capacities when preset is applied or rate is picked
@@ -4067,15 +4071,23 @@ function simComputeTimeSeries(){
     ts.push(t);
     vc.push(V_c_in + half); va.push(V_a_in - half);
     vcell.push((V_c_in+half) - (V_a_in-half));
-    // Walk cathode segment endpoints, sampling V_an by walking the anode
-    // segment list (the anode may now carry plateaus of its own).
-    const _va = q => _simVatQinSegs(stroke.anSegs, q);
-    for(const s of (stroke.catSegs||[])){
-      const tEnd = _qToT(s.Q_end);
-      ts.push(tEnd);
-      vc.push(s.V_end + half);
-      va.push(_va(s.Q_end) - half);
-      vcell.push((s.V_end + half) - (_va(s.Q_end) - half));
+    // Sample the UNION of BOTH electrodes' segment breakpoints. Sampling only
+    // the cathode's corners (the v1 shortcut) collapses the anode's own
+    // plateaus/bands to a straight line between stroke boundaries whenever
+    // the cathode is a single ramp — which is exactly why faradaic anode
+    // staircases vanished from the V(t) plot after cycle 1.
+    const _vcq = q => _simVatQinSegs(stroke.catSegs, q);
+    const _vaq = q => _simVatQinSegs(stroke.anSegs, q);
+    const bps = new Set();
+    for(const s of (stroke.catSegs||[])) bps.add(s.Q_end);
+    for(const s of (stroke.anSegs||[])) bps.add(s.Q_end);
+    const qsList = [...bps].filter(q => Number.isFinite(q) && q > 1e-15 && q <= Qmin + 1e-9)
+                           .sort((a,b) => a-b);
+    for(const q of qsList){
+      ts.push(_qToT(q));
+      vc.push(_vcq(q) + half);
+      va.push(_vaq(q) - half);
+      vcell.push((_vcq(q) + half) - (_vaq(q) - half));
     }
 
     strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu,
@@ -4148,13 +4160,13 @@ function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
 // pull-back is capped to a small fraction of the plotted ranges so long
 // plateaus stay flat. Purely cosmetic: hover/readout still follows the line.
 // Smoothing intensity from the sim-controls select (0 = off, 3 = subtle,
-// 6 = medium (default), 12 = strong). Multiplies the range caps below; the
+// 6 = medium, 12 = strong (default)). Multiplies the range caps below; the
 // per-segment pull-back stays ≤50%, so "strong" means "round every corner as
 // far as its adjacent segments allow".
 function _simSmoothFactor(){
   const el=(typeof $==="function")?$("simSmoothSel"):null;
-  const v=el?parseFloat(el.value):6;
-  return Number.isFinite(v)&&v>=0 ? v : 6;
+  const v=el?parseFloat(el.value):12;
+  return Number.isFinite(v)&&v>=0 ? v : 12;
 }
 function _simSmoothPolyline(xs, ys){
   const n = xs.length;
@@ -6353,10 +6365,21 @@ function solve(inp){
 // existing solution without re-solving.
 let calcDirty=false;
 function _calcStaleUI(dirty){
-  const b=$("recalcBtn"); if(b) b.classList.toggle("dirty",dirty);
+  const b=$("calcBtn"); if(b) b.classList.toggle("dirty",dirty);
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
 }
 function recalc(){
+  // The FIRST calculation is automatic: until a solve has produced results
+  // there is nothing to go stale, and requiring a click just to see the
+  // first numbers is pointless friction. The initial setup also flows
+  // through the loading-ratio preview into the first pinned-mass solve, so
+  // the ratio→pinned mode transition stays automatic too. Once results of
+  // the current mode exist, edits only mark them stale and the
+  // ⟳ Recalculate button applies them.
+  if(typeof window==="undefined" || !window.lastR ||
+     (window.lastMode==="ratio" && typeof detectMode==="function" && detectMode()!=="ratio")){
+    recalcNow(); return;
+  }
   calcDirty=true;
   _calcStaleUI(true);
 }

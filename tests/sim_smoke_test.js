@@ -558,4 +558,34 @@ setScenario({ ...lfp,
   }
 }
 
+// ── Test 14: V(t) sampling carries the ANODE staircase in every cycle ──
+// The v1 time-series sampled only cathode segment corners, so a faradaic
+// anode against a single-ramp EDLC cathode rendered as a straight line from
+// cycle 2 on. Sampling now unions both electrodes' breakpoints: the anode's
+// plateau voltages must appear among the samples of a cycle-2 stroke.
+setScenario({ ...lfp,
+  inputs: { ...lfp.inputs, 'an-st': 'faradaic', 'an-fp-ms-sw': '', 'simCycleN': '2' },
+  onIds: ['an-fp-ms-sw'],
+  msRows: { '#an-fp-ms-rows .ms-row': [ { v: 0.2, p: 30 }, { v: 0.12, p: 30 }, { v: 0.09, p: 30 } ] },
+  lastInp: { ...lfp.lastInp,
+    cat: { ac: { st: 'capacitive', c1: 55, cN: 50 }, salt: { c1: 0, cN: 0 },
+           Vth: [4.2, 2.5], Vop: [4.2, 2.5] },
+    an: { st: 'faradaic', c1: 60, cN: 60, wAM: 1, Vth: [1.5, 0.05], Vop: [1.5, 0.05] } },
+});
+{
+  const ts14 = simComputeTimeSeries();
+  check('V(t) staircase: time mode ok', ts14.ok === true, ts14.msg || '');
+  if (ts14.ok && ts14.strokes.length >= 3) {
+    const s3 = ts14.strokes[2];               // cycle-2 charge stroke
+    const idx = [];
+    for (let i = 0; i < ts14.ts.length; i++)
+      if (ts14.ts[i] > s3.t_start + 1e-9 && ts14.ts[i] <= s3.t_end + 1e-9) idx.push(i);
+    const vaSet = new Set(idx.map(i => +ts14.va[i].toFixed(4)));
+    const hasPlat = [0.2, 0.12, 0.09].filter(v => vaSet.has(+v.toFixed(4))).length;
+    check('V(t) staircase: cycle-2 stroke samples include the anode plateau voltages',
+          idx.length >= 5 && hasPlat >= 3,
+          `samples=${idx.length} plateauVs=${hasPlat} [${[...vaSet].join(',')}]`);
+  }
+}
+
 process.exit(fails ? 1 : 0);
