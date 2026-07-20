@@ -1212,11 +1212,11 @@ saltLi:[
 ],
 anode:[
   {id:"hc-komaba",name:"Hard Carbon (Komaba 2011)",sys:"Na",ocv:0.3,ocvRef:"Na/Na+",note:"Na-ion benchmark",rates:[
-    {rv:25,ru:"mA/g",c1:250,cN:null,vhi:2.0,vlo:0.0,sType:"faradaic",ref:{authors:"Komaba, S.; Murata, W.; Ishikawa, T.; Yabuuchi, N.; Ozeki, T.; Nakayama, T.; Ogata, A.; Gotoh, K.; Fujiwara, K.",title:"Electrochemical Na insertion and solid electrolyte interphase for hard-carbon electrodes and application to Na-ion batteries",journal:"Adv. Funct. Mater.",year:2011,volume:"21",pages:"3859-3867",doi:"10.1002/adfm.201100854"}},
-    {rv:25,ru:"mA/g",c1:240,cN:null,vhi:2.0,vlo:0.0,sType:"faradaic",ref:{authors:"Komaba, S.; Murata, W.; Ishikawa, T.; Yabuuchi, N.; Ozeki, T.; Nakayama, T.; Ogata, A.; Gotoh, K.; Fujiwara, K.",title:"Electrochemical Na insertion and solid electrolyte interphase for hard-carbon electrodes and application to Na-ion batteries",journal:"Adv. Funct. Mater.",year:2011,volume:"21",pages:"3859-3867",doi:"10.1002/adfm.201100854"}}
+    {rv:25,ru:"mA/g",c1:250,cN:null,vhi:2.0,vlo:0.005,plateaus:[{v:1,vHi:0.5,pct:2},{v:0.5,vHi:0.1,pct:33},{v:0.1,vHi:0.005,pct:65}],sType:"faradaic",ref:{authors:"Komaba, S.; Murata, W.; Ishikawa, T.; Yabuuchi, N.; Ozeki, T.; Nakayama, T.; Ogata, A.; Gotoh, K.; Fujiwara, K.",title:"Electrochemical Na insertion and solid electrolyte interphase for hard-carbon electrodes and application to Na-ion batteries",journal:"Adv. Funct. Mater.",year:2011,volume:"21",pages:"3859-3867",doi:"10.1002/adfm.201100854"}},
+    {rv:25,ru:"mA/g",c1:240,cN:null,vhi:2.0,vlo:0.005,plateaus:[{v:1,vHi:0.5,pct:2},{v:0.5,vHi:0.1,pct:33},{v:0.1,vHi:0.005,pct:65}],sType:"faradaic",ref:{authors:"Komaba, S.; Murata, W.; Ishikawa, T.; Yabuuchi, N.; Ozeki, T.; Nakayama, T.; Ogata, A.; Gotoh, K.; Fujiwara, K.",title:"Electrochemical Na insertion and solid electrolyte interphase for hard-carbon electrodes and application to Na-ion batteries",journal:"Adv. Funct. Mater.",year:2011,volume:"21",pages:"3859-3867",doi:"10.1002/adfm.201100854"}}
   ]},
   {id:"htc-hc",name:"HTC Hard Carbon (glucose-derived)",sys:"Na",ocv:0.3,ocvRef:"Na/Na+",note:"Hydrothermal carbonization",rates:[
-    {rv:30,ru:"mA/g",c1:320,cN:null,vhi:2.0,vlo:0.0,sType:"faradaic",ref:{authors:"Xu, Z.; Wang, J.; Guo, Z.; Xie, F.; Liu, H.; Yadegari, H.; Tebyetekerwa, M.; Ryan, M.P.; Hu, Y.-S.; Titirici, M.-M.",title:"The role of hydrothermal carbonization in sustainable sodium-ion battery anodes",journal:"Adv. Energy Mater.",year:2022,volume:"12",pages:"2200208",doi:"10.1002/aenm.202200208"}}
+    {rv:30,ru:"mA/g",c1:320,cN:null,vhi:2.0,vlo:0.005,plateaus:[{v:1,vHi:0.5,pct:2},{v:0.5,vHi:0.1,pct:33},{v:0.1,vHi:0.005,pct:65}],sType:"faradaic",ref:{authors:"Xu, Z.; Wang, J.; Guo, Z.; Xie, F.; Liu, H.; Yadegari, H.; Tebyetekerwa, M.; Ryan, M.P.; Hu, Y.-S.; Titirici, M.-M.",title:"The role of hydrothermal carbonization in sustainable sodium-ion battery anodes",journal:"Adv. Energy Mater.",year:2022,volume:"12",pages:"2200208",doi:"10.1002/aenm.202200208"}}
   ]},
   {id:"graphite",name:"Graphite",sys:"Li",ocv:0.2,ocvRef:"Li/Li+",note:"Li-ion benchmark",rates:[
     {rv:0.1,ru:"C",c1:365,cN:null,vhi:1.5,vlo:0.005,sType:"faradaic",ref:{authors:"Asenbauer, J.; Eisenmann, T.; Kuenzel, M.; Kazzazi, A.; Chen, Z.; Bresser, D.",title:"The success story of graphite as a lithium-ion anode material – fundamentals, remaining challenges, and recent developments including silicon (oxide) composites",journal:"Sustainable Energy Fuels",year:2020,volume:"4",pages:"5387-5416",doi:"10.1039/D0SE00175A"}}
@@ -3307,7 +3307,17 @@ function _simVatQinSegs(segs, q){
 // shorten the segment that straddles it). Mirrors the v1 renderer contract.
 function _simTruncSegs(segs, Q, tol){
   const out=[];
+  if(!(Q>tol)) return out;
   for(const s of segs){
+    const zero=(s.Q_end-s.Q_start)<=1e-15;
+    if(zero){
+      // Zero-capacity verticals render as instantaneous steps. Keep any that
+      // sit at or before the cut — INCLUDING exactly at Q: when plateau
+      // shares total 100% the window-edge remainder is a vertical at the
+      // stroke end, and dropping it hid the "straight line up" to the edge.
+      if(s.Q_start<=Q+tol){ out.push(s); continue; }
+      break;
+    }
     if(s.Q_start>=Q-tol) break;
     if(s.Q_end<=Q+tol){ out.push(s); continue; }
     const dq=Q-s.Q_start;
@@ -3318,6 +3328,35 @@ function _simTruncSegs(segs, Q, tol){
     break;
   }
   return out;
+}
+
+// V at stroke-relative charge q resolved to a (pre, post) pair: `pre` is the
+// value approaching q along the sweep, `post` the value after any zero-
+// capacity vertical step(s) sitting exactly at q. They differ only at
+// verticals; samplers emit both so the step renders as a true vertical line.
+function _simVatQPrePost(segs, q){
+  let pre=null, post=null;
+  for(const s of segs){
+    const zero=(s.Q_end-s.Q_start)<=1e-15;
+    if(zero){
+      if(Math.abs(s.Q_start-q)<=1e-12){ if(pre===null) pre=s.V_start; post=s.V_end; }
+      continue;
+    }
+    if(q>=s.Q_start-1e-12 && q<=s.Q_end+1e-12){
+      const v=s.V_start+(s.V_end-s.V_start)*(q-s.Q_start)/(s.Q_end-s.Q_start);
+      if(pre===null) pre=v;
+      post=v;
+    }
+  }
+  if(pre===null){
+    if(segs.length){
+      const f=segs[0], l=segs[segs.length-1];
+      if(q<f.Q_start){ pre=f.V_start; post=f.V_start; }
+      else { pre=l.V_end; post=l.V_end; }
+    } else { pre=0; post=0; }
+  }
+  if(post===null) post=pre;
+  return {pre, post};
 }
 
 // Overlay sacrificial-salt plateaus onto the cathode AM slice (plan §1.4).
@@ -4076,18 +4115,31 @@ function simComputeTimeSeries(){
     // plateaus/bands to a straight line between stroke boundaries whenever
     // the cathode is a single ramp — which is exactly why faradaic anode
     // staircases vanished from the V(t) plot after cycle 1.
-    const _vcq = q => _simVatQinSegs(stroke.catSegs, q);
-    const _vaq = q => _simVatQinSegs(stroke.anSegs, q);
+    // Zero-capacity vertical at the stroke START (e.g. 100%-plateau maps):
+    // emit its post-step sample at t so the step draws as a vertical line.
+    {
+      const pc0=_simVatQPrePost(stroke.catSegs,0), pa0=_simVatQPrePost(stroke.anSegs,0);
+      if(Math.abs(pc0.post-pc0.pre)>1e-12 || Math.abs(pa0.post-pa0.pre)>1e-12){
+        ts.push(t); vc.push(pc0.post+half); va.push(pa0.post-half);
+        vcell.push((pc0.post+half)-(pa0.post-half));
+      }
+    }
     const bps = new Set();
     for(const s of (stroke.catSegs||[])) bps.add(s.Q_end);
     for(const s of (stroke.anSegs||[])) bps.add(s.Q_end);
     const qsList = [...bps].filter(q => Number.isFinite(q) && q > 1e-15 && q <= Qmin + 1e-9)
                            .sort((a,b) => a-b);
     for(const q of qsList){
-      ts.push(_qToT(q));
-      vc.push(_vcq(q) + half);
-      va.push(_vaq(q) - half);
-      vcell.push((_vcq(q) + half) - (_vaq(q) - half));
+      const pc=_simVatQPrePost(stroke.catSegs,q), pa=_simVatQPrePost(stroke.anSegs,q);
+      const tq=_qToT(q);
+      ts.push(tq); vc.push(pc.pre+half); va.push(pa.pre-half);
+      vcell.push((pc.pre+half)-(pa.pre-half));
+      // Vertical step exactly at q (zero-capacity remainder / staircase edge):
+      // a second sample at the same t draws the true vertical.
+      if(Math.abs(pc.post-pc.pre)>1e-12 || Math.abs(pa.post-pa.pre)>1e-12){
+        ts.push(tq); vc.push(pc.post+half); va.push(pa.post-half);
+        vcell.push((pc.post+half)-(pa.post-half));
+      }
     }
 
     strokes.push({k, t_start:t, t_end, dir:stroke.dir, Iu,
@@ -4138,14 +4190,22 @@ function _simCellPolylineFromSegs(catSegs, anSegs, halfC, halfA){
   for(const s of catSegs){ bps.add(s.Q_start); bps.add(s.Q_end); }
   for(const s of anSegs){  bps.add(s.Q_start); bps.add(s.Q_end); }
   const pts=[...bps].sort((a,b)=>a-b);
-  const vcat=q=>_simVatQinSegs(catSegs,q), van=q=>_simVatQinSegs(anSegs,q);
   const q0=pts[0];
-  const v0_pre  = vcat(q0) - van(q0);
-  const v0_post = (vcat(q0) + halfC) - (van(q0) + halfA);
-  const xs = [q0, q0], ys = [v0_pre, v0_post];
+  const c0=_simVatQPrePost(catSegs,q0), a0=_simVatQPrePost(anSegs,q0);
+  // Classic duplicate point at Q=0: raw V_cell, then the IR-shifted value.
+  const xs=[q0,q0], ys=[c0.pre-a0.pre, (c0.pre+halfC)-(a0.pre+halfA)];
+  // A zero-capacity vertical AT the start (100%-plateau maps) draws next.
+  if(Math.abs(c0.post-c0.pre)>1e-12 || Math.abs(a0.post-a0.pre)>1e-12){
+    xs.push(q0); ys.push((c0.post+halfC)-(a0.post+halfA));
+  }
   for(let i=1;i<pts.length;i++){
-    xs.push(pts[i]);
-    ys.push((vcat(pts[i]) + halfC) - (van(pts[i]) + halfA));
+    const q=pts[i];
+    const pc=_simVatQPrePost(catSegs,q), pa=_simVatQPrePost(anSegs,q);
+    xs.push(q); ys.push((pc.pre+halfC)-(pa.pre+halfA));
+    // Verticals at q (zero-capacity window remainders) render as true steps.
+    if(Math.abs(pc.post-pc.pre)>1e-12 || Math.abs(pa.post-pa.pre)>1e-12){
+      xs.push(q); ys.push((pc.post+halfC)-(pa.post+halfA));
+    }
   }
   return {xs, ys};
 }
@@ -6957,20 +7017,27 @@ function openMM(ex,cat,asNew){const isN=asNew||!ex;const m=ex?migMat(ex):{id:"",
       const electrolyte=row.querySelector(".mel")?.value.trim()||"";
       const pickedRfi=row.querySelector(".mrefsel")?.value||"";
       const refId=pickedRfi&&idMap[pickedRfi]?idMap[pickedRfi]:"";
-      // Redox plateau fields (Advanced options). The modal edits the single
-      // plateau/band; a multi-stage plateaus[] array (file-edited) rides
-      // through untouched via the row's data-plateaus stash so saving from
-      // the modal can't drop it. Salt categories store the value as
-      // vRedox/vRedoxHi (what the salt panel and simulator read); AM
-      // categories as vPlateau/vPlateauHi (+ pPlateau % share).
+      // Redox plateau fields (Advanced Options). The single V/toV/% pair and
+      // the multi-stage rows are both edited in the modal now; any valid
+      // multi-stage rows are saved as plateaus[] (which override the single
+      // pair when the material is applied). Salt categories store the single
+      // value as vRedox/vRedoxHi (what the salt panel and simulator read);
+      // AM categories as vPlateau/vPlateauHi (+ pPlateau % share).
       const vplraw=row.querySelector(".mvpl")?.value;const pplraw=row.querySelector(".mppl")?.value;
       const vpl2raw=row.querySelector(".mvpl2")?.value;
       const vPlateau=(vplraw===""||vplraw==null)?null:parseFloat(vplraw);
       const pPlateau=(pplraw===""||pplraw==null)?null:parseFloat(pplraw);
       const vPlateauHi=(vpl2raw===""||vpl2raw==null)?null:parseFloat(vpl2raw);
-      let plateaus=null;
-      const platRaw=row.querySelector("[data-plateaus]")?.dataset.plateaus;
-      if(platRaw){ try{ plateaus=JSON.parse(decodeURIComponent(platRaw)); }catch{ plateaus=null; } }
+      const plateaus=[];
+      row.querySelectorAll(".mps-row").forEach(pr=>{
+        const v=parseFloat(pr.querySelector(".mps-v")?.value);
+        const pc=parseFloat(pr.querySelector(".mps-p")?.value);
+        if(!Number.isFinite(v)||!Number.isFinite(pc)||pc<=0) return;
+        const e={v,pct:pc};
+        const v2=parseFloat(pr.querySelector(".mps-v2")?.value);
+        if(Number.isFinite(v2)&&Math.abs(v2-v)>1e-9) e.vHi=v2;
+        plateaus.push(e);
+      });
       const entry={rv,ru,c1:Number.isFinite(c1)?c1:null,cN:Number.isFinite(cN)?cN:null,vhi:Number.isFinite(vhi)?vhi:null,vlo:Number.isFinite(vlo)?vlo:null,sType,electrolyte,refId,ref:null};
       const isSaltCat=(nc==="saltNa"||nc==="saltLi");
       if(Number.isFinite(vPlateau)){ if(isSaltCat) entry.vRedox=vPlateau; else entry.vPlateau=vPlateau; }
@@ -7121,6 +7188,21 @@ function clearModalRefImage(i){
 }
 
 // Render the HTML for a single rate row in the material editor
+// One multi-stage plateau row inside a modal capacity entry (V · to V · %).
+function _modalPlateauRowHTML(i, v, v2, pct){
+  return `<div class="ms-row mps-row"><span class="ms-num">${i}.</span>`+
+    `<div class="fld"><input type="number" class="mps-v" step="0.01" value="${v??""}" placeholder="V"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="mps-v2" step="0.01" value="${v2??""}" placeholder="to V (opt)"><span class="u">V</span></div>`+
+    `<div class="fld"><input type="number" class="mps-p" step="1" min="0" max="100" value="${pct??""}" placeholder="%"><span class="u">%</span></div>`+
+    `<button type="button" class="ms-rm" title="Remove stage" onclick="this.closest('.mps-row').remove()">×</button></div>`;
+}
+function addModalPlateauStage(btn){
+  const host=btn.closest(".hid")?.querySelector(".mps-rows"); if(!host) return;
+  const i=host.querySelectorAll(".mps-row").length+1;
+  const div=document.createElement("div");
+  div.innerHTML=_modalPlateauRowHTML(i,null,null,null);
+  host.appendChild(div.firstElementChild);
+}
 function buildRateRowHTML(r,i){
   const ru=r.ru||"C";
   const elec=r.electrolyte||"";
@@ -7130,8 +7212,11 @@ function buildRateRowHTML(r,i){
     <div class="row w2"><label>Rate</label><div class="fld"><input type="number" class="mr" step=".01" value="${r.rv??""}"></div><div class="fld"><select class="mru"><option value="C"${ru==="C"?" selected":""}>C-rate</option><option value="mA/g"${ru==="mA/g"?" selected":""}>mA/g</option><option value="A/g"${ru==="A/g"?" selected":""}>A/g</option><option value="mA/cm²"${ru==="mA/cm²"?" selected":""}>mA/cm²</option></select></div></div>
     <div class="row w2"><label>Capacity</label><div class="fld"><input type="number" class="mc1" step="1" placeholder="empty if not reported" value="${r.c1??""}"><span class="u">C₁ mAh/g</span></div><div class="fld"><input type="number" class="mcN" step="1" placeholder="empty if not reported" value="${r.cN??""}"><span class="u">Cₙ mAh/g</span></div></div>
     <div class="row w3"><label>Window / Type</label><div class="fld"><input type="number" class="mvhi" step=".01" placeholder="empty if not reported" value="${r.vhi??""}"><span class="u">V hi</span></div><div class="fld"><input type="number" class="mvlo" step=".01" placeholder="empty if not reported" value="${r.vlo??""}"><span class="u">V lo</span></div><div class="fld"><select class="mst"><option value="capacitive"${r.sType==="capacitive"?" selected":""}>Capacitive</option><option value="pseudocapacitive"${r.sType==="pseudocapacitive"?" selected":""}>Pseudocap.</option><option value="faradaic"${(r.sType==="faradaic"||!r.sType)?" selected":""}>Faradaic</option></select></div></div>
-    <div style="margin:2px 0" data-plateaus="${r.plateaus?encodeURIComponent(JSON.stringify(r.plateaus)):""}"><button class="ib" type="button" style="font-size:10px" onclick="this.nextElementSibling.classList.toggle('hid');this.textContent=this.nextElementSibling.classList.contains('hid')?'▸ Advanced Options (simulation)':'▾ Advanced Options (simulation)'">▸ Advanced Options (simulation)</button><div class="hid" style="margin-top:4px">
-    <div class="row w3"><label>Redox plateau<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Simulation-only fields. &lt;strong&gt;V&lt;/strong&gt;: the redox plateau potential (AM) or salt oxidation potential (V&lt;sub&gt;redox&lt;/sub&gt;, e.g. squarate 3.6 V vs Na). &lt;strong&gt;to V&lt;/strong&gt; (optional): fill to make it a From→To band swept as capacity is delivered (e.g. croconate 3.6–3.7 V, hard carbon's sloping region). &lt;strong&gt;%&lt;/strong&gt; (AM only): share of the capacity delivered on the plateau — the remainder is simulated as a pseudocapacitive sloping contribution."></button></label><div class="fld"><input type="number" class="mvpl" step=".01" placeholder="empty if none" value="${r.vPlateau??r.vRedox??""}"><span class="u">V</span></div><div class="fld"><input type="number" class="mvpl2" step=".01" placeholder="to V (opt)" value="${r.vPlateauHi??r.vRedoxHi??""}"><span class="u">V</span></div><div class="fld"><input type="number" class="mppl" step="1" min="0" max="100" placeholder="% of C" value="${r.pPlateau??""}"><span class="u">%</span></div></div>
+    <div style="margin:2px 0"><button class="ib" type="button" style="font-size:10px" onclick="this.nextElementSibling.classList.toggle('hid');this.textContent=this.nextElementSibling.classList.contains('hid')?'▸ Advanced Options (simulation)':'▾ Advanced Options (simulation)'">▸ Advanced Options (simulation)</button><div class="hid" style="margin-top:4px">
+    <div class="row w3"><label>Redox plateau<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Simulation-only fields. &lt;strong&gt;V&lt;/strong&gt;: the redox plateau potential (AM) or salt oxidation potential (V&lt;sub&gt;redox&lt;/sub&gt;, e.g. squarate 3.6 V vs Na). &lt;strong&gt;to V&lt;/strong&gt; (optional): fill to make it a From→To band swept as capacity is delivered (e.g. croconate 3.6–3.7 V). &lt;strong&gt;%&lt;/strong&gt; (AM only): share of the capacity delivered on the plateau — the remainder is simulated as a pseudocapacitive sloping contribution. For several plateaus, use the multi-stage rows below instead (they override this single pair)."></button></label><div class="fld"><input type="number" class="mvpl" step=".01" placeholder="empty if none" value="${r.vPlateau??r.vRedox??""}"><span class="u">V</span></div><div class="fld"><input type="number" class="mvpl2" step=".01" placeholder="to V (opt)" value="${r.vPlateauHi??r.vRedoxHi??""}"><span class="u">V</span></div><div class="fld"><input type="number" class="mppl" step="1" min="0" max="100" placeholder="% of C" value="${r.pPlateau??""}"><span class="u">%</span></div></div>
+    <div class="row" style="grid-template-columns:1fr;margin:4px 0 2px"><label style="font-size:10.5px;color:var(--ink2)">Multi-stage plateaus <span class="su">(V · to V · % rows — e.g. hard carbon staging)</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Split the material's capacity across several redox plateaus/bands, exactly like the multi-stage editor in the input cards (e.g. hard carbon: 1→0.5 V / 2%, 0.5→0.1 V / 33%, 0.1→0.005 V / 65%). The second V is optional — fill it to make a stage a From→To band. When any row is present these stages override the single plateau pair above. Picking this material auto-fills the electrode's plateau editor."></button></label></div>
+    <div class="salt-ms-rows mps-rows">${Array.isArray(r.plateaus)?r.plateaus.map((p,pi)=>_modalPlateauRowHTML(pi+1,p.v,p.vHi,p.pct)).join(""):""}</div>
+    <div class="salt-ms-foot"><button type="button" class="salt-ms-add" onclick="addModalPlateauStage(this)">+ Add stage</button></div>
     </div></div>
     <div class="row"><label>Electrolyte</label><div class="fld"><input type="text" class="mel" placeholder="e.g. 1 M LiPF6 in EC:DMC (1:1 v/v)" value="${esc(elec)}"></div></div>
     <div class="row"><label>Reference</label><div class="fld"><select class="mrefsel">${buildRefOptionsHTML(selRfi)}</select></div></div>
@@ -7155,8 +7240,19 @@ function duplicateModalRate(btn){
     pPlateau:num(row.querySelector(".mppl")?.value),
     refId:"",ref:null
   };
-  const platRaw=row.querySelector("[data-plateaus]")?.dataset.plateaus;
-  if(platRaw){ try{ const p=JSON.parse(decodeURIComponent(platRaw)); if(Array.isArray(p)&&p.length) r.plateaus=p; }catch{} }
+  {
+    const plats=[];
+    row.querySelectorAll(".mps-row").forEach(pr=>{
+      const v=parseFloat(pr.querySelector(".mps-v")?.value);
+      const pc=parseFloat(pr.querySelector(".mps-p")?.value);
+      if(!Number.isFinite(v)||!Number.isFinite(pc)||pc<=0) return;
+      const e={v,pct:pc};
+      const v2=parseFloat(pr.querySelector(".mps-v2")?.value);
+      if(Number.isFinite(v2)&&Math.abs(v2-v)>1e-9) e.vHi=v2;
+      plats.push(e);
+    });
+    if(plats.length) r.plateaus=plats;
+  }
   // The dropdown holds an rfi (modal-local index); resolve it to the canonical refId.
   const refs=$("mBo")?._modalRefs||[];
   const rfi=row.querySelector(".mrefsel")?.value||"";
