@@ -47,6 +47,7 @@ const parts = [
   extract('_simMapVatQ', 'fn'),
   extract('_simMapSliceFrom', 'fn'),
   extract('_simVatQinSegs', 'fn'),
+  extract('_simVatQPrePost', 'fn'),
   extract('_simTruncSegs', 'fn'),
   extract('_simInterleaveSalt', 'fn'),
   extract('_simConstraintStop', 'fn'),
@@ -585,6 +586,40 @@ setScenario({ ...lfp,
     check('V(t) staircase: cycle-2 stroke samples include the anode plateau voltages',
           idx.length >= 5 && hasPlat >= 3,
           `samples=${idx.length} plateauVs=${hasPlat} [${[...vaSet].join(',')}]`);
+  }
+}
+
+// ── Test 15: zero-capacity window remainder renders as a terminal vertical ──
+// Anode with a 100% plateau at 1.0 V (window 2.0–0.05): the ramp back to the
+// window top carries no capacity, so the discharge stroke must END with a
+// zero-length vertical segment up to 2.0 V (previously dropped by truncation,
+// hiding the "straight line up").
+// (Anode sized well below the cathode's post-formation discharge budget so
+// the discharge stroke is genuinely anode-limited and reaches q=0.)
+setScenario({ ...lfp,
+  inputs: { ...lfp.inputs, 'an-st': 'faradaic', 'an-fp-v': '1.0', 'an-fp-p': '100' },
+  lastInp: { ...lfp.lastInp,
+    an: { st: 'faradaic', c1: 10, cN: 10, wAM: 1, Vth: [2.0, 0.05], Vop: [2.0, 0.05] } },
+  lastR: { ...lfp.lastR, Qa1: 10, QaN: 10 },
+});
+{
+  const ts15 = simComputeTimeSeries();
+  check('terminal vertical: time mode ok', ts15.ok === true, ts15.msg || '');
+  if (ts15.ok && ts15.strokes.length >= 2) {
+    const s2 = ts15.strokes[1];               // discharge — anode-limited (40 < 50)
+    const segs = s2.anSegs || [];
+    const last = segs[segs.length - 1];
+    check('terminal vertical: discharge ends with a zero-length step up to the window top (2.0 V)',
+          !!last && (last.Q_end - last.Q_start) <= 1e-12 &&
+          Math.abs(last.V_end - 2.0) < 1e-9,
+          last ? `len=${(last.Q_end-last.Q_start).toExponential(1)} V ${last.V_start}→${last.V_end}` : 'none');
+    // And the V(t) samples actually reach 2.0 V within that stroke's window.
+    let reach = -Infinity;
+    for (let i = 0; i < ts15.ts.length; i++)
+      if (ts15.ts[i] >= s2.t_start - 1e-9 && ts15.ts[i] <= s2.t_end + 1e-9)
+        reach = Math.max(reach, ts15.va[i]);
+    check('terminal vertical: V(t) anode samples reach the window top',
+          Math.abs(reach - 2.0) < 1e-9, `reach=${reach}`);
   }
 }
 
