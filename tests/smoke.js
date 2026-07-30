@@ -39,10 +39,60 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   });
 
   await page.goto(APP, { waitUntil: "domcontentloaded", timeout: 90000 });
-  // Production ships with DEV_DEFAULTS_ON=false (empty form, no lastR), so the
-  // test loads the known dev scenario explicitly via the force parameter.
-  await page.waitForFunction(() => typeof applyDevDefaults === "function", { timeout: 30000 });
-  await page.evaluate(() => applyDevDefaults(true));
+
+  // ── Clean-boot contract: nothing is filled in for the user ──
+  await page.waitForFunction(() => typeof recalcNow === "function", { timeout: 30000 });
+  const BOOT = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const v = id => (g(id) ? g(id).value : "<missing>");
+    return {
+      presets: [v("cat-ac-ps"), v("an-ps"), v("cat-s-ps")],
+      caps: [v("cat-ac-c1"), v("cat-ac-cN"), v("an-c1"), v("an-cN")],
+      masses: [v("cat-mass"), v("cat-ld"), v("an-mass"), v("an-ld")],
+      names: [v("cat-ac-name"), v("an-name")],
+      idFieldsGone: !g("cat-label") && !g("an-label"),
+      devDefaultsGone: typeof window.applyDevDefaults === "undefined",
+      toasts: document.querySelectorAll("#tH .tst").length,
+      resultsHidden: g("resPanel").style.display === "none",
+    };
+  });
+  check("boot: material presets default to Custom", BOOT.presets.every(x => x === ""), JSON.stringify(BOOT.presets));
+  check("boot: no capacities pre-filled", BOOT.caps.every(x => x === ""), JSON.stringify(BOOT.caps));
+  check("boot: no masses/loadings pre-filled", BOOT.masses.every(x => x === ""), JSON.stringify(BOOT.masses));
+  check("boot: no material names pre-filled", BOOT.names.every(x => x === ""), JSON.stringify(BOOT.names));
+  check("boot: ID/Identity fields removed", BOOT.idFieldsGone === true);
+  check("boot: dev-defaults prefill removed from the app", BOOT.devDefaultsGone === true);
+  check("boot: no toast on load", BOOT.toasts === 0, "toasts=" + BOOT.toasts);
+  check("boot: results panel hidden until Calculate", BOOT.resultsHidden === true);
+
+  // The app ships an empty form — materials are always chosen by the user — so
+  // the suite seeds its own known scenario here rather than relying on any
+  // prefill baked into the product.
+  await page.waitForFunction(() => typeof recalcNow === "function", { timeout: 30000 });
+  await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    // Cathode: activated carbon (YP50), EDLC.
+    g("cat-ac-name").value = "Activated carbon (YP50)";
+    g("cat-ac-st").value = "capacitive";
+    g("cat-ac-ocv").value = "3"; g("cat-ac-ref").value = "Na/Na+";
+    g("cat-Vop-hi").value = "4.2"; g("cat-Vop-lo").value = "2";
+    g("cat-ac-c1").value = "25"; g("cat-ac-cN").value = "50";
+    setRateValue("cat-ac", "c1", 100, "mA/g", "100 mA/g");
+    setRateValue("cat-ac", "cN", 100, "mA/g", "100 mA/g");
+    // Anode: PAN Vapo 6h - MAA, EDLC.
+    g("an-name").value = "PAN Vapo 6h - MAA";
+    g("an-st").value = "capacitive";
+    g("an-ocv").value = "3"; g("an-ref").value = "Na/Na+";
+    g("an-Vop-hi").value = "2"; g("an-Vop-lo").value = "0.05";
+    g("an-c1").value = "200"; g("an-cN").value = "100";
+    setRateValue("an", "c1", 0.02, "A/g", "0.02 A/g");
+    setRateValue("an", "cN", 0.02, "A/g", "0.02 A/g");
+    // Anode pinned by loading: 1 mg/cm² over 1 cm² (⌀11.28 mm).
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-dia").value = "11.28";
+    updateFpVisibility("cat"); updateFpVisibility("an");
+    recalcNow();
+  });
   await page.waitForFunction(() => typeof window.lastR !== "undefined", { timeout: 30000 });
 
   // ── Feature 1: "Different 1st cycle" target (and the salt-mode N/P symmetry fix) ──
@@ -81,7 +131,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("C1 re-derived on OCV edit 3→3.5 → 15.9", near(parseFloat(B.d35), 15.9), "got " + B.d35);
   check("hand-typed C1 not overridden by derivation", B.locked === "99", "got " + B.locked);
 
-  // ── Feature 2b: derived C1 follows the "Start in cell" (formation) direction ──
+  // ── Feature 2b: formation is always a charge — C1 uses the charge-first span ──
   const C = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     c1Manual.cat = false; c1Derived.cat = false;
@@ -90,12 +140,12 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     g("cat-Vth-hi").value = "4.2"; g("cat-Vth-lo").value = "2.0";
     g("cat-Vop-hi").value = "4.2"; g("cat-Vop-lo").value = "2.0";
     g("cat-ac-c1").value = "";
-    setStartDir("charge"); deriveCapC1("cat"); const chg = g("cat-ac-c1").value;   // (4.2-3)/2.2 * 50
-    setStartDir("discharge"); const dis = g("cat-ac-c1").value;                    // (3-2)/2.2 * 50, re-derived
-    setStartDir("charge");
-    return { chg, dis };
+    deriveCapC1("cat");                                   // (4.2-3)/2.2 * 50 = 27.3
+    return { chg: g("cat-ac-c1").value, dirCtrlGone: !g("startDirTg"), fixed: startDir };
   });
-  check("C1 follows start dir (charge→27.3, discharge→22.7)", near(parseFloat(C.chg), 27.3) && near(parseFloat(C.dis), 22.7), JSON.stringify(C));
+  check("C1 uses the charge-first formation span → 27.3", near(parseFloat(C.chg), 27.3), JSON.stringify(C));
+  check("start-direction control removed; formation fixed to charge",
+    C.dirCtrlGone === true && C.fixed === "charge", JSON.stringify(C));
 
   // ── Broad health check ──
   const H = await page.evaluate(() => {
@@ -133,6 +183,228 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("faradaic: cathode simulates through the opened gate", F.ok === true, F.msg);
   check("faradaic: staircase carries reversible plateau at 3.45 V", F.plateau === true);
   check("faradaic: plot renders", F.render === true, String(F.render));
+
+  // ── Known / prepared cathode: fixed salt % → two candidate anode masses ──
+  const K = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    if (!saltOn) tgSalt();
+    if (np1stOn) toggleNp1st();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("an-st").value = "faradaic"; onStorageTypeChange("an");
+    g("cat-ac-c1").value = "100"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "200"; g("an-cN").value = "200";
+    g("cat-s-c1").value = "300"; g("cat-s-cN").value = "";
+    g("cat-wAM").value = "80"; g("cat-wC").value = "10"; g("cat-wB").value = "10";
+    g("an-wAM").value = "90"; g("an-wC").value = "5"; g("an-wB").value = "5";
+    g("cat-s-frac").value = "10";                       // known 10% salt → fixed split
+    // Pin the cathode only, so the solver sizes the anode.
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    sMM("an", "d", document.querySelector("#an-mmb .mmb"));
+    g("an-mass").value = ""; g("an-ld").value = ""; g("cat-mass").value = "10";
+    npTarget = 1.0; g("np-target").value = "1.00";
+    recalcNow();
+    const r = window.lastR || {};
+    return { mode: window.lastMode, dual: r.dualAnode, nth: r.mAn, first: r.mAn1st, mAC: r.mAC, mS: r.mS };
+  });
+  check("known cathode (10% salt) → anode 3.89 mg (Nth) / 5.56 mg (1st)",
+    K.mode === "anode" && K.dual === true && near(K.nth, 3.889, 0.01) && near(K.first, 5.556, 0.01) &&
+    near(K.mAC, 7, 0.01) && near(K.mS, 1, 0.01), JSON.stringify(K));
+
+  // ── View controls repaint immediately (no Recalculate needed) ──
+  const V = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    recalcNow();                                        // start from a clean, non-stale solve
+    const out = {};
+    // 1st/Nth capacity bars
+    const first = g("bar-chart").innerHTML;
+    g("bTog").querySelector('button[data-p="Nth"]').click();
+    const nth = g("bar-chart").innerHTML;
+    out.barChanged = first !== nth;
+    out.barStale = g("calcBtn").classList.contains("dirty");
+    // Rate-table POV tabs
+    const povBtns = g("cdTabBar").querySelectorAll(".norm-btn");
+    const t0 = g("crate-table").innerHTML;
+    povBtns[1].click();
+    out.povChanged = g("crate-table").innerHTML !== t0;
+    povBtns[0].click();
+    // AM vs total loading — labels AND numbers must move together
+    const ld0 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingChanged = g("r-cld12").innerHTML !== ld0;
+    out.loadingLabel = g("r-cld12-lbl").textContent.includes("Total");
+    setShowTotalLoading(false);
+    out.anyStale = g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("view control: 1st/Nth bar toggle repaints instantly", V.barChanged === true && V.barStale === false, JSON.stringify(V));
+  check("view control: rate-table POV tabs repaint instantly", V.povChanged === true, JSON.stringify(V));
+  check("view control: total-loading updates labels and numbers together",
+    V.loadingChanged === true && V.loadingLabel === true, JSON.stringify(V));
+  check("view controls never mark results stale", V.anyStale === false, JSON.stringify(V));
+
+  // ── Cell Parameters: the design point drives the simulation currents ──
+  const CP = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.aboveCards = !!(g("np-target").compareDocumentPosition(document.querySelector(".egrid")) &
+                        Node.DOCUMENT_POSITION_FOLLOWING);   // N/P precedes the electrode cards
+    clearSimRateSel();                                       // no manual override
+    recalcNow();
+    const Qcell = Math.min(window.lastR.QaN, window.lastR.QcN);
+    g("cell-rate-nth").value = "0.5"; g("cell-rate-1st").value = "0.05";
+    onCellRateChange();
+    out.eq1 = g("cell-rate-1st-eq").textContent;             // "= C/20"
+    out.eqN = g("cell-rate-nth-eq").textContent;             // "= C/2"
+    out.iNth = cellRateCurrent("Nth"); out.expectNth = 0.5 * Qcell;
+    out.i1st = cellRateCurrent("1st"); out.expect1st = 0.05 * Qcell;
+    out.status = g("simRateNTxt").textContent;               // must name its source
+    // Manual row pick must still win over the design rate.
+    pickSimRate("crate", "1C", 12345);
+    out.manualWins = (simRateSel[simAssignMode] || {}).I_uA === 12345;
+    clearSimRateSel();
+    g("cell-rate-1st").value = "0.1"; g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    return out;
+  });
+  check("Cell Parameters sits above the electrode cards", CP.aboveCards === true);
+  check("design C-rates show readable equivalents (C/20, C/2)",
+    CP.eq1 === "= C/20" && CP.eqN === "= C/2", CP.eq1 + " / " + CP.eqN);
+  check("design rate sets the simulation current (0.5C, 0.05C of Q_cell)",
+    near(CP.iNth, CP.expectNth, 0.01) && near(CP.i1st, CP.expect1st, 0.01), JSON.stringify(CP));
+  check("sim status names Cell Parameters as the current source",
+    /Cell parameters/i.test(CP.status), CP.status);
+  check("an explicit Rates-tab pick still overrides the design rate", CP.manualWins === true);
+
+  // ── One N/P mechanism: hero ratios are read-only, deviations share one basis ──
+  const NP = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.editorGone = typeof window.onRatioEditClick === "undefined" &&
+                     typeof window.applyRatioOverride === "undefined" &&
+                     typeof window.ratioOverride === "undefined";
+    out.msgBoxGone = !g("r-edit-msg");
+    out.noClickHandler = !g("r-r1pct").getAttribute("onclick") && !g("r-rNpct").getAttribute("onclick");
+    // Deviation basis: with target 1.20 the rGrid "vs target" column must agree
+    // with the solver's own o1/oN rather than measuring against 1.00.
+    g("np-target").value = "1.20"; onNpTargetChange(); recalcNow();
+    out.header = g("rGrid").textContent.includes("vs target");
+    const r = window.lastR;
+    out.oNAgainstTarget = Math.abs(r.oN - (r.rN - 1.2) * 100) < 1e-6;
+    g("np-target").value = "1.00"; onNpTargetChange(); recalcNow();
+    return out;
+  });
+  check("ratio-override editor removed entirely", NP.editorGone === true && NP.msgBoxGone === true, JSON.stringify(NP));
+  check("hero N/P values are read-only", NP.noClickHandler === true);
+  check("diagnostics table measures against the target, not 1.00",
+    NP.header === true && NP.oNAgainstTarget === true, JSON.stringify(NP));
+
+  // ── Geometry is not guessed for the user ──
+  const G = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    // A fresh reset must leave every mass/geometry field empty.
+    resetAll({ silent: true });
+    out.empty = ["cat-mass","cat-ld","an-mass","an-ld","cat-ar","an-ar","cat-dia","an-dia"]
+      .map(id => g(id).value).every(v => v === "");
+    out.placeholders = !!g("cat-ar").placeholder && !!g("cat-dia").placeholder;
+    // Loading typed but no area → not pinned, and the hint appears.
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "";
+    recalc();                                   // as a keystroke would
+    out.notPinned = detectMode() !== "cathode";
+    out.massNull = getEM("an") === null;
+    out.hint = !!document.querySelector("#an-ml .ld-area-hint");
+    g("an-ar").value = "1"; recalc();
+    out.pinnedWithArea = detectMode() === "cathode";
+    out.hintGone = !document.querySelector("#an-ml .ld-area-hint");
+    return out;
+  });
+  check("boot/reset leaves mass and geometry fields empty", G.empty === true && G.placeholders === true, JSON.stringify(G));
+  check("loading without an area is not treated as a pinned mass",
+    G.notPinned === true && G.massNull === true, JSON.stringify(G));
+  check("loading without an area explains what is missing", G.hint === true);
+  check("supplying the area pins the electrode and clears the hint",
+    G.pinnedWithArea === true && G.hintGone === true, JSON.stringify(G));
+
+  // ── Linear flow: section order, numbering, and a single open drawer ──
+  const FL = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const pos = sel => Array.from(document.querySelectorAll(".sec")).findIndex(s => s.matches(sel));
+    const tabs = Array.from(document.querySelectorAll(".rtab-btn")).map(b => b.textContent.trim());
+    return {
+      // material is asked for before composition on both electrodes
+      catOrder: pos('[data-step="cat-am"]') < pos('[data-step="cat-comp"]'),
+      anOrder: pos('[data-step="an-am"]') < pos('[data-step="an-comp"]'),
+      tabs,
+      emptyMsgHelpful: (typeof chk === "function"),
+    };
+  });
+  check("cathode asks for the material before its composition", FL.catOrder === true);
+  check("anode asks for the material before its composition", FL.anOrder === true);
+  check("results tabs run Balance → Diagnostics → Rates → Simulation",
+    FL.tabs[0] === "Balance" && FL.tabs[1] === "Diagnostics" && /Rates/.test(FL.tabs[2]) && /Simulation/.test(FL.tabs[3]),
+    JSON.stringify(FL.tabs));
+
+  // Empty-state copy should tell the user what to do, not just name a field.
+  const EM = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const saved = g("cat-ac-cN").value;
+    g("cat-ac-cN").value = ""; recalcNow();
+    const msg = g("r-mc").textContent;
+    const stale = g("calcBtn").classList.contains("dirty");
+    g("cat-ac-cN").value = saved; recalcNow();
+    return { msg, stale };
+  });
+  check("missing input explains the next action", /Pick a cathode material/i.test(EM.msg), EM.msg);
+  check("missing input does not also claim results are stale", EM.stale === false);
+
+  // ── Guided tour ──
+  const T = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.stepCount = TOUR_STEPS.length;
+    out.allHaveCopy = TOUR_STEPS.every(s => s.t && s.h && s.b && s.b.length > 60);
+    startTour();
+    out.veilOn = g("tourVeil").classList.contains("on");
+    out.popOn = g("tourPop").classList.contains("on");
+    out.firstTitle = g("tourTitle").textContent;
+    out.highlighted = document.querySelectorAll(".tour-hi").length;
+    out.counter = g("tourCount").textContent;
+    tourGo(1);
+    out.secondTitle = g("tourTitle").textContent;
+    out.advanced = out.secondTitle !== out.firstTitle;
+    out.onlyOneHi = document.querySelectorAll(".tour-hi").length === 1;
+    tourGo(-1);
+    out.wentBack = g("tourTitle").textContent === out.firstTitle;
+    endTour();
+    out.cleanedUp = !g("tourVeil").classList.contains("on") &&
+                    !g("tourPop").classList.contains("on") &&
+                    document.querySelectorAll(".tour-hi").length === 0;
+    out.flagSet = localStorage.getItem(TOUR_KEY) === "1";
+    return out;
+  });
+  check("tour defines all 14 steps with real copy", T.stepCount === 14 && T.allHaveCopy === true, JSON.stringify({n:T.stepCount, ok:T.allHaveCopy}));
+  check("tour opens with veil, popover and one highlight",
+    T.veilOn === true && T.popOn === true && T.highlighted === 1, JSON.stringify(T));
+  check("tour starts on the cell-design step", /Start with the cell/i.test(T.firstTitle), T.firstTitle);
+  check("tour advances and steps back", T.advanced === true && T.wentBack === true && T.onlyOneHi === true, JSON.stringify(T));
+  check("ending the tour removes all its chrome", T.cleanedUp === true);
+  check("taking the tour records that it was seen", T.flagSet === true);
+
+  // Welcome prompt: offered once, never again after dismissal.
+  const W = await page.evaluate(() => {
+    localStorage.removeItem(TOUR_KEY);
+    maybeOfferTour();
+    const offered = document.getElementById("tourWelcome").classList.contains("on");
+    dismissTourWelcome();
+    const dismissed = !document.getElementById("tourWelcome").classList.contains("on");
+    maybeOfferTour();
+    const notReoffered = !document.getElementById("tourWelcome").classList.contains("on");
+    return { offered, dismissed, notReoffered };
+  });
+  check("first-time visitors are offered the tour", W.offered === true);
+  check("declining the tour hides it and it is not offered again",
+    W.dismissed === true && W.notReoffered === true, JSON.stringify(W));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
