@@ -39,10 +39,60 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   });
 
   await page.goto(APP, { waitUntil: "domcontentloaded", timeout: 90000 });
-  // Production ships with DEV_DEFAULTS_ON=false (empty form, no lastR), so the
-  // test loads the known dev scenario explicitly via the force parameter.
-  await page.waitForFunction(() => typeof applyDevDefaults === "function", { timeout: 30000 });
-  await page.evaluate(() => applyDevDefaults(true));
+
+  // ── Clean-boot contract: nothing is filled in for the user ──
+  await page.waitForFunction(() => typeof recalcNow === "function", { timeout: 30000 });
+  const BOOT = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const v = id => (g(id) ? g(id).value : "<missing>");
+    return {
+      presets: [v("cat-ac-ps"), v("an-ps"), v("cat-s-ps")],
+      caps: [v("cat-ac-c1"), v("cat-ac-cN"), v("an-c1"), v("an-cN")],
+      masses: [v("cat-mass"), v("cat-ld"), v("an-mass"), v("an-ld")],
+      names: [v("cat-ac-name"), v("an-name")],
+      idFieldsGone: !g("cat-label") && !g("an-label"),
+      devDefaultsGone: typeof window.applyDevDefaults === "undefined",
+      toasts: document.querySelectorAll("#tH .tst").length,
+      resultsHidden: g("resPanel").style.display === "none",
+    };
+  });
+  check("boot: material presets default to Custom", BOOT.presets.every(x => x === ""), JSON.stringify(BOOT.presets));
+  check("boot: no capacities pre-filled", BOOT.caps.every(x => x === ""), JSON.stringify(BOOT.caps));
+  check("boot: no masses/loadings pre-filled", BOOT.masses.every(x => x === ""), JSON.stringify(BOOT.masses));
+  check("boot: no material names pre-filled", BOOT.names.every(x => x === ""), JSON.stringify(BOOT.names));
+  check("boot: ID/Identity fields removed", BOOT.idFieldsGone === true);
+  check("boot: dev-defaults prefill removed from the app", BOOT.devDefaultsGone === true);
+  check("boot: no toast on load", BOOT.toasts === 0, "toasts=" + BOOT.toasts);
+  check("boot: results panel hidden until Calculate", BOOT.resultsHidden === true);
+
+  // The app ships an empty form — materials are always chosen by the user — so
+  // the suite seeds its own known scenario here rather than relying on any
+  // prefill baked into the product.
+  await page.waitForFunction(() => typeof recalcNow === "function", { timeout: 30000 });
+  await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    // Cathode: activated carbon (YP50), EDLC.
+    g("cat-ac-name").value = "Activated carbon (YP50)";
+    g("cat-ac-st").value = "capacitive";
+    g("cat-ac-ocv").value = "3"; g("cat-ac-ref").value = "Na/Na+";
+    g("cat-Vop-hi").value = "4.2"; g("cat-Vop-lo").value = "2";
+    g("cat-ac-c1").value = "25"; g("cat-ac-cN").value = "50";
+    setRateValue("cat-ac", "c1", 100, "mA/g", "100 mA/g");
+    setRateValue("cat-ac", "cN", 100, "mA/g", "100 mA/g");
+    // Anode: PAN Vapo 6h - MAA, EDLC.
+    g("an-name").value = "PAN Vapo 6h - MAA";
+    g("an-st").value = "capacitive";
+    g("an-ocv").value = "3"; g("an-ref").value = "Na/Na+";
+    g("an-Vop-hi").value = "2"; g("an-Vop-lo").value = "0.05";
+    g("an-c1").value = "200"; g("an-cN").value = "100";
+    setRateValue("an", "c1", 0.02, "A/g", "0.02 A/g");
+    setRateValue("an", "cN", 0.02, "A/g", "0.02 A/g");
+    // Anode pinned by loading: 1 mg/cm² over 1 cm² (⌀11.28 mm).
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-dia").value = "11.28";
+    updateFpVisibility("cat"); updateFpVisibility("an");
+    recalcNow();
+  });
   await page.waitForFunction(() => typeof window.lastR !== "undefined", { timeout: 30000 });
 
   // ── Feature 1: "Different 1st cycle" target (and the salt-mode N/P symmetry fix) ──

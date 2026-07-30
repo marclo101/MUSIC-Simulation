@@ -622,8 +622,6 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <div class="egrid">
 <!-- ══ CATHODE ══ -->
 <div class="card"><div class="card-h ch"><span class="ct"><span class="ic ci">+</span>Cathode<span class="rl">positive</span></span></div><div class="cb">
-  <div class="sec cld s-optional" data-step="cat-id"><div class="st" onclick="tgS(this)" data-help="A free-text label for the cathode (e.g. &lt;em&gt;&quot;NMC622 baseline&quot;&lt;/em&gt; or &lt;em&gt;&quot;PBA pilot run&quot;&lt;/em&gt;). Purely cosmetic — the label has no effect on any calculation, it just makes the electrode easier to recognise on screen and in exports." data-help-key="sec_cat_identity"><span class="sl"><span class="bg bc">ID</span> Identity</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="A free-text label for the cathode (e.g. &lt;em&gt;&quot;NMC622 baseline&quot;&lt;/em&gt; or &lt;em&gt;&quot;PBA pilot run&quot;&lt;/em&gt;). Purely cosmetic — the label has no effect on any calculation, it just makes the electrode easier to recognise on screen and in exports."></button></div><div class="sb">
-    <div class="row"><label data-help="Optional name for this cathode formulation. Cosmetic only — never read by the solver." data-help-key="fld_cat_label">Label<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Optional name for this cathode formulation. Cosmetic only — never read by the solver."></button></label><div class="fld"><input type="text" id="cat-label" value=""></div></div></div></div>
   <div class="sec cld s-done" data-step="cat-comp"><div class="st" onclick="tgS(this)" data-help="Mass-percent breakdown of the cathode film: active material, conductive additive, and binder (Σ should be 100%). These weights split the total electrode mass into the active and inactive fractions used everywhere downstream — capacity, loading, balance — so changing them rescales &lt;strong&gt;every&lt;/strong&gt; result." data-help-key="sec_cat_composition"><span class="sl"><span class="bg bn">%</span> Composition</span><span class="sh" id="cat-fs" style="color: var(--ink3);">Σ=100%</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Mass-percent breakdown of the cathode film: active material, conductive additive, and binder (Σ should be 100%). These weights split the total electrode mass into the active and inactive fractions used everywhere downstream — capacity, loading, balance — so changing them rescales &lt;strong&gt;every&lt;/strong&gt; result."></button></div><div class="sb">
     <div class="g3"><div><div class="row" style="grid-template-columns:1fr;gap:3px"><label data-help="Mass fraction of &lt;strong&gt;all&lt;/strong&gt; active species in the cathode film — AM₁ alone when salt is off, or AM₁ + Salt combined when salt is on. Editing it rescales the mass-to-capacity conversion, so cathode loadings and both N/P ratios shift in step." data-help-key="fld_cat_wAM">AM <em>w<sub>AM</sub></em><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Mass fraction of &lt;strong&gt;all&lt;/strong&gt; active species in the cathode film — AM₁ alone when salt is off, or AM₁ + Salt combined when salt is on. Editing it rescales the mass-to-capacity conversion, so cathode loadings and both N/P ratios shift in step."></button></label><div class="fld"><input type="number" id="cat-wAM" step="1" value="90"><span class="u">%</span></div></div></div>
     <div><div class="row" style="grid-template-columns:1fr;gap:3px"><label data-help="Mass fraction of conductive additive (carbon black, Ketjen, SuperP, C45…). Inactive mass: increasing it dilutes the cathode's specific capacity referenced to the total electrode mass." data-help-key="fld_cat_wC">Cond. <em>w<sub>C</sub></em><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Mass fraction of conductive additive (carbon black, Ketjen, SuperP, C45…). Inactive mass: increasing it dilutes the cathode's specific capacity referenced to the total electrode mass."></button></label><div class="fld"><input type="number" id="cat-wC" step="1" value="5"><span class="u">%</span></div></div></div>
@@ -717,8 +715,6 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <!-- ══ ANODE ══ -->
 <div class="card"><div class="card-h ah"><span class="ct"><span class="ic ai">−</span>Anode<span class="rl">negative</span></span></div><div class="cb">
-  <div class="sec cld s-optional" data-step="an-id"><div class="st" onclick="tgS(this)" data-help="Free-text label for the anode (e.g. &lt;em&gt;&quot;HC-1300&quot;&lt;/em&gt;, &lt;em&gt;&quot;AC commercial&quot;&lt;/em&gt;). Cosmetic only — the label is never read by the solver." data-help-key="sec_an_identity"><span class="sl"><span class="bg ba">ID</span> Identity</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Free-text label for the anode (e.g. &lt;em&gt;&quot;HC-1300&quot;&lt;/em&gt;, &lt;em&gt;&quot;AC commercial&quot;&lt;/em&gt;). Cosmetic only — the label is never read by the solver."></button></div><div class="sb">
-    <div class="row"><label data-help="Optional name for this anode formulation (e.g. &lt;em&gt;&quot;HC-1300, pilot&quot;&lt;/em&gt;). Cosmetic only." data-help-key="fld_an_label">Label<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Optional name for this anode formulation (e.g. &lt;em&gt;&quot;HC-1300, pilot&quot;&lt;/em&gt;). Cosmetic only."></button></label><div class="fld"><input type="text" id="an-label" value=""></div></div></div></div>
   <div class="sec cld s-done" data-step="an-comp"><div class="st" onclick="tgS(this)" data-help="Mass-percent breakdown of the anode film: active material, conductive additive, and binder (Σ should be 100%). These weights determine the active fraction used to compute Qa = mₐₘ·C, so editing them shifts both N/P ratios." data-help-key="sec_an_composition"><span class="sl"><span class="bg bn">%</span> Composition</span><span class="sh" id="an-fs" style="color: var(--ink3);">Σ=100%</span><span class="step-ind"></span><span class="cv">▾</span><button type="button" class="help-icon hi-section" aria-label="Help" data-help="Mass-percent breakdown of the anode film: active material, conductive additive, and binder (Σ should be 100%). These weights determine the active fraction used to compute Qa = mₐₘ·C, so editing them shifts both N/P ratios."></button></div><div class="sb">
     <div class="g3"><div><div class="row" style="grid-template-columns:1fr;gap:3px"><label data-help="Mass fraction of active material in the anode film. Increases the anode's effective specific capacity per gram of electrode and shifts both r₁ and rₙ." data-help-key="fld_an_wAM">AM <em>w<sub>AM</sub></em><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Mass fraction of active material in the anode film. Increases the anode's effective specific capacity per gram of electrode and shifts both r₁ and rₙ."></button></label><div class="fld"><input type="number" id="an-wAM" step="1" value="90"><span class="u">%</span></div></div></div>
     <div><div class="row" style="grid-template-columns:1fr;gap:3px"><label data-help="Mass fraction of conductive additive in the anode (C45, SuperP, graphite…). Inactive — dilutes the capacity referenced to total electrode mass." data-help-key="fld_an_wC">Cond. <em>w<sub>C</sub></em><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Mass fraction of conductive additive in the anode (C45, SuperP, graphite…). Inactive — dilutes the capacity referenced to total electrode mass."></button></label><div class="fld"><input type="number" id="an-wC" step="1" value="5"><span class="u">%</span></div></div></div>
@@ -6090,7 +6086,7 @@ function applyPS(prefix){
   const lbl=fRtU(r0.rv,r0.ru);
   if(prefix==="cat-ac"){
     catAcRates=rates;
-    $("cat-ac-name").value=m.name;$("cat-label").value=m.name;$("cat-ac-st").value=r0.sType||"faradaic";
+    $("cat-ac-name").value=m.name;$("cat-ac-st").value=r0.sType||"faradaic";
     if(m.ocv)$("cat-ac-ocv").value=m.ocv;if(m.ocvRef)$("cat-ac-ref").value=m.ocvRef;
     if(r0.vhi!=null){$("cat-Vth-hi").value=r0.vhi;$("cat-Vop-hi").value=r0.vhi}
     if(r0.vlo!=null){$("cat-Vth-lo").value=r0.vlo;$("cat-Vop-lo").value=r0.vlo}
@@ -6109,7 +6105,7 @@ function applyPS(prefix){
     if(typeof _fpApplyFromLibrary==="function"){ _fpApplyFromLibrary("cat", r0); updateFpVisibility("cat"); }
   }else if(prefix==="an"){
     anRates=rates;
-    $("an-name").value=m.name;$("an-label").value=m.name;$("an-st").value=r0.sType||"faradaic";
+    $("an-name").value=m.name;$("an-st").value=r0.sType||"faradaic";
     if(m.ocv)$("an-ocv").value=m.ocv;if(m.ocvRef)$("an-ref").value=m.ocvRef;
     if(r0.vhi!=null){$("an-Vth-hi").value=r0.vhi;$("an-Vop-hi").value=r0.vhi}
     if(r0.vlo!=null){$("an-Vth-lo").value=r0.vlo;$("an-Vop-lo").value=r0.vlo}
@@ -6157,7 +6153,11 @@ function rebuildPS(){
 function fillSel(id,items){const el=$(id);if(!el)return;const pv=el.value;el.innerHTML='<option value="">Custom</option>';items.forEach(i=>{const o=document.createElement("option");o.value=i.id;o.textContent=i.name;el.appendChild(o)});if(pv&&items.find(i=>i.id===pv))el.value=pv}
 
 /* ══ RESET ══ */
-function resetAll(){if(!confirm("Reset all inputs?"))return;
+function resetAll(opts){
+  // opts.silent — used by the page-boot path, which resets to establish a clean
+  // empty form. A visitor who has typed nothing should not be told "Cleared".
+  const silent=!!(opts&&opts.silent);
+  if(!silent&&!confirm("Reset all inputs?"))return;
   document.querySelectorAll(".card input[type='number']").forEach(el=>el.value="");document.querySelectorAll(".card input[type='text']").forEach(el=>el.value="");
   $("cat-wAM").value="90";$("cat-wC").value="5";$("cat-wB").value="5";$("an-wAM").value="90";$("an-wC").value="5";$("an-wB").value="5";
   $("cat-Vth-hi").value="4.2";$("cat-Vth-lo").value="2.0";$("cat-Vop-hi").value="4.2";$("cat-Vop-lo").value="1.5";
@@ -6188,7 +6188,7 @@ function resetAll(){if(!confirm("Reset all inputs?"))return;
   _np1stTgChrome();
   ratioOverride=null;
   hideRatioEditMsg();
-  $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();toast("Cleared")}
+  $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();if(!silent)toast("Cleared")}
 
 /* ══ SOLVER ══ */
 function readInpRaw(){return{cat:{wAM:pct("cat-wAM"),wC:pct("cat-wC"),wB:pct("cat-wB"),ac:{c1:N("cat-ac-c1"),cN:N("cat-ac-cN"),r1:N("cat-ac-r1"),rN:N("cat-ac-rN"),st:$("cat-ac-st").value},salt:saltOn?{c1:N("cat-s-c1"),cN:N("cat-s-cN"),r1:N("cat-s-r1"),rN:N("cat-s-rN"),frac:has("cat-s-frac")?pct("cat-s-frac"):null}:{c1:0,cN:0,r1:0,rN:0,frac:null},Vth:[N("cat-Vth-hi"),N("cat-Vth-lo")],Vop:[N("cat-Vop-hi"),N("cat-Vop-lo")],mass:getEM("cat")},an:{wAM:pct("an-wAM"),wC:pct("an-wC"),wB:pct("an-wB"),c1:N("an-c1"),cN:N("an-cN"),r1:N("an-r1"),rN:N("an-rN"),st:$("an-st").value,Vth:[N("an-Vth-hi"),N("an-Vth-lo"),],Vop:[N("an-Vop-hi"),N("an-Vop-lo")],mass:getEM("an")}}}
@@ -7382,7 +7382,7 @@ const STEPS=[
    hint:"Enter sacrificial salt capacity, or disable the salt toggle"},
 ];
 // Mass steps are optional — if filled, mode adapts automatically
-const OPT_STEPS=["cat-id","cat-comp","an-id","an-comp","cat-mass","an-mass"];
+const OPT_STEPS=["cat-comp","an-comp","cat-mass","an-mass"];
 
 let prevActiveStep=null;
 let firstRecalcDone=false;
@@ -7502,86 +7502,11 @@ window.addEventListener("load",()=>{
   // the leave-the-editor Σ-check (it must never fire mid-typing).
   if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
   if(typeof _fpWireSumCheck==="function"){ _fpWireSumCheck("cat"); _fpWireSumCheck("an"); }
-  // ── Dev-only: prefill the form with a known scenario for fast iteration.
-  // Flip DEV_DEFAULTS_ON to false (or delete this call) to remove. ──
-  if(typeof applyDevDefaults==="function") applyDevDefaults();
+  // The form ships empty: materials are chosen by the user, never pre-filled.
 });
 
-/* ══════════════════════════════════════════════════════════════
-   DEV DEFAULTS — flip the flag below to disable.
-   Pre-fills the Single-mode form with a scenario taken from a screenshot
-   so the developer doesn't have to re-enter values every reload. Runs
-   AFTER silentResetAll() inside the load listener, so it always wins.
-   To remove for production: set DEV_DEFAULTS_ON=false (one-line undo) or
-   delete this whole block plus the applyDevDefaults() call above.
-   ══════════════════════════════════════════════════════════════ */
-const DEV_DEFAULTS_ON = false;
 
-// `force` bypasses the flag — used by the headless regression tests to load
-// the known scenario on demand without shipping auto-filled forms to users.
-function applyDevDefaults(force){
-  if(!DEV_DEFAULTS_ON && !force) return;
-  try{
-    // Cathode AM — Custom preset, Activated carbon (YP50), EDLC.
-    if($("cat-ac-ps"))   $("cat-ac-ps").value="";
-    if($("cat-ac-name")) $("cat-ac-name").value="Activated carbon (YP50)";
-    if($("cat-label"))   $("cat-label").value="Activated carbon (YP50)";
-    if($("cat-ac-st"))   $("cat-ac-st").value="capacitive";
-    if($("cat-ac-ocv"))  $("cat-ac-ocv").value="3";
-    if($("cat-ac-ref"))  $("cat-ac-ref").value="Na/Na+";
-    // V_th already 4.2/2.0 from HTML defaults; align V_op with it.
-    if($("cat-Vop-hi"))  $("cat-Vop-hi").value="4.2";
-    if($("cat-Vop-lo"))  $("cat-Vop-lo").value="2";
-    if($("cat-ac-c1"))   $("cat-ac-c1").value="25";
-    if($("cat-ac-cN"))   $("cat-ac-cN").value="50";
-    setRateValue("cat-ac","c1",100,"mA/g","100 mA/g");
-    setRateValue("cat-ac","cN",100,"mA/g","100 mA/g");
-
-    // No sacrificial salt — saltOn defaults to false after silentResetAll().
-
-    // Anode — Custom preset, PAN Vapo 6h - MAA, capacitive.
-    if($("an-ps"))    $("an-ps").value="";
-    if($("an-name"))  $("an-name").value="PAN Vapo 6h - MAA";
-    if($("an-label")) $("an-label").value="PAN Vapo 6h - MAA";
-    if($("an-st"))    $("an-st").value="capacitive";
-    if($("an-ocv"))   $("an-ocv").value="3";
-    if($("an-ref"))   $("an-ref").value="Na/Na+";
-    // V_th already 2.0/0.05; widen V_op_hi to match (default is 1.7).
-    if($("an-Vop-hi")) $("an-Vop-hi").value="2";
-    if($("an-Vop-lo")) $("an-Vop-lo").value="0.05";
-    if($("an-c1"))    $("an-c1").value="200";
-    if($("an-cN"))    $("an-cN").value="100";
-    setRateValue("an","c1",0.02,"A/g","0.02 A/g");
-    setRateValue("an","cN",0.02,"A/g","0.02 A/g");
-
-    // Anode mass — switch to Loading mode, 1 mg/cm² over 1 cm² (⌀11.28 mm).
-    const loadBtn=document.querySelector("#an-mmb .mmb:nth-child(2)");
-    if(loadBtn && typeof sMM==="function") sMM("an","l",loadBtn);
-    if($("an-ld"))  $("an-ld").value="1";
-    if($("an-ar"))  $("an-ar").value="1";
-    if($("an-dia")) $("an-dia").value="11.28";
-
-    // Storage types were written directly (no onStorageTypeChange), so sync
-    // the faradaic plateau-editor visibility with the values set above.
-    if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
-    // Dev/test scenario wants immediate results — run the solver, not the
-    // manual-mode stale marker.
-    if(typeof recalcNow==="function") recalcNow();
-  }catch(e){
-    // Don't take the page down if a field id is missing after a refactor.
-    console.warn("[dev defaults] skipped:",e);
-  }
-}
-
-function silentResetAll(){
-  const _c = window.confirm;
-  try{
-    window.confirm = ()=>true;
-    resetAll();
-  }finally{
-    window.confirm = _c;
-  }
-}
+function silentResetAll(){ resetAll({silent:true}); }
 
 function applyCustomMode(side){
   if(side==="cat"){
@@ -7730,7 +7655,6 @@ function gatherExportData(){
   // Material capacity rates: read from the rate-pick label DOM so we present what the user picked
   const rateLbl=id=>($(id)?.textContent||"").trim();
   const cat={
-    label:$("cat-label")?.value||"",
     name:$("cat-ac-name")?.value||"",
     storageType:inp.cat.ac.st,
     ocv:N("cat-ac-ocv"),ocvRef:$("cat-ac-ref")?.value||"",
@@ -7745,7 +7669,6 @@ function gatherExportData(){
     r1Lbl:rateLbl("cat-s-r1-lbl"),rNLbl:rateLbl("cat-s-rN-lbl"),
   }:null;
   const an={
-    label:$("an-label")?.value||"",
     name:$("an-name")?.value||"",
     storageType:inp.an.st,
     ocv:N("an-ocv"),ocvRef:$("an-ref")?.value||"",
@@ -7900,7 +7823,7 @@ function buildTXT(D,sel){
   // Materials (always)
   sec("MATERIALS");
   const c=D.materials.cathode;
-  L.push("CATHODE — "+(c.label||c.name||"(unlabelled)"));
+  L.push("CATHODE — "+(c.name||"(unlabelled)"));
   if(c.name&&c.label&&c.name!==c.label)kv("  Material:",c.name);
   kv("  Storage type:",c.storageType);
   if(Number.isFinite(c.ocv)&&c.ocv!==0)kv("  OCV:",c.ocv.toFixed(2)+" V vs "+(c.ocvRef||"?"));
@@ -7914,7 +7837,7 @@ function buildTXT(D,sel){
     kv("  C_Nth:",_fmt.cap(D.materials.salt.cN)+(D.materials.salt.rNLbl&&D.materials.salt.rNLbl!=="—"?" @ "+D.materials.salt.rNLbl:""));
   }
   br();const a=D.materials.anode;
-  L.push("ANODE — "+(a.label||a.name||"(unlabelled)"));
+  L.push("ANODE — "+(a.name||"(unlabelled)"));
   if(a.name&&a.label&&a.name!==a.label)kv("  Material:",a.name);
   kv("  Storage type:",a.storageType);
   if(Number.isFinite(a.ocv)&&a.ocv!==0)kv("  OCV:",a.ocv.toFixed(2)+" V vs "+(a.ocvRef||"?"));
@@ -8007,8 +7930,7 @@ async function buildHTMLBody(D,sel,opts){
 
   // Materials block (always)
   const matRow=(name,m,extras)=>{
-    let rows=`<tr><th colspan="2" style="background:#E0F5EF;color:#1A8A6E;text-align:left;padding:6pt 8pt;border:1px solid #d0d8e0">${esc(name)}${m.label?(' — '+esc(m.label)):""}</th></tr>`;
-    if(m.name&&m.name!==m.label)rows+=`<tr><td style="padding:4pt 8pt;border:1px solid #d0d8e0">Material</td><td style="padding:4pt 8pt;border:1px solid #d0d8e0">${esc(m.name)}</td></tr>`;
+    let rows=`<tr><th colspan="2" style="background:#E0F5EF;color:#1A8A6E;text-align:left;padding:6pt 8pt;border:1px solid #d0d8e0">${esc(name)}${m.name?(' — '+esc(m.name)):""}</th></tr>`;
     rows+=`<tr><td style="padding:4pt 8pt;border:1px solid #d0d8e0">Storage type</td><td style="padding:4pt 8pt;border:1px solid #d0d8e0">${esc(m.storageType||"")}</td></tr>`;
     if(Number.isFinite(m.ocv)&&m.ocv!==0)rows+=`<tr><td style="padding:4pt 8pt;border:1px solid #d0d8e0">OCV</td><td style="padding:4pt 8pt;border:1px solid #d0d8e0">${m.ocv.toFixed(2)} V vs ${esc(m.ocvRef||"?")}</td></tr>`;
     if(m.composition)rows+=`<tr><td style="padding:4pt 8pt;border:1px solid #d0d8e0">Composition (AM / C / B)</td><td style="padding:4pt 8pt;border:1px solid #d0d8e0">${_fmt.pct(m.composition.wAM)} / ${_fmt.pct(m.composition.wC)} / ${_fmt.pct(m.composition.wB)}</td></tr>`;
