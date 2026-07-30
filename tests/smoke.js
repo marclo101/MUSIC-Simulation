@@ -276,6 +276,39 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     /Cell parameters/i.test(CP.status), CP.status);
   check("an explicit Rates-tab pick still overrides the design rate", CP.manualWins === true);
 
+  // ── The C x n and C/n boxes are one number written two ways ──
+  const RC = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    // typing a multiplier fills the divisor
+    g("cell-rate-nth").value = "0.25"; onCellRateChange();
+    out.multToDiv = g("cell-rate-nth-div").value;        // 4
+    out.eqA = g("cell-rate-nth-eq").textContent;
+    // typing a divisor fills the multiplier
+    g("cell-rate-nth-div").value = "20"; onCellRateDiv("nth");
+    out.divToMult = g("cell-rate-nth").value;            // 0.05
+    out.state = cellRateNth;                             // 0.05
+    out.eqB = g("cell-rate-nth-eq").textContent;
+    // a half-typed divisor must not corrupt the state
+    g("cell-rate-nth-div").value = ""; onCellRateDiv("nth");
+    out.blankKeeps = cellRateNth;                        // still 0.05
+    // reset restores both boxes
+    g("cell-rate-nth-div").value = "10"; onCellRateDiv("nth");
+    g("cell-rate-1st").value = "0.1"; onCellRateChange();
+    out.bothReset = [g("cell-rate-1st").value, g("cell-rate-1st-div").value,
+                     g("cell-rate-nth").value, g("cell-rate-nth-div").value];
+    return out;
+  });
+  check("editing C x n fills the C/n box (0.25C → C/4)", RC.multToDiv === "4", RC.multToDiv);
+  check("editing C/n fills the C x n box (C/20 → 0.05C)",
+    RC.divToMult === "0.05" && near(RC.state, 0.05, 1e-9), JSON.stringify(RC));
+  check("a half-typed divisor does not corrupt the rate", near(RC.blankKeeps, 0.05, 1e-9), String(RC.blankKeeps));
+  check("the cycle-time readout follows both boxes",
+    /4 h per charge or discharge/.test(RC.eqA) && /20 h per charge or discharge/.test(RC.eqB),
+    RC.eqA + "  |  " + RC.eqB);
+  check("both boxes agree after editing back to C/10",
+    RC.bothReset.join(",") === "0.1,10,0.1,10", RC.bothReset.join(","));
+
   // ── One N/P mechanism: hero ratios are read-only, deviations share one basis ──
   const NP = await page.evaluate(() => {
     const g = id => document.getElementById(id);

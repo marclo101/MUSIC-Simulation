@@ -53,8 +53,11 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .cellp-fld{display:flex;flex-direction:column;gap:6px;min-width:0}
 .cellp-fld>label{font-size:11.5px;color:var(--ink2);font-weight:500;cursor:pointer}
 .cellp-fld>label .su{display:block;margin-top:1px;font-size:10px;color:var(--ink3);font-family:var(--fm)}
-.cellp-inline{display:flex;align-items:center;gap:8px}
-.cellp-eq{font-family:var(--fm);font-size:10.5px;color:var(--ink3)}
+.cellp-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cellp-eq{font-family:var(--fm);font-size:11px;color:var(--ink3);line-height:1.5}
+.cellp-eq-t{font-size:12.5px;color:var(--ink2);font-weight:500}
+.cellp-pre{font-family:var(--fm);font-size:12px;color:var(--ink2);font-weight:500}
+.cellp-or{font-size:10.5px;color:var(--ink3);font-style:italic}
 .cellp-tg{align-self:flex-start;padding:4px 10px;font-size:10.5px;font-weight:600;border:1px solid var(--rule);border-radius:6px;color:var(--ink2);background:var(--paper);font-family:var(--fm);transition:all .15s}
 .cellp-tg:hover{border-color:var(--music2)}
 .cellp-tg.on{background:var(--musicG);color:#fff;border-color:transparent}
@@ -674,15 +677,25 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="cellp-fld">
       <label for="cell-rate-1st" data-help="The rate used for the formation (1st) cycle — usually gentle, C/10 or slower, to build a stable interphase. Expressed as a C-rate against the cell's reversible capacity — the equivalent time for one full charge or discharge is shown beside the field. This sets the formation current used by the Simulation." data-help-key="fld_cell_rate_1st">C-rate · 1st cycle <span class="su">formation</span></label>
       <div class="cellp-inline">
-        <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-1st" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
-        <span class="cellp-eq" id="cell-rate-1st-eq">= C/10  ·  10 h per charge or discharge</span>
+        <div class="fld" style="flex:0 0 84px"><input type="number" id="cell-rate-1st" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()" title="C-rate as a multiplier — 0.1 means 0.1C"><span class="u" style="font-family:var(--fm)">C</span></div>
+        <span class="cellp-or">or</span>
+        <span class="cellp-pre">C /</span>
+        <div class="fld" style="flex:0 0 78px"><input type="number" id="cell-rate-1st-div" step="0.1" min="0.05" max="1000" value="10" oninput="onCellRateDiv('1st')" title="C-rate as a divisor — 10 means C/10"></div>
+      </div>
+      <div class="cellp-eq" id="cell-rate-1st-eq"><span class="cellp-eq-c">= C/10</span> <span class="cellp-eq-t">·  10 h per charge or discharge</span></div>
+      <div style="display:none">
       </div>
     </div>
     <div class="cellp-fld">
       <label for="cell-rate-nth" data-help="The rate you intend to operate the cell at every cycle after formation. Capacities are rate-dependent, so this is the rate your balance is valid for. The equivalent time for one full charge or discharge is shown beside the field. It sets the reversible-cycle current used by the Simulation and highlights the matching row in the Rates tab." data-help-key="fld_cell_rate_nth">C-rate · reversible <span class="su">N<sup>th</sup> cycles</span></label>
       <div class="cellp-inline">
-        <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-nth" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
-        <span class="cellp-eq" id="cell-rate-nth-eq">= C/10  ·  10 h per charge or discharge</span>
+        <div class="fld" style="flex:0 0 84px"><input type="number" id="cell-rate-nth" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()" title="C-rate as a multiplier — 0.1 means 0.1C"><span class="u" style="font-family:var(--fm)">C</span></div>
+        <span class="cellp-or">or</span>
+        <span class="cellp-pre">C /</span>
+        <div class="fld" style="flex:0 0 78px"><input type="number" id="cell-rate-nth-div" step="0.1" min="0.05" max="1000" value="10" oninput="onCellRateDiv('nth')" title="C-rate as a divisor — 10 means C/10"></div>
+      </div>
+      <div class="cellp-eq" id="cell-rate-nth-eq"><span class="cellp-eq-c">= C/10</span> <span class="cellp-eq-t">·  10 h per charge or discharge</span></div>
+      <div style="display:none">
       </div>
     </div>
   </div></div>
@@ -2348,14 +2361,48 @@ function fRateTime(c){
   }
   return Math.round(min*60)+" s";
 }
+/* Trim a rate to a readable number of digits without trailing zeros, so the
+   mirrored field shows "20" rather than "20.000000000000004". */
+function _rateNum(v){
+  if(!Number.isFinite(v)||v<=0) return "";
+  return String(v>=1 ? Math.round(v*1000)/1000 : Math.round(v*100000)/100000);
+}
 function _cellRateChrome(){
   const put=(id,c)=>{
     const el=$(id); if(!el) return;
     const t=fRateTime(c);
-    el.textContent="= "+fCrate(c)+(t?"  ·  "+t+" per charge or discharge":"");
+    el.innerHTML='<span class="cellp-eq-c">= '+fCrate(c)+'</span>'+
+                 (t?' <span class="cellp-eq-t">·  '+t+' per charge or discharge</span>':'');
   };
   put("cell-rate-1st-eq",cellRate1st);
   put("cell-rate-nth-eq",cellRateNth);
+}
+/* The two boxes are the same number written both ways — 0.05C is C/20 — so
+   editing either one mirrors into the other. Only the field the user is NOT
+   typing in is ever rewritten, otherwise the caret would jump mid-entry. */
+function _cellRateMirror(cycle,src){
+  const mId=cycle==="1st"?"cell-rate-1st":"cell-rate-nth";
+  const c=cycle==="1st"?cellRate1st:cellRateNth;
+  if(src==="div"){ const el=$(mId);      if(el) el.value=_rateNum(c); }
+  else           { const el=$(mId+"-div"); if(el) el.value=_rateNum(1/c); }
+}
+function _cellRateApply(cycle,src){
+  _cellRateMirror(cycle,src);
+  _cellRateChrome();
+  rerenderResults();
+  if(typeof updateSimStatus==="function") updateSimStatus();
+  if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
+}
+/* Divisor box: C/n. n and the multiplier are reciprocals. */
+function onCellRateDiv(cycle){
+  const id=(cycle==="1st"?"cell-rate-1st":"cell-rate-nth")+"-div";
+  const raw=$(id)?.value;
+  if(raw===""||raw==null) return;                 // mid-typing — leave state alone
+  const d=parseFloat(raw);
+  if(!(Number.isFinite(d)&&d>=0.05&&d<=1000)) return;
+  const c=1/d;
+  if(cycle==="1st") cellRate1st=c; else cellRateNth=c;
+  _cellRateApply(cycle,"div");
 }
 function onCellRateChange(){
   const rd=(id,cur)=>{
@@ -2366,6 +2413,7 @@ function onCellRateChange(){
   };
   cellRate1st=rd("cell-rate-1st",cellRate1st);
   cellRateNth=rd("cell-rate-nth",cellRateNth);
+  _cellRateMirror("1st","mult");_cellRateMirror("nth","mult");
   _cellRateChrome();
   rerenderResults();                                 // rate table highlight + currents
   if(typeof updateSimStatus==="function") updateSimStatus();
@@ -6152,7 +6200,8 @@ function resetAll(opts){
   npTarget=1.00;
   $("np-target").value="1.00";
   cellRate1st=0.1;cellRateNth=0.1;
-  {const a=$("cell-rate-1st");if(a)a.value="0.1";const b=$("cell-rate-nth");if(b)b.value="0.1";}
+  {const a=$("cell-rate-1st");if(a)a.value="0.1";const b=$("cell-rate-nth");if(b)b.value="0.1";
+   const ad=$("cell-rate-1st-div");if(ad)ad.value="10";const bd=$("cell-rate-nth-div");if(bd)bd.value="10";}
   _cellRateChrome();
   np1stOn=false;npTarget1=1.00;
   {const f=$("np-target-1st");if(f)f.value="1.00";}
