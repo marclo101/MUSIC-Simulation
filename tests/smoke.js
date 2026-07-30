@@ -326,6 +326,38 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("supplying the area pins the electrode and clears the hint",
     G.pinnedWithArea === true && G.hintGone === true, JSON.stringify(G));
 
+  // ── Linear flow: section order, numbering, and a single open drawer ──
+  const FL = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const pos = sel => Array.from(document.querySelectorAll(".sec")).findIndex(s => s.matches(sel));
+    const tabs = Array.from(document.querySelectorAll(".rtab-btn")).map(b => b.textContent.trim());
+    return {
+      // material is asked for before composition on both electrodes
+      catOrder: pos('[data-step="cat-am"]') < pos('[data-step="cat-comp"]'),
+      anOrder: pos('[data-step="an-am"]') < pos('[data-step="an-comp"]'),
+      tabs,
+      emptyMsgHelpful: (typeof chk === "function"),
+    };
+  });
+  check("cathode asks for the material before its composition", FL.catOrder === true);
+  check("anode asks for the material before its composition", FL.anOrder === true);
+  check("results tabs run Balance → Diagnostics → Rates → Simulation",
+    FL.tabs[0] === "Balance" && FL.tabs[1] === "Diagnostics" && /Rates/.test(FL.tabs[2]) && /Simulation/.test(FL.tabs[3]),
+    JSON.stringify(FL.tabs));
+
+  // Empty-state copy should tell the user what to do, not just name a field.
+  const EM = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const saved = g("cat-ac-cN").value;
+    g("cat-ac-cN").value = ""; recalcNow();
+    const msg = g("r-mc").textContent;
+    const stale = g("calcBtn").classList.contains("dirty");
+    g("cat-ac-cN").value = saved; recalcNow();
+    return { msg, stale };
+  });
+  check("missing input explains the next action", /Pick a cathode material/i.test(EM.msg), EM.msg);
+  check("missing input does not also claim results are stale", EM.stale === false);
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
