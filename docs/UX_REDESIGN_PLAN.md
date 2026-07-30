@@ -1,6 +1,7 @@
 # UX Redesign Plan — MUSIC Electrode Balance
 
-**Status:** Planning document. No code in this change — implementation happens in follow-up work.
+**Status:** ✅ **Implemented.** Every item below was delivered; this document is kept as the design record and rationale.
+Line numbers refer to the pre-implementation revision and are historical.
 **Scope source:** User feedback ("not an easy, linear use; confusing for first-time users") plus an itemized change list from the maintainer.
 **Codebase state this plan targets:** `main` at `7d1af00` (post PR #36) — `MUSIC_electrode_balance_V10.html` at 8139 lines, manual-recalc mode active, `DEV_DEFAULTS_ON = false`, 17-check smoke suite in `tests/smoke.js`.
 

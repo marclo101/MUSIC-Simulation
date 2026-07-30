@@ -358,6 +358,54 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("missing input explains the next action", /Pick a cathode material/i.test(EM.msg), EM.msg);
   check("missing input does not also claim results are stale", EM.stale === false);
 
+  // ── Guided tour ──
+  const T = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.stepCount = TOUR_STEPS.length;
+    out.allHaveCopy = TOUR_STEPS.every(s => s.t && s.h && s.b && s.b.length > 60);
+    startTour();
+    out.veilOn = g("tourVeil").classList.contains("on");
+    out.popOn = g("tourPop").classList.contains("on");
+    out.firstTitle = g("tourTitle").textContent;
+    out.highlighted = document.querySelectorAll(".tour-hi").length;
+    out.counter = g("tourCount").textContent;
+    tourGo(1);
+    out.secondTitle = g("tourTitle").textContent;
+    out.advanced = out.secondTitle !== out.firstTitle;
+    out.onlyOneHi = document.querySelectorAll(".tour-hi").length === 1;
+    tourGo(-1);
+    out.wentBack = g("tourTitle").textContent === out.firstTitle;
+    endTour();
+    out.cleanedUp = !g("tourVeil").classList.contains("on") &&
+                    !g("tourPop").classList.contains("on") &&
+                    document.querySelectorAll(".tour-hi").length === 0;
+    out.flagSet = localStorage.getItem(TOUR_KEY) === "1";
+    return out;
+  });
+  check("tour defines all 14 steps with real copy", T.stepCount === 14 && T.allHaveCopy === true, JSON.stringify({n:T.stepCount, ok:T.allHaveCopy}));
+  check("tour opens with veil, popover and one highlight",
+    T.veilOn === true && T.popOn === true && T.highlighted === 1, JSON.stringify(T));
+  check("tour starts on the cell-design step", /Start with the cell/i.test(T.firstTitle), T.firstTitle);
+  check("tour advances and steps back", T.advanced === true && T.wentBack === true && T.onlyOneHi === true, JSON.stringify(T));
+  check("ending the tour removes all its chrome", T.cleanedUp === true);
+  check("taking the tour records that it was seen", T.flagSet === true);
+
+  // Welcome prompt: offered once, never again after dismissal.
+  const W = await page.evaluate(() => {
+    localStorage.removeItem(TOUR_KEY);
+    maybeOfferTour();
+    const offered = document.getElementById("tourWelcome").classList.contains("on");
+    dismissTourWelcome();
+    const dismissed = !document.getElementById("tourWelcome").classList.contains("on");
+    maybeOfferTour();
+    const notReoffered = !document.getElementById("tourWelcome").classList.contains("on");
+    return { offered, dismissed, notReoffered };
+  });
+  check("first-time visitors are offered the tour", W.offered === true);
+  check("declining the tour hides it and it is not offered again",
+    W.dismissed === true && W.notReoffered === true, JSON.stringify(W));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
