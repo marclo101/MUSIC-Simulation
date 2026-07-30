@@ -20,9 +20,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 /* Cards */
 .egrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}@media(max-width:980px){.egrid{grid-template-columns:1fr}}
 /* ══ GUIDED TOUR ══ */
-.tour-veil{position:fixed;inset:0;background:rgba(15,27,45,.45);z-index:9000;display:none}
+.tour-veil{position:fixed;inset:0;background:transparent;z-index:9000;display:none}
 .tour-veil.on{display:block}
-.tour-hi{position:relative;z-index:9100;border-radius:8px;outline:2px solid var(--music2);
+.tour-hi{position:relative;z-index:9100;border-radius:8px;background:var(--paper);outline:2px solid var(--music2);
   box-shadow:0 0 0 6px rgba(28,184,139,.28),0 0 0 9999px rgba(15,27,45,.45);
   animation:tourPulse 1.15s ease-in-out infinite}
 @keyframes tourPulse{
@@ -54,6 +54,9 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .cellp-fld>label{font-size:11.5px;color:var(--ink2);font-weight:500;cursor:pointer}
 .cellp-fld>label .su{display:block;margin-top:1px;font-size:10px;color:var(--ink3);font-family:var(--fm)}
 .cellp-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.bar-key{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--ink2)}
+.bar-key span{display:inline-flex;align-items:center;gap:6px}
+.bar-key i{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
 .cellp-eq{font-family:var(--fm);font-size:11px;color:var(--ink3);line-height:1.5}
 .cellp-eq-t{font-size:12.5px;color:var(--ink2);font-weight:500}
 .cellp-pre{font-family:var(--fm);font-size:12px;color:var(--ink2);font-weight:500}
@@ -961,7 +964,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <div class="rtab-pane" id="rtab-diag">
   <div class="rtab-pad">
     <!-- Bar chart -->
-    <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st">1st</button><button data-p="Nth">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st">1st</button><button data-p="Nth">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg><div class="bar-key" id="bar-key"></div></div>
     <!-- Ratio table -->
     <div class="cd-box">
       <h4 data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red."></button></h4>
@@ -2386,8 +2389,20 @@ function _cellRateMirror(cycle,src){
   if(src==="div"){ const el=$(mId);      if(el) el.value=_rateNum(c); }
   else           { const el=$(mId+"-div"); if(el) el.value=_rateNum(1/c); }
 }
+/* A change to the design rate changes which library measurement is the right
+   one, so any electrode still bound to a preset re-picks its rows. Electrodes
+   on "Custom", or whose capacity the user typed by hand, are left alone. */
+function reapplyPresetsForRate(){
+  [["cat-ac","cat-ac-ps","cat"],["an","an-ps","an"]].forEach(([prefix,selId,side])=>{
+    const sel=$(selId);
+    if(!sel||!sel.value) return;                 // Custom — nothing to re-pick
+    if(c1Manual[side]) return;                   // user typed a capacity — respect it
+    applyPS(prefix);
+  });
+}
 function _cellRateApply(cycle,src){
   _cellRateMirror(cycle,src);
+  reapplyPresetsForRate();
   _cellRateChrome();
   rerenderResults();
   if(typeof updateSimStatus==="function") updateSimStatus();
@@ -2414,6 +2429,7 @@ function onCellRateChange(){
   cellRate1st=rd("cell-rate-1st",cellRate1st);
   cellRateNth=rd("cell-rate-nth",cellRateNth);
   _cellRateMirror("1st","mult");_cellRateMirror("nth","mult");
+  reapplyPresetsForRate();
   _cellRateChrome();
   rerenderResults();                                 // rate table highlight + currents
   if(typeof updateSimStatus==="function") updateSimStatus();
@@ -6087,6 +6103,25 @@ function updateRateEquiv(){
   checkRateMismatch();
 }
 
+/* Pick the library rate row measured closest to a target C-rate.
+   Capacity is rate-dependent, so the row that matters is the one measured
+   nearest the rate the cell is designed for — not simply the first in the
+   list. Compared in log space, because rates span decades and C/20 vs C/10
+   is the same "distance" as 1C vs 2C. Rows whose rate cannot be converted
+   (e.g. mA/cm², which needs a loading) are only used as a last resort. */
+function pickRateForTarget(rates,targetC){
+  if(!Array.isArray(rates)||!rates.length) return null;
+  let best=null,bestD=Infinity;
+  rates.forEach(r=>{
+    const cap=(r.cN!=null?r.cN:r.c1);
+    const c=rateToCRate(r.rv,r.ru,cap);
+    if(c==null||!(c>0)) return;
+    const d=Math.abs(Math.log(c)-Math.log(targetC));
+    if(d<bestD){bestD=d;best=r}
+  });
+  return best||rates[0];
+}
+
 /* ══ PRESET APPLICATION ══ */
 function applyPS(prefix){
   let selId,matList;
@@ -6096,8 +6131,15 @@ function applyPS(prefix){
   const sel=$(selId);const m=matList.find(x=>x.id===sel.value);if(!m)return;
   // v4 schema: rates carry vhi/vlo/sType per-row. Fall back to old material-level values for backward compat.
   const rates=(m.rates||[]).map(r=>migRate(r,m));
-  const r0=rates[0]||{rv:0.05,ru:"C",c1:0,cN:0,vhi:m.vhi||null,vlo:m.vlo||null,sType:m.sType||"faradaic"};
-  const lbl=fRtU(r0.rv,r0.ru);
+  // The reversible capacity comes from the row nearest the design operating
+  // rate; the first-cycle capacity from the row nearest the formation rate.
+  // They are often different measurements, and using the design point is the
+  // whole reason the user was asked for it up front.
+  const rN=pickRateForTarget(rates,cellRateNth);
+  const r1=pickRateForTarget(rates,cellRate1st);
+  const r0=rN||{rv:0.05,ru:"C",c1:0,cN:0,vhi:m.vhi||null,vlo:m.vlo||null,sType:m.sType||"faradaic"};
+  const rFirst=r1||r0;
+  const lbl=fRtU(r0.rv,r0.ru), lbl1=fRtU(rFirst.rv,rFirst.ru);
   if(prefix==="cat-ac"){
     catAcRates=rates;
     $("cat-ac-name").value=m.name;$("cat-ac-st").value=r0.sType||"faradaic";
@@ -6107,10 +6149,10 @@ function applyPS(prefix){
     // If the preset only reports C1 (cN==null), default cN to c1 so the user
     // can compute right away. Show a small hint so they know it's a default.
     const _catCN=(r0.cN!=null)?r0.cN:r0.c1;
-    $("cat-ac-c1").value=r0.c1??"";$("cat-ac-cN").value=_catCN??"";
+    $("cat-ac-c1").value=rFirst.c1??"";$("cat-ac-cN").value=_catCN??"";
     $("cat-cN-orig").textContent=(r0.cN==null&&r0.c1!=null)?"(defaulted from C₁ — edit if known)":"";
     $("cat-c1-orig").textContent="";
-    setRateValue("cat-ac","c1",r0.rv,r0.ru,lbl);setRateValue("cat-ac","cN",r0.rv,r0.ru,lbl);
+    setRateValue("cat-ac","c1",rFirst.rv,rFirst.ru,lbl1);setRateValue("cat-ac","cN",r0.rv,r0.ru,lbl);
     storeOrigCap("cat");
     // Capacitive/pseudo with no library C₁ → derive it from OCV (slowest-rate basis).
     c1Derived.cat=false;deriveCapC1("cat");
@@ -6124,10 +6166,10 @@ function applyPS(prefix){
     if(r0.vhi!=null){$("an-Vth-hi").value=r0.vhi;$("an-Vop-hi").value=r0.vhi}
     if(r0.vlo!=null){$("an-Vth-lo").value=r0.vlo;$("an-Vop-lo").value=r0.vlo}
     const _anCN=(r0.cN!=null)?r0.cN:r0.c1;
-    $("an-c1").value=r0.c1??"";$("an-cN").value=_anCN??"";
+    $("an-c1").value=rFirst.c1??"";$("an-cN").value=_anCN??"";
     $("an-cN-orig").textContent=(r0.cN==null&&r0.c1!=null)?"(defaulted from C₁ — edit if known)":"";
     $("an-c1-orig").textContent="";
-    setRateValue("an","c1",r0.rv,r0.ru,lbl);setRateValue("an","cN",r0.rv,r0.ru,lbl);
+    setRateValue("an","c1",rFirst.rv,rFirst.ru,lbl1);setRateValue("an","cN",r0.rv,r0.ru,lbl);
     storeOrigCap("an");
     c1Derived.an=false;deriveCapC1("an");
     if(typeof _fpApplyFromLibrary==="function"){ _fpApplyFromLibrary("an", r0); updateFpVisibility("an"); }
@@ -6789,7 +6831,18 @@ function drawBar(inp,r){const svg=$("bar-chart");svg.innerHTML="";const W=600,H=
   svg.appendChild(e("rect",{x:pL,y:yA,width:Math.max(0,wAn),height:bH,fill:"var(--ap)",rx:3}));
   const aL=e("text",{x:pL-8,y:yA+bH/2+4,"font-family":"Geist","font-size":11,fill:"var(--ink)","text-anchor":"end","font-weight":"500"});aL.textContent="Anode";svg.appendChild(aL);
   if(wAn>40){const t=e("text",{x:pL+wAn/2,y:yA+bH/2+4,"font-family":"JetBrains Mono","font-size":10,fill:"#fff","text-anchor":"middle"});t.textContent=qAn.toPrecision(3)+" µAh";svg.appendChild(t)}
-  const gx=pL+wAn;svg.appendChild(e("line",{x1:gx,x2:gx,y1:yC-6,y2:yA+bH+6,stroke:"var(--ink)","stroke-width":1,"stroke-dasharray":"3,4"}));}
+  const gx=pL+wAn;svg.appendChild(e("line",{x1:gx,x2:gx,y1:yC-6,y2:yA+bH+6,stroke:"var(--ink)","stroke-width":1,"stroke-dasharray":"3,4"}));
+  // Key for the bar colours — without it the segments are unidentifiable.
+  const key=$("bar-key");
+  if(key){
+    const sw=(c,l,v)=>'<span><i style="background:'+c+'"></i>'+l+
+                       (Number.isFinite(v)?' <span style="font-family:var(--fm);color:var(--ink3)">'+v.toPrecision(3)+' µAh</span>':"")+"</span>";
+    let h=sw("var(--cp)","Cathode active material",qAC);
+    if(saltOn&&qS>0) h+=sw("var(--sp)","Sacrificial salt",qS);
+    h+=sw("var(--ap)","Anode active material",qAn);
+    h+='<span><i style="background:transparent;border-left:2px dashed var(--ink);border-radius:0;width:2px"></i>Anode capacity (Q<sub>a</sub>) reference</span>';
+    key.innerHTML=h;
+  }}
 
 function drawPie(si,li,parts,side){
   // `side` is "cat" | "an" — required for editable legend wiring; if absent,
@@ -7271,113 +7324,182 @@ function wire(){
   const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");$("stamp").textContent=d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())};stamp();setInterval(stamp,30000)
 }
 
+
 /* ══════════════════════════════════════════════════════════════
    GUIDED TOUR
-   A first-run walkthrough. Each step highlights one area and says what is
-   expected there and why it matters. The page is held inert while the tour
-   runs: this is a read-along, not a fill-in-the-blanks exercise, so a user
-   can take it before they have any numbers to enter.
-   Steps whose target is absent (the salt panel when salt is off, the results
-   before a calculation) are skipped automatically.
+
+   Structure: the tour moves through SECTIONS. Entering a section lights the
+   whole thing up and dims everything else, so the user can read it as a unit
+   — and, because the lit section sits above the dimming layer, actually use
+   it. Sub-steps within that section leave the highlight exactly where it is
+   and only move the floating message, pointing at one field at a time. The
+   section never re-darkens mid-explanation.
+
+   Each step:
+     sec      selector of the section to light (kept across consecutive steps)
+     at       selector the message points at        (defaults to sec)
+     place    'below' (default) | 'right'           — 'right' for sections that
+              grow while being explained, so the message is never covered
+     h, b     heading and body (body may carry <strong>/<em>)
+     onEnter  run when the step opens   (e.g. expand a panel)
+     onExit   run when the step closes  (e.g. put it back)
    ══════════════════════════════════════════════════════════════ */
 const TOUR_KEY="music.tutorialSeen";
+const CAT_CARD='.egrid > .card:nth-of-type(1)';
+const AN_CARD ='.egrid > .card:nth-of-type(2)';
+const _advBtnCat=()=>document.querySelector('.sec[data-step="cat-am"] .btn.gho');
+
 const TOUR_STEPS=[
- {t:'.cellp-card', h:"Start with the cell you want",
-  b:"Before picking materials, decide what the finished cell should do. Set your target N/P — the anode-to-cathode capacity ratio — then set the rates you intend to cycle at. Everything below serves this target."},
- {t:'#np-target', h:"Target N/P ratio",
-  b:"This is the number the solver will hit: N/P = Qa/Qc, compared at the reversible cycle. 1.00 is exactly matched; a little above 1.00 gives the anode a safety margin against metal plating. If your first cycle should be balanced differently — common when a sacrificial salt compensates the anode's formation loss — turn on “Different 1st cycle” and give formation its own target."},
- {t:'#cell-rate-1st', h:"Operating rates",
-  b:"Capacities depend on how fast you cycle, so a cell balanced at one rate is not balanced at another. The 1st-cycle rate is for formation — usually gentle, C/10 or slower. The reversible rate is your everyday operating rate. These set the currents used by the simulation and highlight the matching rows in the Rates tab."},
- {t:'#cat-ac-ps', h:"Choose the cathode active material",
-  b:"Pick a benchmarked material from the library and it fills in the capacities, voltage windows and OCV for you — or leave it on Custom and type your own. Anything a preset fills stays editable afterwards."},
- {t:'#cat-ac-c1', h:"Two capacities, each with its rate",
-  b:"C1st is the first-cycle capacity; CNth is the reversible capacity you get on every cycle after that. Each value is paired with the rate it was measured at — click the rate chip beside it to pick a different measurement. The gap between the two is the irreversible loss your balance has to absorb."},
- {t:'#cat-ac-st', h:"Storage type, OCV and voltage windows",
-  b:"Storage type controls how capacity scales with the voltage window: capacitive and pseudocapacitive materials scale with Vop/Vth, faradaic ones do not. The OCV is the as-assembled potential, and it anchors the first charge — for a capacitive material with no measured C1st, the tool derives one from the OCV automatically."},
- {t:'.sec[data-step="cat-salt"]', h:"Sacrificial additive (optional)",
-  b:"A sacrificial salt releases extra ions on the very first charge, paying for the anode's formation loss without carrying dead mass every cycle afterwards. Leave it off if you do not use one. If your cathode is already mixed to a known recipe, enter its salt percentage and the tool treats that split as fixed."},
- {t:'#an-ps', h:"Now the anode",
-  b:"Same idea as the cathode: pick from the library or enter your own values. The anode's own first-cycle loss — the gap between its C1st and CNth — is usually what the salt, or extra anode mass, has to compensate."},
- {t:'.sec[data-step="cat-mass"]', h:"Enter the mass you already have",
-  b:"Give the mass of the electrode you have actually made, either directly in milligrams or as a loading in mg/cm² with its area. The tool computes the other electrode's mass to hit your target. Fill in one side only: entering both switches to a check-my-cell mode, and entering neither compares the two materials per cm²."},
- {t:'#calcBtn', h:"Calculate",
-  b:"Press Calculate to solve the balance. After the first run, changing an input marks the results stale and you press Recalculate to refresh them — but display toggles, like switching between the 1st and Nth cycle, never need it."},
- {t:'.hero', h:"Your answer",
-  b:"The headline result: both electrode masses, and the N/P actually achieved at the 1st and Nth cycle, coloured by how far they sit from your target. The status chip above sums it up in a phrase."},
- {t:'.rtab-btn:nth-of-type(2)', h:"Diagnose the balance",
-  b:"Diagnostics shows where the capacity goes: the Qa and Qc bars side by side, the capacity-ratio table across rates, and each electrode's potential window against its reference."},
- {t:'.rtab-btn:nth-of-type(4)', h:"Simulate the cell",
+ /* ── Cell parameters ── */
+ {sec:'.cellp-card', h:"Start with the cell you want",
+  b:"Before picking any material, decide what the finished cell should do. Set your target N/P — the anode-to-cathode capacity ratio — and the rates you intend to cycle at. Everything below serves this target. Go ahead and change these now if you like; the tour will wait."},
+ {sec:'.cellp-card', at:'#np-target', h:"Target N/P ratio",
+  b:"This is the number the solver will hit: N/P = Q<sub>a</sub>/Q<sub>c</sub>, compared at the reversible cycle. 1.00 is exactly matched; a little above 1.00 gives the anode a safety margin against metal plating. If your first cycle should be balanced differently — common when a sacrificial salt compensates the anode's formation loss — turn on <strong>Different 1st cycle</strong> and give formation its own target."},
+ {sec:'.cellp-card', at:'#cell-rate-nth', h:"Operating rates — and why they matter here",
+  b:"Capacity depends on how fast you cycle, so a cell balanced at one rate is <strong>not</strong> balanced at another. Enter the rate either way — <em>0.05C</em> or <em>C/20</em> — and the equivalent charge time is shown beneath. These rates are not just a note to yourself: when you pick a material from the library, the tool <strong>automatically selects the measurement taken closest to this rate</strong>, and re-selects it if you change the rate later. If you type capacities by hand, use the values measured nearest your intended rate."},
+
+ /* ── Cathode ── */
+ {sec:CAT_CARD, place:'right', h:"The cathode",
+  b:"Now the positive electrode. This card holds everything about it: the active material and its capacities, the optional sacrificial additive, the electrode composition, and its mass. You can open and edit any of it right now."},
+ {sec:CAT_CARD, at:'#cat-ac-ps', place:'right', h:"Choose the cathode active material",
+  b:"Pick a benchmarked material from the library and it fills in the capacities, voltage windows and OCV for you — choosing the rate measurement closest to your design rate. Or leave it on <strong>Custom</strong> and type your own. Anything a preset fills stays editable."},
+ {sec:CAT_CARD, at:'#cat-ac-c1', place:'right', h:"Two capacities, each with its rate",
+  b:"C<sub>1st</sub> is the first-cycle capacity; C<sub>Nth</sub> is the reversible capacity you get on every cycle after that. The gap between them is the irreversible loss your balance has to absorb. <strong>Click the rate chip beside a value</strong> — it is live right now — to see the other rates in the library and pick a different measurement."},
+ {sec:CAT_CARD, at:'.sec[data-step="cat-am"] .btn.gho', place:'right', h:"Advanced options",
+  b:"Opened for you here: the storage type controls how capacity scales with the voltage window — capacitive and pseudocapacitive materials scale with V<sub>op</sub>/V<sub>th</sub>, faradaic ones do not. The OCV is the as-assembled potential and anchors the first charge; for a capacitive material with no measured C<sub>1st</sub>, the tool derives one from it.",
+  onEnter:()=>{const b=_advBtnCat();const pane=b&&b.nextElementSibling;
+                if(pane&&pane.classList.contains("hid")){b.click();}},
+  onExit:()=>{const b=_advBtnCat();const pane=b&&b.nextElementSibling;
+               if(pane&&!pane.classList.contains("hid")){b.click();}}},
+
+ /* ── Sacrificial additive — placed to the side, since the panel grows when
+      the user switches it on mid-explanation ── */
+ {sec:'.sec[data-step="cat-salt"]', place:'right', h:"Sacrificial additive (optional)",
+  b:"A sacrificial salt releases extra ions on the very first charge, paying for the anode's formation loss without carrying dead mass every cycle afterwards. <strong>Switch it on now if you want to see it</strong> — the panel will expand and this message will step aside. Leave it off if you do not use one. If your cathode is already mixed to a known recipe, enter its salt percentage and the tool treats that split as fixed."},
+
+ /* ── Anode ── */
+ {sec:AN_CARD, place:'right', h:"The anode",
+  b:"Same idea as the cathode: pick from the library or enter your own values. The anode's own first-cycle loss — the gap between its C<sub>1st</sub> and C<sub>Nth</sub> — is usually what the salt, or extra anode mass, has to compensate."},
+
+ /* ── Mass ── */
+ {sec:'.sec[data-step="cat-mass"]', place:'right', h:"Enter the mass you already have",
+  b:"Give the mass of the electrode you have actually made, either directly in milligrams or as a loading in mg/cm² with its area. The tool computes the other electrode's mass to hit your target. <strong>Fill in one side only.</strong> Entering both switches to a check-my-cell mode, and <strong>entering neither compares the two materials per cm²</strong> — useful when you have no electrode yet and just want to know how they pair up."},
+
+ /* ── Results ── */
+ {sec:'#calcBtn', h:"Calculate",
+  b:"Press Calculate to solve the balance. After the first run, changing an input marks the results stale and you press Recalculate — but display toggles, like switching between the 1st and N<sup>th</sup> cycle, never need it."},
+ {sec:'.hero', h:"Your answer",
+  b:"The headline result: both electrode masses, and the N/P actually achieved at the 1st and N<sup>th</sup> cycle, coloured by how far they sit from your target. The status chip above sums it up in a phrase."},
+ {sec:'.rtab-bar', at:'.rtab-btn:nth-of-type(2)', h:"Diagnose the balance",
+  b:"Diagnostics shows where the capacity goes: the Q<sub>a</sub> and Q<sub>c</sub> bars side by side — each colour keyed underneath, so you can see exactly how much comes from the active material and how much from the salt — plus the capacity-ratio table across rates and each electrode's potential window."},
+ {sec:'.rtab-bar', at:'.rtab-btn:nth-of-type(4)', h:"Simulate the cell",
   b:"The Simulation tab draws the galvanostatic voltage curves — each electrode and the whole cell, cycle by cycle, including IR drop, salt plateaus and your voltage limits. It shows why a limit is reached, not just that it was."},
- {t:'#stepHint', h:"You are set",
-  b:"This banner keeps pointing at whatever is still needed. You can replay this tour any time with the Tutorial button at the top right, and export your results as TXT, Word, Excel or PDF once you have them."},
+
+ /* ── Library finale ── */
+ {sec:'#lib', h:"Build your own library",
+  b:"Opened for you: the benchmark library. If you have half-cell data at <strong>several rates</strong>, add the material here with <em>all</em> of those rate points rather than a single number — one entry, one row per measured rate. That is what lets the tool pick the right measurement for whatever design rate you set, and it makes the rate-dependent simulation meaningful. Use <strong>Add</strong> to create it, then <strong>Save file</strong> so it travels with the tool.",
+  onEnter:()=>{const l=$("lib"); if(l) l.classList.remove("cld")},
+  onExit:()=>{const l=$("lib"); if(l) l.classList.add("cld")}},
 ];
 
-let _tourSteps=[],_tourIdx=-1,_tourEl=null,_tourReopened=[];
+let _tourSteps=[],_tourIdx=-1,_tourSecEl=null,_tourAtEl=null,_tourReopened=[],_tourRO=null;
 
-function _tourClear(){
-  if(_tourEl){_tourEl.classList.remove("tour-hi");_tourEl=null}
+function _tourClearHi(){
+  if(_tourSecEl){_tourSecEl.classList.remove("tour-hi");_tourSecEl=null}
+  if(_tourRO){_tourRO.disconnect();_tourRO=null}
 }
-function _tourPlace(el){
-  const pop=$("tourPop"),r=el.getBoundingClientRect();
+function _tourPlace(){
+  const el=_tourAtEl,pop=$("tourPop");
+  if(!el||!pop) return;
+  const st=_tourSteps[_tourIdx]||{};
+  // Vertical placement follows the anchor; side placement clears the whole lit
+  // section, so a sub-step never covers the card it is explaining.
+  const r=(st.place==="right"&&_tourSecEl)?_tourSecEl.getBoundingClientRect():el.getBoundingClientRect();
   pop.classList.add("on");
   const pr=pop.getBoundingClientRect(),M=12;
-  // Prefer below the target, flip above when there is no room.
-  let top=r.bottom+M;
-  if(top+pr.height>window.innerHeight-M) top=Math.max(M,r.top-pr.height-M);
-  let left=r.left+r.width/2-pr.width/2;
-  left=Math.max(M,Math.min(left,window.innerWidth-pr.width-M));
+  let top,left;
+  if(st.place==="right" && r.right+pr.width+M<window.innerWidth-M){
+    // Beside the section: vertical growth can then never cover the message.
+    left=r.right+M;
+    top=Math.max(M,Math.min(r.top,window.innerHeight-pr.height-M));
+  } else {
+    top=r.bottom+M;
+    if(top+pr.height>window.innerHeight-M) top=Math.max(M,r.top-pr.height-M);
+    left=r.left+r.width/2-pr.width/2;
+    left=Math.max(M,Math.min(left,window.innerWidth-pr.width-M));
+  }
   pop.style.top=top+"px";pop.style.left=left+"px";
 }
 function _tourShow(){
   const st=_tourSteps[_tourIdx]; if(!st) return endTour();
-  const el=document.querySelector(st.t); if(!el) return tourGo(1);
-  _tourClear();
-  // Open a collapsed section so the step is actually visible, remembering it
-  // so the page is left as we found it.
-  const sec=el.closest(".sec");
-  if(sec&&sec.classList.contains("cld")){sec.classList.remove("cld");_tourReopened.push(sec)}
-  el.scrollIntoView({behavior:"smooth",block:"center"});
-  _tourEl=el; el.classList.add("tour-hi");
+  const secEl=document.querySelector(st.sec); if(!secEl) return tourGo(1);
+  const atEl=st.at?(document.querySelector(st.at)||secEl):secEl;
+
+  if(st.onEnter){try{st.onEnter()}catch(e){}}
+
+  // Move the highlight only when the section actually changes, so sub-steps
+  // read as one continuous explanation of the same area.
+  if(secEl!==_tourSecEl){
+    _tourClearHi();
+    const host=secEl.closest(".sec");
+    if(host&&host.classList.contains("cld")){host.classList.remove("cld");_tourReopened.push(host)}
+    if(secEl.classList.contains("cld")){secEl.classList.remove("cld");_tourReopened.push(secEl)}
+    _tourSecEl=secEl; secEl.classList.add("tour-hi");
+    // The lit section can be edited during the tour, so it may change size —
+    // follow it rather than leaving the message stranded.
+    if(typeof ResizeObserver!=="undefined"){
+      _tourRO=new ResizeObserver(()=>_tourPlace());
+      _tourRO.observe(secEl);
+    }
+  }
+  _tourAtEl=atEl;
+  atEl.scrollIntoView({behavior:"smooth",block:"center"});
   $("tourTitle").textContent=st.h;
-  $("tourBody").textContent=st.b;
+  $("tourBody").innerHTML=st.b;
   $("tourCount").textContent=(_tourIdx+1)+" / "+_tourSteps.length;
   $("tourBack").disabled=_tourIdx===0;
   $("tourBack").style.opacity=_tourIdx===0?".45":"";
   $("tourNext").textContent=_tourIdx===_tourSteps.length-1?"Done":"Next";
-  // Show and place it now so there is no blank beat while the page scrolls,
-  // then place it again once the smooth scroll has settled.
-  _tourPlace(el);
-  setTimeout(()=>{ if(_tourEl===el) _tourPlace(el); },260);
+  _tourPlace();
+  setTimeout(()=>{ if(_tourAtEl===atEl) _tourPlace(); },260);
 }
 function tourGo(d){
+  const cur=_tourSteps[_tourIdx];
   const next=_tourIdx+d;
   if(next<0) return;
-  if(next>=_tourSteps.length) return endTour();
+  if(cur&&cur.onExit&&_tourSteps[next]!==cur){try{cur.onExit()}catch(e){}}
+  if(next>=_tourSteps.length) return endTour({skipExit:true});
   _tourIdx=next;_tourShow();
 }
 function startTour(){
-  _tourSteps=TOUR_STEPS.filter(st=>document.querySelector(st.t));
+  _tourSteps=TOUR_STEPS.filter(st=>document.querySelector(st.sec));
   if(!_tourSteps.length) return;
   try{localStorage.setItem(TOUR_KEY,"1")}catch(e){}
   _tourReopened=[];_tourIdx=0;
   $("tourVeil").classList.add("on");
   document.addEventListener("keydown",_tourKey);
-  window.addEventListener("resize",_tourReflow);
+  window.addEventListener("resize",_tourPlace);
+  window.addEventListener("scroll",_tourPlace,true);
   _tourShow();
 }
-function endTour(){
-  _tourClear();
+function endTour(opts){
+  const cur=_tourSteps[_tourIdx];
+  if(cur&&cur.onExit&&!(opts&&opts.skipExit)){try{cur.onExit()}catch(e){}}
+  _tourClearHi();
+  _tourAtEl=null;
   $("tourVeil").classList.remove("on");
   $("tourPop").classList.remove("on");
   document.removeEventListener("keydown",_tourKey);
-  window.removeEventListener("resize",_tourReflow);
-  // Restore the sections the tour expanded.
+  window.removeEventListener("resize",_tourPlace);
+  window.removeEventListener("scroll",_tourPlace,true);
   _tourReopened.forEach(sec=>sec.classList.add("cld"));_tourReopened=[];
   _tourIdx=-1;
 }
-function _tourReflow(){ if(_tourEl) _tourPlace(_tourEl); }
 function _tourKey(e){
+  // Arrow keys drive the tour, except while typing in the lit section.
+  const t=e.target,typing=t&&(t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA");
   if(e.key==="Escape"){e.preventDefault();endTour()}
+  else if(typing) return;
   else if(e.key==="ArrowRight"||e.key==="Enter"){e.preventDefault();tourGo(1)}
   else if(e.key==="ArrowLeft"){e.preventDefault();tourGo(-1)}
 }
@@ -7385,10 +7507,11 @@ function dismissTourWelcome(){
   $("tourWelcome").classList.remove("on");
   try{localStorage.setItem(TOUR_KEY,"1")}catch(e){}
 }
+/* Offered on every load, not just the first: people come back to this tool
+   after weeks away, and a tour that hides itself forever after one visit is a
+   tour most users never see twice. Dismissing it is one click. */
 function maybeOfferTour(){
-  let seen=false;
-  try{seen=localStorage.getItem(TOUR_KEY)==="1"}catch(e){seen=false}
-  if(!seen) $("tourWelcome").classList.add("on");
+  $("tourWelcome").classList.add("on");
 }
 
 /* ══ GUIDED FLOW SYSTEM ══ */
