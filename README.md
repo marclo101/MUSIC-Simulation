@@ -23,7 +23,7 @@ By default the target N/P applies to every cycle. Enabling **Different 1st cycle
 
 **Already-prepared electrodes.** If your cathode is mixed to a fixed recipe, enter the **Known salt content (% of electrode mass)** in the sacrificial-additive panel. The AM / salt / carbon / binder split is then held fixed, and — with the cathode mass pinned — the tool sizes the **anode mass** to balance it. Because a fixed cathode leaves the anode mass as the only knob, it reports **two masses**: one balancing the reversible (Nth) cycle and one balancing the formation (1st) cycle. Leave the field blank to have the solver choose the salt amount as before.
 
-**First time here?** The app offers a 14-step guided tour on first load, and the **Tutorial** button in the header replays it any time.
+**First time here?** The app offers a guided tour every time it loads — dismiss it with one click, or replay it any time from the **Tutorial** button in the header. The tour lights up one section at a time, leaving it fully usable so you can try each input as it is explained, and it ends at the material library.
 
 ### The Simulation tab
 
@@ -43,7 +43,8 @@ Not modeled (no data for them in the library): reaction kinetics (Butler–Volme
 1. On load, the HTML executes `materials-library.js`, which assigns the library to `window.MUSIC_LIBRARY`.
 2. The app reads `window.MUSIC_LIBRARY` and uses it to populate the cathode/anode/salt presets and the **Benchmark material library** panel at the bottom of the page.
 3. If `materials-library.js` is missing or malformed, the app falls back to (a) a copy stored in the browser's `localStorage`, and (b) a small set of hard-coded defaults bundled inside the HTML.
-4. Picking a preset auto-fills the V<sub>th</sub> window, OCV, storage type, and rate-paired C₁/C<sub>N</sub> capacities. All other inputs (composition, target N/P, masses or loadings) are entered manually.
+4. Picking a preset auto-fills the V<sub>th</sub> window, OCV, storage type, and rate-paired C₁/C<sub>N</sub> capacities. Because capacity is rate-dependent, the tool selects the **measurement taken closest to your design C-rate** — the reversible capacity from the row nearest the operating rate, the first-cycle capacity from the row nearest the formation rate — and re-selects automatically if you change either rate later. A capacity you type by hand is never overwritten. All other inputs (composition, target N/P, masses or loadings) are entered manually.
+   - This is why a library entry is most useful with **every rate you measured**, one row per rate, rather than a single number.
 5. For **capacitive and pseudocapacitive** electrodes, if the library has no measured 1st-cycle value, C₁ is derived from the as-assembled OCV: since a capacitor's capacity scales with voltage span, C₁ = C<sub>rev</sub> · (V<sub>op,hi</sub> − OCV)/(V<sub>th,hi</sub> − V<sub>th,lo</sub>) for the cathode (mirrored for the anode), using the reversible capacity at the slowest available rate. Formation is always a charge (a cell is assembled discharged), so the cathode sweeps OCV→V<sub>op,hi</sub> and the anode OCV→V<sub>op,lo</sub>. Editing the OCV or the windows re-derives it automatically; typing a C₁ by hand locks it. Faradaic materials keep their library C₁.
 
 ## Saving a new library

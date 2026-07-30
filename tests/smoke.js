@@ -397,7 +397,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const g = id => document.getElementById(id);
     const out = {};
     out.stepCount = TOUR_STEPS.length;
-    out.allHaveCopy = TOUR_STEPS.every(s => s.t && s.h && s.b && s.b.length > 60);
+    out.allHaveCopy = TOUR_STEPS.every(s => s.sec && s.h && s.b && s.b.length > 60);
     startTour();
     out.veilOn = g("tourVeil").classList.contains("on");
     out.popOn = g("tourPop").classList.contains("on");
@@ -417,7 +417,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     out.flagSet = localStorage.getItem(TOUR_KEY) === "1";
     return out;
   });
-  check("tour defines all 14 steps with real copy", T.stepCount === 14 && T.allHaveCopy === true, JSON.stringify({n:T.stepCount, ok:T.allHaveCopy}));
+  check("tour steps all carry a section and real copy", T.stepCount >= 14 && T.allHaveCopy === true, JSON.stringify({n:T.stepCount, ok:T.allHaveCopy}));
   check("tour opens with veil, popover and one highlight",
     T.veilOn === true && T.popOn === true && T.highlighted === 1, JSON.stringify(T));
   check("tour starts on the cell-design step", /Start with the cell/i.test(T.firstTitle), T.firstTitle);
@@ -425,20 +425,142 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("ending the tour removes all its chrome", T.cleanedUp === true);
   check("taking the tour records that it was seen", T.flagSet === true);
 
-  // Welcome prompt: offered once, never again after dismissal.
+  // Welcome prompt: offered on every load, dismissible.
   const W = await page.evaluate(() => {
-    localStorage.removeItem(TOUR_KEY);
     maybeOfferTour();
     const offered = document.getElementById("tourWelcome").classList.contains("on");
     dismissTourWelcome();
     const dismissed = !document.getElementById("tourWelcome").classList.contains("on");
-    maybeOfferTour();
-    const notReoffered = !document.getElementById("tourWelcome").classList.contains("on");
-    return { offered, dismissed, notReoffered };
+    maybeOfferTour();                                   // as a page refresh would
+    const reoffered = document.getElementById("tourWelcome").classList.contains("on");
+    dismissTourWelcome();
+    return { offered, dismissed, reoffered };
   });
-  check("first-time visitors are offered the tour", W.offered === true);
-  check("declining the tour hides it and it is not offered again",
-    W.dismissed === true && W.notReoffered === true, JSON.stringify(W));
+  check("the tour is offered on load", W.offered === true);
+  check("dismissing hides it, and it is offered again next load",
+    W.dismissed === true && W.reoffered === true, JSON.stringify(W));
+
+  // ── Section-scoped highlighting: sub-steps keep the section lit ──
+  const TS = await page.evaluate(() => {
+    const out = {};
+    startTour();
+    const sec0 = document.querySelector(".tour-hi");
+    out.firstIsCellCard = sec0 && sec0.classList.contains("cellp-card");
+    const pos0 = document.getElementById("tourPop").style.top;
+    tourGo(1);                                          // still Cell parameters
+    out.sameSection = document.querySelector(".tour-hi") === sec0;
+    out.popMoved = document.getElementById("tourPop").style.top !== pos0 ||
+                   document.getElementById("tourPop").style.left !== "";
+    out.oneHighlight = document.querySelectorAll(".tour-hi").length === 1;
+    // the lit section sits above the click-blocking veil, so it stays usable
+    const cs = getComputedStyle(sec0), veil = getComputedStyle(document.getElementById("tourVeil"));
+    out.secAboveVeil = parseInt(cs.zIndex, 10) > parseInt(veil.zIndex, 10);
+    // walking the whole tour must not throw and must land on the library step
+    let guard = 0; const titles = [];
+    while (guard++ < 40 && document.getElementById("tourPop").classList.contains("on")) {
+      titles.push(document.getElementById("tourTitle").textContent);
+      tourGo(1);
+    }
+    out.titles = titles;
+    out.reachedLibrary = titles.some(t => /library/i.test(t));
+    out.advancedStep = titles.some(t => /Advanced options/i.test(t));
+    out.libRecollapsed = document.getElementById("lib").classList.contains("cld");
+    out.advClosed = (() => { const b = document.querySelector('.sec[data-step="cat-am"] .btn.gho');
+                             return !b || b.nextElementSibling.classList.contains("hid"); })();
+    out.cleanedUp = document.querySelectorAll(".tour-hi").length === 0;
+    return out;
+  });
+  check("tour opens by lighting the whole Cell parameters section", TS.firstIsCellCard === true);
+  check("a sub-step keeps the same section lit and only moves the message",
+    TS.sameSection === true && TS.oneHighlight === true, JSON.stringify({s:TS.sameSection,o:TS.oneHighlight}));
+  check("the lit section sits above the veil, so it stays interactive", TS.secAboveVeil === true);
+  check("tour covers the advanced options and ends at the library",
+    TS.advancedStep === true && TS.reachedLibrary === true, JSON.stringify(TS.titles));
+  check("panels the tour opened are put back afterwards",
+    TS.libRecollapsed === true && TS.advClosed === true && TS.cleanedUp === true, JSON.stringify(TS));
+
+  // ── The design rate decides which library measurement is used ──
+  // "Hard Carbon" carries a rate ladder (0.05 A/g @270 mAh/g … 0.4 A/g @165).
+  const LR = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    c1Manual.an = false; c1Derived.an = false;
+    g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    out.slow = { cN: g("an-cN").value, rate: g("an-rN-lbl").textContent };
+    // Raising the design rate must re-pick a faster, lower-capacity measurement.
+    g("cell-rate-nth").value = "1"; onCellRateChange();
+    out.fast = { cN: g("an-cN").value, rate: g("an-rN-lbl").textContent };
+    // A hand-typed capacity must not be overwritten by a later rate change.
+    g("an-cN").value = "123"; onCapManual("an", "c1"); c1Manual.an = true;
+    g("cell-rate-nth").value = "2"; onCellRateChange();
+    out.manualKept = g("an-cN").value;
+    c1Manual.an = false;
+    g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    g("an-ps").value = ""; applyPS("an");
+    return out;
+  });
+  check("library pick follows the design rate (C/10 → slowest, 270 mAh/g)",
+    LR.slow.cN === "270", JSON.stringify(LR.slow));
+  check("raising the design rate re-picks a faster measurement (1C → 225 mAh/g)",
+    LR.fast.cN === "225" && LR.fast.cN !== LR.slow.cN, JSON.stringify(LR.fast));
+  check("a hand-typed capacity survives a design-rate change", LR.manualKept === "123", LR.manualKept);
+
+  // ── Capacity bars carry a colour key ──
+  const LG = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    if (!saltOn) tgSalt();
+    g("cat-s-c1").value = "300"; g("cat-s-frac").value = "10";
+    recalcNow();
+    const k = g("bar-key");
+    // The salt only contributes on the first cycle, so read the key there; the
+    // Nth-cycle key correctly omits it.
+    g("bTog").querySelector('button[data-p="1st"]').click();
+    const first = { txt: k.textContent, swatches: k.querySelectorAll("i").length };
+    g("bTog").querySelector('button[data-p="Nth"]').click();
+    const nth = k.textContent;
+    return { ...first, nthTxt: nth };
+  });
+  check("capacity bars have a colour key naming every contribution",
+    /Cathode active material/.test(LG.txt) && /Sacrificial salt/.test(LG.txt) &&
+    /Anode active material/.test(LG.txt) && LG.swatches >= 4, JSON.stringify(LG));
+  check("the key drops the salt on the Nth cycle, where it contributes nothing",
+    !/Sacrificial salt/.test(LG.nthTxt), LG.nthTxt);
+
+  // ── The tour never points at something that is not on screen ──
+  const TV = await page.evaluate(() => {
+    const walk = () => {
+      startTour();
+      const sizes = []; let g = 0;
+      while (g++ < 30 && document.getElementById("tourPop").classList.contains("on")) {
+        const hi = document.querySelector(".tour-hi");
+        const r = hi ? hi.getBoundingClientRect() : { width: 0, height: 0 };
+        sizes.push({ t: document.getElementById("tourTitle").textContent, w: r.width, h: r.height });
+        tourGo(1);
+      }
+      return sizes;
+    };
+    const shown = document.getElementById("resPanel").style.display;
+    document.getElementById("resPanel").style.display = "none";     // as before any Calculate
+    const hidden = walk();
+    document.getElementById("resPanel").style.display = "";          // results on screen
+    const visible = walk();
+    document.getElementById("resPanel").style.display = shown;
+    return {
+      hiddenZero: hidden.filter(x => x.w === 0 || x.h === 0).length,
+      visibleZero: visible.filter(x => x.w === 0 || x.h === 0).length,
+      hiddenHasResults: hidden.some(x => /Your answer/.test(x.t)),
+      visibleHasResults: visible.some(x => /Your answer/.test(x.t)),
+      grew: visible.length > hidden.length,
+      calcMentionsResults: TOUR_STEPS.some(x => /Calculate/.test(x.h) && /Diagnostics/.test(x.b)),
+    };
+  });
+  check("tour never highlights an off-screen target",
+    TV.hiddenZero === 0 && TV.visibleZero === 0, JSON.stringify(TV));
+  check("results steps are skipped before Calculate and included after",
+    TV.hiddenHasResults === false && TV.visibleHasResults === true && TV.grew === true, JSON.stringify(TV));
+  check("the always-visible Calculate step explains what the results give you",
+    TV.calcMentionsResults === true);
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
