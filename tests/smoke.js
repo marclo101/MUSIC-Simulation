@@ -643,6 +643,32 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the rate chip is ringed and remains clickable",
     CDR.ringsChip === true && CDR.clickable === true, JSON.stringify(CDR));
 
+  // ── The tour signs off on the Calculate button ──
+  const FIN = await page.evaluate(() => {
+    const last = TOUR_STEPS[TOUR_STEPS.length - 1];
+    startTour();
+    let guard = 0, seen = [];
+    while (guard++ < 40 && document.getElementById("tourPop").classList.contains("on")) {
+      seen.push({ t: document.getElementById("tourTitle").textContent,
+                  btn: document.getElementById("tourNext").textContent });
+      tourGo(1);
+    }
+    const closed = !document.getElementById("tourPop").classList.contains("on");
+    return {
+      lastTitle: last.h, lastSec: last.sec,
+      isFinalShown: seen.length ? seen[seen.length - 1].t : "",
+      finalBtn: seen.length ? seen[seen.length - 1].btn : "",
+      afterLibrary: seen.length > 1 && /library/i.test(seen[seen.length - 2].t),
+      closesCleanly: closed && document.querySelectorAll(".tour-hi,.tour-focus").length === 0,
+    };
+  });
+  check("the tour ends with a sign-off message",
+    /balance the cell/i.test(FIN.lastTitle) && /balance the cell/i.test(FIN.isFinalShown), JSON.stringify(FIN));
+  check("the sign-off comes after the library and points at Calculate",
+    FIN.afterLibrary === true && FIN.lastSec === "#calcBtn", JSON.stringify(FIN));
+  check("its button reads Done and the tour closes cleanly",
+    FIN.finalBtn === "Done" && FIN.closesCleanly === true, JSON.stringify(FIN));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
