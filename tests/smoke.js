@@ -161,6 +161,38 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     K.mode === "anode" && K.dual === true && near(K.nth, 3.889, 0.01) && near(K.first, 5.556, 0.01) &&
     near(K.mAC, 7, 0.01) && near(K.mS, 1, 0.01), JSON.stringify(K));
 
+  // ── View controls repaint immediately (no Recalculate needed) ──
+  const V = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    recalcNow();                                        // start from a clean, non-stale solve
+    const out = {};
+    // 1st/Nth capacity bars
+    const first = g("bar-chart").innerHTML;
+    g("bTog").querySelector('button[data-p="Nth"]').click();
+    const nth = g("bar-chart").innerHTML;
+    out.barChanged = first !== nth;
+    out.barStale = g("calcBtn").classList.contains("dirty");
+    // Rate-table POV tabs
+    const povBtns = g("cdTabBar").querySelectorAll(".norm-btn");
+    const t0 = g("crate-table").innerHTML;
+    povBtns[1].click();
+    out.povChanged = g("crate-table").innerHTML !== t0;
+    povBtns[0].click();
+    // AM vs total loading — labels AND numbers must move together
+    const ld0 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingChanged = g("r-cld12").innerHTML !== ld0;
+    out.loadingLabel = g("r-cld12-lbl").textContent.includes("Total");
+    setShowTotalLoading(false);
+    out.anyStale = g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("view control: 1st/Nth bar toggle repaints instantly", V.barChanged === true && V.barStale === false, JSON.stringify(V));
+  check("view control: rate-table POV tabs repaint instantly", V.povChanged === true, JSON.stringify(V));
+  check("view control: total-loading updates labels and numbers together",
+    V.loadingChanged === true && V.loadingLabel === true, JSON.stringify(V));
+  check("view controls never mark results stale", V.anyStale === false, JSON.stringify(V));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();

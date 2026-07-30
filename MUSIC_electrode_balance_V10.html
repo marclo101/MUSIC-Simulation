@@ -2171,7 +2171,9 @@ function setShowTotalLoading(v){
   set("r-cld10-lbl","Cat "+tag+" ⌀10mm");
   set("r-ald12-lbl","An "+tag+" ⌀12mm");
   set("r-ald10-lbl","An "+tag+" ⌀10mm");
-  recalc();
+  // View-only: the labels above and the numbers below must change together, so
+  // this repaints straight away rather than waiting for a Recalculate.
+  rerenderResults();
 }
 
 /* Mass to display in loading metrics. Cathode AM-zone = mAC+mS (active material + salt);
@@ -2598,7 +2600,8 @@ function resetCompOverride(side){
   if(typeof recalc==="function")recalc();
 }
 function tgAdv(){advO=!advO;$("advSec").classList.toggle("hid",!advO);$("advLbl").textContent=advO?"Hide details":"More details";$("advAr").style.transform=advO?"rotate(180deg)":""}
-function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));recalc()}
+// View-only: picks which point-of-view the rate table shows. Repaints, never re-solves.
+function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));rerenderResults()}
 function setResultsTab(t,btn){
   document.querySelectorAll(".rtab-btn").forEach(b=>b.classList.toggle("act",b===btn));
   document.querySelectorAll(".rtab-pane").forEach(p=>p.classList.toggle("act",p.id==="rtab-"+t));
@@ -6467,6 +6470,24 @@ function recalc(){
   calcDirty=true;
   _calcStaleUI(true);
 }
+/* Render-only refresh — repaint the results from the CACHED solution without
+   re-solving and without touching the stale flag.
+
+   The rule this enforces: an input that changes the MODEL (materials, masses,
+   composition, N/P, rates) goes through recalc() and marks the results stale;
+   a control that only changes HOW the existing solution is displayed (which
+   cycle the bar chart shows, which POV the rate table uses, AM vs total
+   loading) must repaint immediately. Routing view controls through recalc()
+   is what made them look broken — the user clicked and nothing moved. */
+function rerenderResults(){
+  const r=window.lastR,inp=window.lastInp;
+  if(!r||!inp||window.lastMode==="ratio") return;
+  // Loading read-outs depend on showTotalLoading.
+  $("r-cld12").innerHTML=fLd(ldCatMass(r),A12);$("r-cld10").innerHTML=fLd(ldCatMass(r),A10);
+  $("r-ald12").innerHTML=fLd(ldAnMass(r,inp),A12);$("r-ald10").innerHTML=fLd(ldAnMass(r,inp),A10);
+  // Rate table depends on cdTab; capacity bars depend on barPh.
+  renderCD(inp,r);drawBar(inp,r);
+}
 function recalcNow(){
   calcDirty=false;
   _calcStaleUI(false);
@@ -6622,6 +6643,9 @@ function renderRatio(inp){
   enableExportBtn(true);
 }
 function renderEmpty(msg){
+  // Nothing can be stale when there is nothing to show — otherwise the amber
+  // "results are stale" banner sits next to a "missing input" message.
+  calcDirty=false;_calcStaleUI(false);
   $("r-mc").innerHTML='<span class="ph">'+msg+'</span>';$("r-mc").className="hv";
   $("r-ma").innerHTML="—";$("r-ma").className="hv ph";$("r-mode").style.display="none";
   // Reset the hero ratio cells (different class pattern than the .mv cells below)
@@ -7344,7 +7368,8 @@ function toast(msg){const h=$("tH"),t=document.createElement("div");t.className=
 function wire(){
   document.addEventListener("input",e=>{if(e.target.closest(".card"))recalc()});
   qsa(".tbtn").forEach(b=>b.addEventListener("click",()=>{aCat=b.dataset.c;qsa(".tbtn").forEach(x=>x.classList.toggle("act",x===b));renderLT()}));
-  $("bTog").querySelectorAll("button").forEach(b=>{b.addEventListener("click",()=>{barPh=b.dataset.p;$("bTog").querySelectorAll("button").forEach(x=>x.classList.toggle("act",x===b));recalc()})});
+  // View-only: 1st/Nth just chooses which cycle the capacity bars show.
+  $("bTog").querySelectorAll("button").forEach(b=>{b.addEventListener("click",()=>{barPh=b.dataset.p;$("bTog").querySelectorAll("button").forEach(x=>x.classList.toggle("act",x===b));rerenderResults()})});
   const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");$("stamp").textContent=d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())};stamp();setInterval(stamp,30000)
 }
 /* ══ GUIDED FLOW SYSTEM ══ */
