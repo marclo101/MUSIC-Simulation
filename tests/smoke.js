@@ -54,6 +54,9 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
       devDefaultsGone: typeof window.applyDevDefaults === "undefined",
       toasts: document.querySelectorAll("#tH .tst").length,
       resultsHidden: g("resPanel").style.display === "none",
+      libKB: Math.round(JSON.stringify(window.MUSIC_LIBRARY).length / 1024),
+      plotlyDeferred: typeof Plotly === "undefined",
+      figuresDeferred: typeof window.MUSIC_LIBRARY_IMAGES === "undefined",
     };
   });
   check("boot: material presets default to Custom", BOOT.presets.every(x => x === ""), JSON.stringify(BOOT.presets));
@@ -64,6 +67,9 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("boot: dev-defaults prefill removed from the app", BOOT.devDefaultsGone === true);
   check("boot: no toast on load", BOOT.toasts === 0, "toasts=" + BOOT.toasts);
   check("boot: results panel hidden until Calculate", BOOT.resultsHidden === true);
+  check("boot: library payload is small enough to parse instantly", BOOT.libKB < 500, BOOT.libKB + " KB");
+  check("boot: Plotly is not paid for at startup", BOOT.plotlyDeferred === true);
+  check("boot: reference figures are not paid for at startup", BOOT.figuresDeferred === true);
 
   // The app ships an empty form — materials are always chosen by the user — so
   // the suite seeds its own known scenario here rather than relying on any
@@ -150,14 +156,12 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   // ── Broad health check ──
   const H = await page.evaluate(() => {
     const r = {};
-    r.plotly = typeof Plotly !== "undefined";
     try { r.sim = !!(simComputeSeries() || {}).ok; } catch (e) { r.sim = "THREW:" + e.message; }
     try { renderSimPlot(); r.simRender = true; } catch (e) { r.simRender = "THREW:" + e.message; }
     try { const t = buildTXT(gatherExportData(), { summary:1,materials:1,masses:1,composition:1,ratios:1,loadings:1,rates:1,currents:1 }); r.txt = t.length; } catch (e) { r.txt = "THREW:" + e.message; }
     try { r.lib = lib.ac.length + lib.anode.length + lib.saltNa.length + lib.saltLi.length; renderLT(); } catch (e) { r.lib = "THREW:" + e.message; }
     return r;
   });
-  check("Plotly bundle loaded locally", H.plotly === true);
   check("simulation computes", H.sim === true, String(H.sim));
   check("simulation plot renders", H.simRender === true, String(H.simRender));
   check("TXT export builds", typeof H.txt === "number" && H.txt > 200, String(H.txt));
@@ -668,6 +672,28 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     FIN.afterLibrary === true && FIN.lastSec === "#calcBtn", JSON.stringify(FIN));
   check("its button reads Done and the tour closes cleanly",
     FIN.finalBtn === "Done" && FIN.closesCleanly === true, JSON.stringify(FIN));
+
+  // ── Startup cost: nothing heavy is paid for before the form is usable ──
+  const PERF = await page.evaluate(async () => {
+    const out = {
+      fontsNonBlocking: [...document.querySelectorAll('link[rel="stylesheet"]')]
+        .filter(l => /fonts\.googleapis/.test(l.href))
+        .every(l => l.media === "print" || l.media === "all"),
+      bootsOnDomReady: true,
+    };
+    // The deferred payloads must still arrive when asked for.
+    await ensurePlotly();
+    out.plotlyOnDemand = typeof Plotly !== "undefined";
+    await ensureLibImages();
+    let withImg = 0;
+    ["ac","saltNa","saltLi","anode"].forEach(k => lib[k].forEach(m =>
+      (m.refs||[]).forEach(r => { if (r.image && r.image.startsWith("data:")) withImg++; })));
+    out.figuresOnDemand = withImg;
+    return out;
+  });
+  check("the font stylesheet cannot block first paint", PERF.fontsNonBlocking === true);
+  check("Plotly still loads when the Simulation tab needs it", PERF.plotlyOnDemand === true);
+  check("reference figures still load when the library needs them", PERF.figuresOnDemand > 0, String(PERF.figuresOnDemand));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
