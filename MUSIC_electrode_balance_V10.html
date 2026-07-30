@@ -7433,6 +7433,10 @@ const TOUR_STEPS=[
   b:"Opened for you: the benchmark library. If you have half-cell data at <strong>several rates</strong>, add the material here with <em>all</em> of those rate points rather than a single number — one entry, one row per measured rate. That is what lets the tool pick the right measurement for whatever design rate you set, and it makes the rate-dependent simulation meaningful. Use <strong>Add</strong> to create it, then <strong>Save file</strong> so it travels with the tool.",
   onEnter:()=>{const l=$("lib"); if(l) l.classList.remove("cld")},
   onExit:()=>{const l=$("lib"); if(l) l.classList.add("cld")}},
+
+ /* Sign-off — lands back on the button that starts the real work. */
+ {sec:'#calcBtn', h:"You're well balanced — now let's balance the cell!",
+  b:"That is the whole tool. Set your design target, describe both electrodes, give the mass of the one you have already made, and press <strong>Calculate</strong>. The tour is always here under <strong>Tutorial</strong> at the top right, and every field carries its own <strong>?</strong> if you want the detail again."},
 ];
 
 let _tourSteps=[],_tourIdx=-1,_tourSecEl=null,_tourAtEl=null,_tourReopened=[],_tourRO=null;
