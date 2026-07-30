@@ -672,17 +672,17 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
       <div class="fld cellp-1st" id="np-target-1st-wrap" style="display:none"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P · 1st</span></div>
     </div>
     <div class="cellp-fld">
-      <label for="cell-rate-1st" data-help="The rate used for the formation (1st) cycle — usually gentle, C/10 or slower, to build a stable interphase. Expressed as a C-rate against the cell's reversible capacity, so C/10 means a full charge in about 10 hours. This sets the formation current used by the Simulation." data-help-key="fld_cell_rate_1st">C-rate · 1st cycle <span class="su">formation</span></label>
+      <label for="cell-rate-1st" data-help="The rate used for the formation (1st) cycle — usually gentle, C/10 or slower, to build a stable interphase. Expressed as a C-rate against the cell's reversible capacity — the equivalent time for one full charge or discharge is shown beside the field. This sets the formation current used by the Simulation." data-help-key="fld_cell_rate_1st">C-rate · 1st cycle <span class="su">formation</span></label>
       <div class="cellp-inline">
         <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-1st" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
-        <span class="cellp-eq" id="cell-rate-1st-eq">= C/10</span>
+        <span class="cellp-eq" id="cell-rate-1st-eq">= C/10  ·  10 h per charge or discharge</span>
       </div>
     </div>
     <div class="cellp-fld">
-      <label for="cell-rate-nth" data-help="The rate you intend to operate the cell at every cycle after formation. Capacities are rate-dependent, so this is the rate your balance is valid for. It sets the reversible-cycle current used by the Simulation and highlights the matching row in the Rates tab." data-help-key="fld_cell_rate_nth">C-rate · reversible <span class="su">N<sup>th</sup> cycles</span></label>
+      <label for="cell-rate-nth" data-help="The rate you intend to operate the cell at every cycle after formation. Capacities are rate-dependent, so this is the rate your balance is valid for. The equivalent time for one full charge or discharge is shown beside the field. It sets the reversible-cycle current used by the Simulation and highlights the matching row in the Rates tab." data-help-key="fld_cell_rate_nth">C-rate · reversible <span class="su">N<sup>th</sup> cycles</span></label>
       <div class="cellp-inline">
         <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-nth" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
-        <span class="cellp-eq" id="cell-rate-nth-eq">= C/10</span>
+        <span class="cellp-eq" id="cell-rate-nth-eq">= C/10  ·  10 h per charge or discharge</span>
       </div>
     </div>
   </div></div>
@@ -2332,9 +2332,30 @@ function _np1stTgChrome(){
    Read the two Cell-Parameters C-rates, refresh their "= C/10" read-outs, and
    push the change through to the simulation. These do not move any mass, so
    they never mark the balance stale — they re-render the rate-dependent views. */
+/* A C-rate is a duration in disguise: 1/C hours for a full charge or discharge.
+   Spell it out next to the field so the number means something physical. */
+function fRateTime(c){
+  if(!Number.isFinite(c)||c<=0) return "";
+  const h=1/c;
+  if(h>=1){
+    const r=Math.round(h);
+    return (Math.abs(h-r)<0.05?r:h.toFixed(1))+" h";
+  }
+  const min=h*60;
+  if(min>=1){
+    const r=Math.round(min);
+    return (Math.abs(min-r)<0.5?r:min.toFixed(1))+" min";
+  }
+  return Math.round(min*60)+" s";
+}
 function _cellRateChrome(){
-  const e1=$("cell-rate-1st-eq"); if(e1) e1.textContent="= "+fCrate(cellRate1st);
-  const eN=$("cell-rate-nth-eq"); if(eN) eN.textContent="= "+fCrate(cellRateNth);
+  const put=(id,c)=>{
+    const el=$(id); if(!el) return;
+    const t=fRateTime(c);
+    el.textContent="= "+fCrate(c)+(t?"  ·  "+t+" per charge or discharge":"");
+  };
+  put("cell-rate-1st-eq",cellRate1st);
+  put("cell-rate-nth-eq",cellRateNth);
 }
 function onCellRateChange(){
   const rd=(id,cur)=>{

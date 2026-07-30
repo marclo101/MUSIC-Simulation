@@ -254,8 +254,8 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const Qcell = Math.min(window.lastR.QaN, window.lastR.QcN);
     g("cell-rate-nth").value = "0.5"; g("cell-rate-1st").value = "0.05";
     onCellRateChange();
-    out.eq1 = g("cell-rate-1st-eq").textContent;             // "= C/20"
-    out.eqN = g("cell-rate-nth-eq").textContent;             // "= C/2"
+    out.eq1 = g("cell-rate-1st-eq").textContent;             // "= C/20 · 20 h per charge or discharge"
+    out.eqN = g("cell-rate-nth-eq").textContent;             // "= C/2 · 2 h per charge or discharge"
     out.iNth = cellRateCurrent("Nth"); out.expectNth = 0.5 * Qcell;
     out.i1st = cellRateCurrent("1st"); out.expect1st = 0.05 * Qcell;
     out.status = g("simRateNTxt").textContent;               // must name its source
@@ -267,8 +267,9 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     return out;
   });
   check("Cell Parameters sits above the electrode cards", CP.aboveCards === true);
-  check("design C-rates show readable equivalents (C/20, C/2)",
-    CP.eq1 === "= C/20" && CP.eqN === "= C/2", CP.eq1 + " / " + CP.eqN);
+  check("design C-rates show the C-rate and the equivalent cycle time",
+    /C\/20/.test(CP.eq1) && /20 h per charge or discharge/.test(CP.eq1) &&
+    /C\/2\b/.test(CP.eqN) && /2 h per charge or discharge/.test(CP.eqN), CP.eq1 + "  /  " + CP.eqN);
   check("design rate sets the simulation current (0.5C, 0.05C of Q_cell)",
     near(CP.iNth, CP.expectNth, 0.01) && near(CP.i1st, CP.expect1st, 0.01), JSON.stringify(CP));
   check("sim status names Cell Parameters as the current source",
