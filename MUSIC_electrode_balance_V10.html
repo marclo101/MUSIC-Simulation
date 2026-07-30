@@ -7387,6 +7387,8 @@ const TOUR_STEPS=[
   b:"Pick a benchmarked material from the library and it fills in the capacities, voltage windows and OCV for you — choosing the rate measurement closest to your design rate. Or leave it on <strong>Custom</strong> and type your own. Anything a preset fills stays editable."},
  {sec:CAT_CARD, at:'#cat-ac-c1', place:'right', h:"Two capacities, each with its rate",
   b:"C<sub>1st</sub> is the first-cycle capacity; C<sub>Nth</sub> is the reversible capacity you get on every cycle after that. The gap between them is the irreversible loss your balance has to absorb. <strong>Click the rate chip beside a value</strong> — it is live right now — to see the other rates in the library and pick a different measurement."},
+ {sec:CAT_CARD, at:'#cat-ac-rN-lbl', place:'right', h:"The current density behind each capacity",
+  b:"Every capacity is paired with the current density it was measured at — that is the chip beside it. Capacity falls as current rises, so the pairing is what makes the number mean anything. <strong>Pick a material from the library and the tool selects the measurement whose rate is closest to your cell target automatically</strong>, and re-selects it if you change that target later. If you are typing values in by hand, <strong>enter the capacity measured at the current density matching your target rate</strong> — a number taken at a much faster or slower rate does not describe the cell you are designing. Click the chip to see the other rates on file and choose a different one."},
  {sec:CAT_CARD, at:'.sec[data-step="cat-am"] .btn.gho', place:'right', h:"Advanced options",
   b:"Opened for you here: the storage type controls how capacity scales with the voltage window — capacitive and pseudocapacitive materials scale with V<sub>op</sub>/V<sub>th</sub>, faradaic ones do not. The OCV is the as-assembled potential and anchors the first charge; for a capacitive material with no measured C<sub>1st</sub>, the tool derives one from it.",
   onEnter:()=>{const b=_advBtnCat();const pane=b&&b.nextElementSibling;
@@ -7517,7 +7519,7 @@ function _tourShow(){
   // Point at the one field this step is about. It is a marker only — the rest
   // of the lit zone stays editable.
   _tourClearFocus();
-  if(atEl!==secEl) (atEl.closest(".fld")||atEl).classList.add("tour-focus");
+  if(atEl!==secEl) (atEl.closest(".fld,.rate-pick")||atEl).classList.add("tour-focus");
   atEl.scrollIntoView({behavior:"smooth",block:"center"});
   $("tourTitle").textContent=st.h;
   $("tourBody").innerHTML=st.b;
