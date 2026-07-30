@@ -602,6 +602,47 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the results panel is revealed for those steps and put back after",
     RS.revealedWhileExplaining === true && RS.panelRestored === true, JSON.stringify(RS));
 
+  // ── The current-density step sits between capacities and advanced options ──
+  const CD = await page.evaluate(() => {
+    const titles = TOUR_STEPS.map(s => s.h);
+    const i = titles.findIndex(t => /current density/i.test(t));
+    const step = TOUR_STEPS[i];
+    return {
+      exists: i >= 0,
+      afterCapacities: /Two capacities/.test(titles[i - 1] || ""),
+      beforeAdvanced: /Advanced options/.test(titles[i + 1] || ""),
+      anchorsRateChip: step && step.at === "#cat-ac-rN-lbl",
+      saysAuto: step && /closest to your cell target automatically/i.test(step.b),
+      saysManual: step && /measured at the current density matching your target rate/i.test(step.b),
+    };
+  });
+  check("a current-density step follows the capacities step",
+    CD.exists === true && CD.afterCapacities === true && CD.beforeAdvanced === true, JSON.stringify(CD));
+  check("it points at the rate chip and covers both library and manual entry",
+    CD.anchorsRateChip === true && CD.saysAuto === true && CD.saysManual === true, JSON.stringify(CD));
+
+  // The chip it rings must stay clickable — that was the original complaint.
+  await page.evaluate(() => {
+    startTour();
+    const i = TOUR_STEPS.filter(s => document.querySelector(s.sec) || s.always)
+      .findIndex(s => /current density/i.test(s.h));
+    for (let k = 0; k < i; k++) tourGo(1);
+  });
+  await page.waitForTimeout(500);
+  const CDR = await page.evaluate(() => {
+    const f = document.querySelector(".tour-focus");
+    const r = f ? f.getBoundingClientRect() : null;
+    const out = {
+      ringsChip: !!f && f.classList.contains("rate-pick"),
+      clickable: !!f && !document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        .some(e => e.parentElement && e.parentElement.id === "tourVeil"),
+    };
+    endTour();
+    return out;
+  });
+  check("the rate chip is ringed and remains clickable",
+    CDR.ringsChip === true && CDR.clickable === true, JSON.stringify(CDR));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
