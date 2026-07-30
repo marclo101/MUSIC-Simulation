@@ -19,6 +19,22 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .btn-rst{padding:6px 14px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;border:1px solid rgba(255,255,255,.5);color:#fff;transition:all .15s;font-family:var(--fm)}.btn-rst:hover{background:rgba(255,255,255,.2)}
 /* Cards */
 .egrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}@media(max-width:980px){.egrid{grid-template-columns:1fr}}
+/* Cell parameters — the design target, entered before any material */
+.cellp-card{margin-bottom:18px}
+.card-h.cph{background:linear-gradient(135deg,rgba(45,139,158,.10),rgba(28,184,139,.03));border-top:3px solid var(--music1);position:relative}
+.card-h.cph .help-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%)}
+.ct .ic.cpi{background:var(--musicG)}
+.cellp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:14px 20px 16px}
+@media(max-width:820px){.cellp-grid{grid-template-columns:1fr}}
+.cellp-fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cellp-fld>label{font-size:11.5px;color:var(--ink2);font-weight:500;cursor:pointer}
+.cellp-fld>label .su{display:block;margin-top:1px;font-size:10px;color:var(--ink3);font-family:var(--fm)}
+.cellp-inline{display:flex;align-items:center;gap:8px}
+.cellp-eq{font-family:var(--fm);font-size:10.5px;color:var(--ink3)}
+.cellp-tg{align-self:flex-start;padding:4px 10px;font-size:10.5px;font-weight:600;border:1px solid var(--rule);border-radius:6px;color:var(--ink2);background:var(--paper);font-family:var(--fm);transition:all .15s}
+.cellp-tg:hover{border-color:var(--music2)}
+.cellp-tg.on{background:var(--musicG);color:#fff;border-color:transparent}
+.cellp-1st{flex:0 0 auto;max-width:140px}
 .card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;box-shadow:var(--s2);display:flex;flex-direction:column}
 .card-h{display:flex;align-items:center;padding:14px 20px 12px;border-bottom:1px solid var(--ruleS)}
 .card-h.ch{background:linear-gradient(135deg,rgba(28,184,139,.08),rgba(28,184,139,.02));border-top:3px solid var(--cp)}
@@ -619,6 +635,39 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
 <div class="step-hint" id="stepHint"><span class="sh-num" id="stepNum">1</span><span class="sh-txt" id="stepTxt">Select a cathode active material or enter C₁ₛₜ and Cₙₜₕ capacities</span></div>
 
+<!-- ══ CELL PARAMETERS — the operating point the whole design targets ══ -->
+<div class="card cellp-card">
+  <div class="card-h cph">
+    <div class="ct"><span class="ic cpi">0</span> Cell parameters <span class="rl">design target</span></div>
+    <button type="button" class="help-icon hi-field" aria-label="Help" data-help="To design and balance a full cell you must first aim at a specific operating point. &lt;strong&gt;Target N/P&lt;/strong&gt; is the anode-to-cathode capacity ratio (Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt;) the solver will hit — 1.00 means exactly matched, and values above 1.00 oversize the anode as a safety margin against metal plating. &lt;strong&gt;The C-rates set how fast you intend to cycle.&lt;/strong&gt; Electrode capacities depend on rate — a material that stores 120 mAh/g at C/10 may hold far less at 1C — so a cell balanced at one rate is &lt;em&gt;not&lt;/em&gt; balanced at another. Pick the rate you will actually use: the 1st-cycle (formation) rate is usually gentle, C/10 or slower; the reversible rate is your everyday operating rate. Every capacity you enter should correspond to these rates — the tool warns you when a library value was measured at a very different one." data-help-key="sec_cell_params"></button>
+  </div>
+  <div class="cb"><div class="sb cellp-grid">
+    <div class="cellp-fld">
+      <label for="np-target" data-help="The Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; the solver will hit on the reversible (Nth) cycle. 1.00 = balanced; &gt;1 = anode-overcapacitive (a plating safety margin); &lt;1 = cathode-overcapacitive. Status colours and the &quot;%&quot; deviations on the results are measured against this target rather than against 1.00." data-help-key="fld_np_target">Target N/P ratio <span class="su">Q<sub>a</sub>/Q<sub>c</sub> · reversible cycle</span></label>
+      <div class="cellp-inline">
+        <div class="fld" style="flex:0 0 92px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
+        <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:20px;height:20px;font-size:11px">↻</button>
+      </div>
+      <button type="button" id="np1stTg" onclick="toggleNp1st()" class="cellp-tg" title="Give the formation (1st) cycle its own Qa/Qc target, distinct from the reversible cycles. The sacrificial salt is sized to hit it.">Different 1st cycle</button>
+      <div class="fld cellp-1st" id="np-target-1st-wrap" style="display:none"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P · 1st</span></div>
+    </div>
+    <div class="cellp-fld">
+      <label for="cell-rate-1st" data-help="The rate used for the formation (1st) cycle — usually gentle, C/10 or slower, to build a stable interphase. Expressed as a C-rate against the cell's reversible capacity, so C/10 means a full charge in about 10 hours. This sets the formation current used by the Simulation." data-help-key="fld_cell_rate_1st">C-rate · 1st cycle <span class="su">formation</span></label>
+      <div class="cellp-inline">
+        <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-1st" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
+        <span class="cellp-eq" id="cell-rate-1st-eq">= C/10</span>
+      </div>
+    </div>
+    <div class="cellp-fld">
+      <label for="cell-rate-nth" data-help="The rate you intend to operate the cell at every cycle after formation. Capacities are rate-dependent, so this is the rate your balance is valid for. It sets the reversible-cycle current used by the Simulation and highlights the matching row in the Rates tab." data-help-key="fld_cell_rate_nth">C-rate · reversible <span class="su">N<sup>th</sup> cycles</span></label>
+      <div class="cellp-inline">
+        <div class="fld" style="flex:0 0 92px"><input type="number" id="cell-rate-nth" step="0.01" min="0.001" max="20" value="0.1" oninput="onCellRateChange()"><span class="u" style="font-family:var(--fm)">C</span></div>
+        <span class="cellp-eq" id="cell-rate-nth-eq">= C/10</span>
+      </div>
+    </div>
+  </div></div>
+</div>
+
 <div class="egrid">
 <!-- ══ CATHODE ══ -->
 <div class="card"><div class="card-h ch"><span class="ct"><span class="ic ci">+</span>Cathode<span class="rl">positive</span></span></div><div class="cb">
@@ -769,16 +818,6 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 </div></div>
 </div>
 
-<!-- Target N/P ratio (Nth-cycle balance) + simulation start direction -->
-<div style="max-width:720px;margin:0 auto 8px">
-  <div class="np-row" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--s2);flex-wrap:wrap">
-    <label for="np-target" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00." data-help-key="fld_np_target" style="flex:1;font-size:12px;color:var(--ink);font-weight:500;cursor:pointer;min-width:180px">Target N/P ratio <span style="font-size:10.5px;color:var(--ink2);font-weight:400">· Nth cycle (1.00 = balanced)</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="The Nth-cycle Qₐ/Q꜀ you want the solver to hit (1.00 = balanced; &gt;1 = anode-overcapacitive; &lt;1 = cathode-overcapacitive). The solver multiplies the auto-computed mass by this factor (cathode mode) or its inverse (anode mode); status colours and &quot;%&quot; deviations on the hero are referenced against this target rather than against 1.00."></button></label>
-    <div class="fld" style="flex:0 0 90px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
-    <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:18px;height:18px;font-size:11px">↻</button>
-    <button type="button" id="np1stTg" onclick="toggleNp1st()" title="Give the formation (1st) cycle its own Qₐ/Q꜀ target, distinct from the reversible cycles. The sacrificial salt is sized to hit it." style="padding:5px 10px;font-size:11px;font-weight:600;border:1px solid var(--rule);border-radius:6px;color:var(--ink2);background:var(--paper);font-family:var(--fm)">Different 1st cycle</button>
-    <div class="fld" id="np-target-1st-wrap" style="flex:0 0 100px;display:none"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P · 1st</span></div>
-    <span style="border-left:1px solid var(--rule);height:24px;margin:0 4px"></span>
-</div>
 
 <!-- Rate sync + mismatch -->
 <div style="max-width:500px;margin:0 auto 8px">
@@ -1232,6 +1271,12 @@ let lib=ldLib(),saltOn=false,catMM="d",anMM="d",barPh="1st",advO=false,cdTab="cr
 // Mass-loading display mode for results: false=AM/cm² (default), true=total electrode film/cm²
 let showTotalLoading=false;
 // User-specified target N/P ratio (Nth-cycle Qa/Qc). 1.00 = balanced.
+// Operating rates the cell is designed for, as C-rates against the cell's
+// reversible capacity (Q_cell = min(QaN,QcN)). Capacities are rate-dependent,
+// so a balance is only valid at the rate it was designed for — these are the
+// declared design point, and they set the currents the simulation applies.
+let cellRate1st=0.1;   // formation (1st) cycle
+let cellRateNth=0.1;   // reversible (Nth) cycles
 let npTarget=1.00;     // Nth-cycle (reversible) Qa/Qc target
 let npTarget1=1.00;    // 1st-cycle (formation) Qa/Qc target — only used when np1stOn
 let np1stOn=false;     // "Different 1st cycle" toggle: give the formation cycle its own target
@@ -2205,10 +2250,39 @@ function np1stTargetVal(){
 
 function _np1stTgChrome(){
   const btn=$("np1stTg"); if(!btn) return;
-  btn.style.background = np1stOn ? "var(--musicG)" : "var(--paper)";
-  btn.style.color      = np1stOn ? "#fff" : "var(--ink2)";
-  btn.style.borderColor= np1stOn ? "transparent" : "var(--rule)";
+  btn.classList.toggle("on",np1stOn);
   const wrap=$("np-target-1st-wrap"); if(wrap) wrap.style.display = np1stOn ? "" : "none";
+}
+
+/* ── Cell operating rates ──
+   Read the two Cell-Parameters C-rates, refresh their "= C/10" read-outs, and
+   push the change through to the simulation. These do not move any mass, so
+   they never mark the balance stale — they re-render the rate-dependent views. */
+function _cellRateChrome(){
+  const e1=$("cell-rate-1st-eq"); if(e1) e1.textContent="= "+fCrate(cellRate1st);
+  const eN=$("cell-rate-nth-eq"); if(eN) eN.textContent="= "+fCrate(cellRateNth);
+}
+function onCellRateChange(){
+  const rd=(id,cur)=>{
+    const raw=$(id)?.value;
+    if(raw===""||raw==null) return cur;             // mid-typing — keep the old value
+    const v=parseFloat(raw);
+    return (Number.isFinite(v)&&v>0&&v<=20)?v:cur;  // out of range — keep the old value
+  };
+  cellRate1st=rd("cell-rate-1st",cellRate1st);
+  cellRateNth=rd("cell-rate-nth",cellRateNth);
+  _cellRateChrome();
+  rerenderResults();                                 // rate table highlight + currents
+  if(typeof updateSimStatus==="function") updateSimStatus();
+  if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
+}
+/* Cell current (µA) implied by a design C-rate, given the solved reversible
+   cell capacity. Returns 0 when there is no solution to scale against. */
+function cellRateCurrent(which){
+  const r=window.lastR; if(!r) return 0;
+  const Qcell=Math.min(r.QaN||0,r.QcN||0);           // µAh — the limiting electrode
+  if(!(Qcell>0)) return 0;
+  return (which==="1st"?cellRate1st:cellRateNth)*Qcell;
 }
 
 function toggleNp1st(){
@@ -2664,14 +2738,21 @@ function updateSimStatus(){
   };
   const t1=$("simRate1Txt"),tN=$("simRateNTxt");
   const s1=fmt(simRateSel["1st"]),sN=fmt(simRateSel["Nth"]);
-  if(t1){
-    if(s1){t1.textContent=s1;t1.style.color="";t1.style.fontStyle="";}
-    else{t1.textContent="no row selected";t1.style.color="var(--ink3)";t1.style.fontStyle="italic";}
-  }
-  if(tN){
-    if(sN){tN.textContent=sN;tN.style.color="";tN.style.fontStyle="";}
-    else{tN.textContent="no row selected";tN.style.color="var(--ink3)";tN.style.fontStyle="italic";}
-  }
+  // With no explicit row picked, the simulation runs at the design rate from
+  // Cell Parameters — say so, otherwise the current looks like it came from
+  // nowhere.
+  const fallback=which=>{
+    const I=(typeof cellRateCurrent==="function")?cellRateCurrent(which):0;
+    const rate=which==="1st"?cellRate1st:cellRateNth;
+    return I>0 ? fCrate(rate)+" (Cell parameters)  →  I = "+_fmtCurrent(I) : null;
+  };
+  const put=(el,picked,which)=>{
+    if(!el) return;
+    const txt=picked||fallback(which);
+    if(txt){el.textContent=txt;el.style.color="";el.style.fontStyle=picked?"":"italic";}
+    else{el.textContent="no row selected";el.style.color="var(--ink3)";el.style.fontStyle="italic";}
+  };
+  put(t1,s1,"1st");put(tN,sN,"Nth");
 }
 
 /* ── Simulation plot template ──
@@ -3768,8 +3849,11 @@ function _simGatherInputs(){
   const _rawNum=id=>{const el=$(id);if(!el||el.value==="")return null;const v=parseFloat(el.value);return Number.isFinite(v)?v:null};
   let Req=_rawNum("simReq"); if(Req===null||Req<0) Req=0;
 
-  const I1_uA=(simRateSel["1st"]?.I_uA) || (simRateSel["Nth"]?.I_uA) || r.c10 || 0;
-  const IN_uA=(simRateSel["Nth"]?.I_uA) || (simRateSel["1st"]?.I_uA) || r.c10 || 0;
+  // Current precedence: an explicit row picked in the Rates tab (expert
+  // override) wins; otherwise the design rate declared in Cell Parameters;
+  // C/10 only as a last resort when neither is available.
+  const I1_uA=(simRateSel["1st"]?.I_uA) || cellRateCurrent("1st") || r.c10 || 0;
+  const IN_uA=(simRateSel["Nth"]?.I_uA) || cellRateCurrent("Nth") || r.c10 || 0;
 
   const constraints=_simReadConstraints();
   const plateaus=_simBuildPlateauState(Q_salt_1st);
@@ -6156,9 +6240,13 @@ function resetAll(opts){
   showTotalLoading=false;
   setShowTotalLoading(false);  // refresh labels
   onLoadingModeChange("cat");onLoadingModeChange("an");
-  // Reset target N/P + any pending result-side ratio override
+  // Reset the design point (target N/P + operating rates) and any pending
+  // result-side ratio override.
   npTarget=1.00;
   $("np-target").value="1.00";
+  cellRate1st=0.1;cellRateNth=0.1;
+  {const a=$("cell-rate-1st");if(a)a.value="0.1";const b=$("cell-rate-nth");if(b)b.value="0.1";}
+  _cellRateChrome();
   np1stOn=false;npTarget1=1.00;
   {const f=$("np-target-1st");if(f)f.value="1.00";}
   _np1stTgChrome();
@@ -6726,7 +6814,11 @@ function renderCD(inp,r){
       const cd_cat=mCat_AM>0 ? I_uA/mCat_AM : 0;          // µA/mg = mA/g
       const cd_an =mAn_AM >0 ? I_uA/mAn_AM  : 0;          // mA/g
       const cd_s  =mSalt  >0 ? I_uA/mSalt   : 0;          // mA/g
-      const cls=cr.label==="1C" ? "hi" : "";
+      // Highlight the rows matching the design rates from Cell Parameters —
+      // the point the cell is actually being balanced for — falling back to
+      // 1C as a reference marker.
+      const isDesign=Math.abs(cr.mult-cellRateNth)<1e-9||Math.abs(cr.mult-cellRate1st)<1e-9;
+      const cls=isDesign ? "hi" : (cr.label==="1C" ? "hi" : "");
       html+=`<tr class="${cls}" data-sim-pov="crate" data-sim-label="${cr.label}" data-sim-iua="${I_uA}" onclick="pickSimRate('crate','${cr.label}',${I_uA})" title="Click to assign this rate to the simulation">
         <td>${cr.label}</td>
         <td>${fCurr(I_uA)}</td>
@@ -7711,7 +7803,7 @@ function gatherExportData(){
     timestamp:new Date(),
     mode:m,
     materials:{cathode:cat,salt,anode:an},
-    targets:{npTarget,npTarget1,np1stOn},
+    targets:{npTarget,npTarget1,np1stOn,cellRate1st,cellRateNth},
     masses:{mCat:r.mCat,mAn:r.mAn,mAC:r.mAC,mS:r.mS,mCat_AM,mAn_AM,mSalt},
     composition:{pAC:r.pAC,pS:r.pS},
     ratios:{r1:r.r1,rN:r.rN,np:r.np},
@@ -7839,6 +7931,8 @@ function buildTXT(D,sel){
   }
   if(sel.ratios){sec("N/P RATIOS");
     kv("Target N/P (Nth cycle):",D.targets.npTarget.toFixed(3));
+    kv("Design rate (1st cycle):",fCrate(D.targets.cellRate1st));
+    kv("Design rate (Nth cycle):",fCrate(D.targets.cellRateNth));
     if(D.targets.np1stOn) kv("Target N/P (1st cycle):",D.targets.npTarget1.toFixed(3));
     kv("1st cycle (Qa1/Qc1):",_fmt.ratio(D.ratios.r1));
     kv("Nth cycle (QaN/QcN):",_fmt.ratio(D.ratios.rN));
@@ -7966,6 +8060,8 @@ async function buildHTMLBody(D,sel,opts){
   if(sel.ratios){
     h+=kvTable("N/P ratios",[
       ["Target N/P (N<sup>th</sup> cycle)",D.targets.npTarget.toFixed(3)],
+      ["Design rate (1<sup>st</sup> cycle)",fCrate(D.targets.cellRate1st)],
+      ["Design rate (N<sup>th</sup> cycle)",fCrate(D.targets.cellRateNth)],
       ...(D.targets.np1stOn?[["Target N/P (1<sup>st</sup> cycle)",D.targets.npTarget1.toFixed(3)]]:[]),
       ["1<sup>st</sup> cycle (Q<sub>a1</sub>/Q<sub>c1</sub>)",_fmt.ratio(D.ratios.r1)],
       ["N<sup>th</sup> cycle (Q<sub>aN</sub>/Q<sub>cN</sub>)",_fmt.ratio(D.ratios.rN)],

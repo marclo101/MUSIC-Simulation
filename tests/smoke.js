@@ -243,6 +243,38 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     V.loadingChanged === true && V.loadingLabel === true, JSON.stringify(V));
   check("view controls never mark results stale", V.anyStale === false, JSON.stringify(V));
 
+  // ── Cell Parameters: the design point drives the simulation currents ──
+  const CP = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.aboveCards = !!(g("np-target").compareDocumentPosition(document.querySelector(".egrid")) &
+                        Node.DOCUMENT_POSITION_FOLLOWING);   // N/P precedes the electrode cards
+    clearSimRateSel();                                       // no manual override
+    recalcNow();
+    const Qcell = Math.min(window.lastR.QaN, window.lastR.QcN);
+    g("cell-rate-nth").value = "0.5"; g("cell-rate-1st").value = "0.05";
+    onCellRateChange();
+    out.eq1 = g("cell-rate-1st-eq").textContent;             // "= C/20"
+    out.eqN = g("cell-rate-nth-eq").textContent;             // "= C/2"
+    out.iNth = cellRateCurrent("Nth"); out.expectNth = 0.5 * Qcell;
+    out.i1st = cellRateCurrent("1st"); out.expect1st = 0.05 * Qcell;
+    out.status = g("simRateNTxt").textContent;               // must name its source
+    // Manual row pick must still win over the design rate.
+    pickSimRate("crate", "1C", 12345);
+    out.manualWins = (simRateSel[simAssignMode] || {}).I_uA === 12345;
+    clearSimRateSel();
+    g("cell-rate-1st").value = "0.1"; g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    return out;
+  });
+  check("Cell Parameters sits above the electrode cards", CP.aboveCards === true);
+  check("design C-rates show readable equivalents (C/20, C/2)",
+    CP.eq1 === "= C/20" && CP.eqN === "= C/2", CP.eq1 + " / " + CP.eqN);
+  check("design rate sets the simulation current (0.5C, 0.05C of Q_cell)",
+    near(CP.iNth, CP.expectNth, 0.01) && near(CP.i1st, CP.expect1st, 0.01), JSON.stringify(CP));
+  check("sim status names Cell Parameters as the current source",
+    /Cell parameters/i.test(CP.status), CP.status);
+  check("an explicit Rates-tab pick still overrides the design rate", CP.manualWins === true);
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
