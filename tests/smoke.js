@@ -131,7 +131,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("C1 re-derived on OCV edit 3→3.5 → 15.9", near(parseFloat(B.d35), 15.9), "got " + B.d35);
   check("hand-typed C1 not overridden by derivation", B.locked === "99", "got " + B.locked);
 
-  // ── Feature 2b: derived C1 follows the "Start in cell" (formation) direction ──
+  // ── Feature 2b: formation is always a charge — C1 uses the charge-first span ──
   const C = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     c1Manual.cat = false; c1Derived.cat = false;
@@ -140,12 +140,12 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     g("cat-Vth-hi").value = "4.2"; g("cat-Vth-lo").value = "2.0";
     g("cat-Vop-hi").value = "4.2"; g("cat-Vop-lo").value = "2.0";
     g("cat-ac-c1").value = "";
-    setStartDir("charge"); deriveCapC1("cat"); const chg = g("cat-ac-c1").value;   // (4.2-3)/2.2 * 50
-    setStartDir("discharge"); const dis = g("cat-ac-c1").value;                    // (3-2)/2.2 * 50, re-derived
-    setStartDir("charge");
-    return { chg, dis };
+    deriveCapC1("cat");                                   // (4.2-3)/2.2 * 50 = 27.3
+    return { chg: g("cat-ac-c1").value, dirCtrlGone: !g("startDirTg"), fixed: startDir };
   });
-  check("C1 follows start dir (charge→27.3, discharge→22.7)", near(parseFloat(C.chg), 27.3) && near(parseFloat(C.dis), 22.7), JSON.stringify(C));
+  check("C1 uses the charge-first formation span → 27.3", near(parseFloat(C.chg), 27.3), JSON.stringify(C));
+  check("start-direction control removed; formation fixed to charge",
+    C.dirCtrlGone === true && C.fixed === "charge", JSON.stringify(C));
 
   // ── Broad health check ──
   const H = await page.evaluate(() => {

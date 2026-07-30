@@ -778,12 +778,6 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <button type="button" id="np1stTg" onclick="toggleNp1st()" title="Give the formation (1st) cycle its own Qₐ/Q꜀ target, distinct from the reversible cycles. The sacrificial salt is sized to hit it." style="padding:5px 10px;font-size:11px;font-weight:600;border:1px solid var(--rule);border-radius:6px;color:var(--ink2);background:var(--paper);font-family:var(--fm)">Different 1st cycle</button>
     <div class="fld" id="np-target-1st-wrap" style="flex:0 0 100px;display:none"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P · 1st</span></div>
     <span style="border-left:1px solid var(--rule);height:24px;margin:0 4px"></span>
-    <label data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ." data-help-key="fld_start_dir" style="font-size:12px;color:var(--ink);font-weight:500;cursor:pointer">Start in cell<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Sets which direction the cell is taken in chronologically first — drives the OCV-anchored formation half-cycle in the simulation (cycle 1, charge stroke if &quot;Charge&quot;, or discharge stroke if &quot;Discharge&quot;). That formation stroke is the only one that consumes C₁ (and the matching first-cycle current); the reverse half of cycle 1 and every later stroke run on Cₙ."></button></label>
-    <div class="sim-tg" id="startDirTg" style="margin-left:-2px">
-      <button type="button" id="startDirChg" class="act" onclick="setStartDir('charge')">Charge</button>
-      <button type="button" id="startDirDis" onclick="setStartDir('discharge')">Discharge</button>
-    </div>
-  </div>
 </div>
 
 <!-- Rate sync + mismatch -->
@@ -1737,12 +1731,10 @@ function _slowestRevCap(rates){
 
 // Derive C₁ for a CAPACITIVE / PSEUDOCAPACITIVE electrode from the as-assembled
 // OCV. A capacitor's capacity ∝ voltage span, so the formation half-cycle —
-// which only sweeps from OCV to the operating limit in the "Start in cell"
-// direction — accesses a fraction of the slowest-rate reversible capacity. For
-// charge-first formation:
+// which only sweeps from OCV to the operating limit — accesses a fraction of
+// the slowest-rate reversible capacity:
 //   cathode: C₁ = C_rev · (V_op,hi − OCV) / (V_th,hi − V_th,lo)
 //   anode  : C₁ = C_rev · (OCV − V_op,lo) / (V_th,hi − V_th,lo)
-// Discharge-first formation flips each electrode's span (see below).
 // Only runs when no measured C₁ exists (field empty) or we already own it; a
 // hand-typed C₁ locks it, and faradaic materials are never touched. The result
 // is clamped to [0, C_rev]. Does NOT recalc — the caller does.
@@ -1757,13 +1749,10 @@ function deriveCapC1(side){
   const ocv=N(side==="cat"?"cat-ac-ocv":"an-ocv");
   const window=N(side+"-Vth-hi")-N(side+"-Vth-lo");
   const vopHi=N(side+"-Vop-hi"),vopLo=N(side+"-Vop-lo");
-  // Span swept on the formation half-cycle, per the "Start in cell" direction.
-  // Charge: cathode sweeps up OCV→V_op,hi and anode down OCV→V_op,lo; discharge
-  // flips both. C₁ is the fraction of the window that first stroke covers.
-  const chargeFirst=(startDir!=="discharge");
-  let span=(side==="cat")
-    ? (chargeFirst ? vopHi-ocv : ocv-vopLo)
-    : (chargeFirst ? ocv-vopLo : vopHi-ocv);
+  // Span swept on the formation half-cycle. Formation is always a charge:
+  // the cathode sweeps up OCV→V_op,hi while the anode sweeps down OCV→V_op,lo.
+  // C₁ is the fraction of the window that first stroke covers.
+  let span=(side==="cat") ? (vopHi-ocv) : (ocv-vopLo);
   if(span<0) span=0;
   if(!(cN>0 && ocv>0 && window>0 && span>0)) return;   // not enough info — leave field as-is
   let c1=Math.round(cN*(span/window)*10)/10;
@@ -2958,10 +2947,11 @@ function _simApplyAxisLockToLayout(layout){
    C_1st and is OCV-anchored (slope = (V_extreme − V_OCV) / Q_1st). Every
    later stroke — including the reverse half of cycle 1 — uses C_Nth and
    traverses the full theoretical V-window (slope = ±ΔV_th / Q_Nth).
-   `startDir` (the global "Start in cell" toggle next to N/P ratio)
-   determines which stroke comes first chronologically; `simDirState`
-   (the panel toggle) picks which stroke of the selected cycle to plot. */
-let startDir="charge";    // chronological direction of the very first stroke
+   Formation is always a charge — a cell is assembled discharged, so the
+   first thing you do to it is charge it. `startDir` is therefore fixed;
+   `simDirState` (the panel toggle) still picks which stroke of the
+   selected cycle to plot. */
+const startDir="charge";  // chronological direction of the very first stroke
 let simDirState="charge"; // which stroke of the selected cycle is on screen
 
 // Galvanostatic stop conditions in MUSIC's electrode notation. Six bounds —
@@ -3035,20 +3025,6 @@ function _simReadConstraints(){
     out[key]={V, def:SIM_CONS_DEFS[key]};
   }
   return out;
-}
-
-function setStartDir(d){
-  startDir=(d==="discharge")?"discharge":"charge";
-  const bC=$("startDirChg"),bD=$("startDirDis");
-  if(bC) bC.classList.toggle("act",startDir==="charge");
-  if(bD) bD.classList.toggle("act-d",startDir==="discharge");
-  // The formation direction sets which span an OCV-derived C₁ sweeps, so
-  // re-derive both electrodes and refresh the balance.
-  deriveCapC1("cat");deriveCapC1("an");recalc();
-  // Default the visible stroke to whichever direction the user just picked
-  // so the first thing they see on cycle 1 is the OCV-anchored stroke.
-  if(typeof setSimDir==="function") setSimDir(startDir);
-  else if(typeof renderSimPlot==="function") renderSimPlot();
 }
 
 function setSimDir(d){
