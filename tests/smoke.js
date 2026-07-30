@@ -527,6 +527,41 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the key drops the salt on the Nth cycle, where it contributes nothing",
     !/Sacrificial salt/.test(LG.nthTxt), LG.nthTxt);
 
+  // ── The tour never points at something that is not on screen ──
+  const TV = await page.evaluate(() => {
+    const walk = () => {
+      startTour();
+      const sizes = []; let g = 0;
+      while (g++ < 30 && document.getElementById("tourPop").classList.contains("on")) {
+        const hi = document.querySelector(".tour-hi");
+        const r = hi ? hi.getBoundingClientRect() : { width: 0, height: 0 };
+        sizes.push({ t: document.getElementById("tourTitle").textContent, w: r.width, h: r.height });
+        tourGo(1);
+      }
+      return sizes;
+    };
+    const shown = document.getElementById("resPanel").style.display;
+    document.getElementById("resPanel").style.display = "none";     // as before any Calculate
+    const hidden = walk();
+    document.getElementById("resPanel").style.display = "";          // results on screen
+    const visible = walk();
+    document.getElementById("resPanel").style.display = shown;
+    return {
+      hiddenZero: hidden.filter(x => x.w === 0 || x.h === 0).length,
+      visibleZero: visible.filter(x => x.w === 0 || x.h === 0).length,
+      hiddenHasResults: hidden.some(x => /Your answer/.test(x.t)),
+      visibleHasResults: visible.some(x => /Your answer/.test(x.t)),
+      grew: visible.length > hidden.length,
+      calcMentionsResults: TOUR_STEPS.some(x => /Calculate/.test(x.h) && /Diagnostics/.test(x.b)),
+    };
+  });
+  check("tour never highlights an off-screen target",
+    TV.hiddenZero === 0 && TV.visibleZero === 0, JSON.stringify(TV));
+  check("results steps are skipped before Calculate and included after",
+    TV.hiddenHasResults === false && TV.visibleHasResults === true && TV.grew === true, JSON.stringify(TV));
+  check("the always-visible Calculate step explains what the results give you",
+    TV.calcMentionsResults === true);
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();

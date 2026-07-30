@@ -7387,7 +7387,7 @@ const TOUR_STEPS=[
 
  /* ── Results ── */
  {sec:'#calcBtn', h:"Calculate",
-  b:"Press Calculate to solve the balance. After the first run, changing an input marks the results stale and you press Recalculate — but display toggles, like switching between the 1st and N<sup>th</sup> cycle, never need it."},
+  b:"Press Calculate to solve the balance. Out come both electrode masses, the N/P actually achieved at the 1st and N<sup>th</sup> cycle, a <strong>Diagnostics</strong> tab showing where the capacity goes, and a <strong>Simulation</strong> tab drawing the cell's voltage curves cycle by cycle. After the first run, changing an input marks the results stale and you press Recalculate — but display toggles, like switching between the 1st and N<sup>th</sup> cycle, never need it."},
  {sec:'.hero', h:"Your answer",
   b:"The headline result: both electrode masses, and the N/P actually achieved at the 1st and N<sup>th</sup> cycle, coloured by how far they sit from your target. The status chip above sums it up in a phrase."},
  {sec:'.rtab-bar', at:'.rtab-btn:nth-of-type(2)', h:"Diagnose the balance",
@@ -7403,6 +7403,17 @@ const TOUR_STEPS=[
 ];
 
 let _tourSteps=[],_tourIdx=-1,_tourSecEl=null,_tourAtEl=null,_tourReopened=[],_tourRO=null;
+
+/* A step is only usable if its target is really on screen. The results area
+   lives inside a hidden panel until the first Calculate, so on a fresh page
+   those steps would otherwise highlight a zero-size box and leave the message
+   pointing at nothing. Collapsed sections still count — the tour opens them. */
+function _tourVisible(el){
+  if(!el) return false;
+  if(el.getBoundingClientRect().width>0) return true;
+  const sec=el.closest(".sec");                 // collapsed, but openable
+  return !!(sec&&sec.classList.contains("cld")&&sec.getBoundingClientRect().width>0);
+}
 
 function _tourClearHi(){
   if(_tourSecEl){_tourSecEl.classList.remove("tour-hi");_tourSecEl=null}
@@ -7472,7 +7483,7 @@ function tourGo(d){
   _tourIdx=next;_tourShow();
 }
 function startTour(){
-  _tourSteps=TOUR_STEPS.filter(st=>document.querySelector(st.sec));
+  _tourSteps=TOUR_STEPS.filter(st=>_tourVisible(document.querySelector(st.sec)));
   if(!_tourSteps.length) return;
   try{localStorage.setItem(TOUR_KEY,"1")}catch(e){}
   _tourReopened=[];_tourIdx=0;
