@@ -20,15 +20,28 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 /* Cards */
 .egrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}@media(max-width:980px){.egrid{grid-template-columns:1fr}}
 /* ══ GUIDED TOUR ══ */
-.tour-veil{position:fixed;inset:0;background:transparent;z-index:9000;display:none}
+/* Spotlight: four panels framing the lit zone. A single element with a huge
+   box-shadow was clipped by .card{overflow:hidden}, and it also covered the
+   zone itself. Four panels dim everything reliably and leave a real hole —
+   nothing sits on top of the zone, so it stays fully clickable. */
+.tour-veil{position:fixed;inset:0;z-index:9000;display:none;pointer-events:none}
 .tour-veil.on{display:block}
-.tour-hi{position:relative;z-index:9100;border-radius:8px;background:var(--paper);outline:2px solid var(--music2);
-  box-shadow:0 0 0 6px rgba(28,184,139,.28),0 0 0 9999px rgba(15,27,45,.45);
+.tour-veil div{position:fixed;background:rgba(15,27,45,.50);pointer-events:auto}
+.tour-hi{position:relative;z-index:1;border-radius:8px;outline:2px solid var(--music2);
+  box-shadow:0 0 0 6px rgba(28,184,139,.28);
   animation:tourPulse 1.15s ease-in-out infinite}
 @keyframes tourPulse{
-  0%,100%{outline-color:var(--music2);box-shadow:0 0 0 6px rgba(28,184,139,.30),0 0 0 9999px rgba(15,27,45,.45)}
-  50%    {outline-color:var(--wn);   box-shadow:0 0 0 11px rgba(212,136,26,.26),0 0 0 9999px rgba(15,27,45,.45)}}
-@media(prefers-reduced-motion:reduce){.tour-hi{animation:none}}
+  0%,100%{outline-color:var(--music2);box-shadow:0 0 0 6px rgba(28,184,139,.30)}
+  50%    {outline-color:var(--wn);   box-shadow:0 0 0 11px rgba(212,136,26,.26)}}
+/* The one field a sub-step is pointing at. Marks it without blocking anything
+   else in the zone, which stays editable. */
+.tour-focus{position:relative;z-index:2;border-radius:6px;
+  box-shadow:0 0 0 3px var(--wn),0 0 0 7px rgba(212,136,26,.25);
+  animation:tourFocus 1.15s ease-in-out infinite}
+@keyframes tourFocus{
+  0%,100%{box-shadow:0 0 0 3px var(--wn),0 0 0 7px rgba(212,136,26,.25)}
+  50%    {box-shadow:0 0 0 3px rgba(212,136,26,.45),0 0 0 10px rgba(212,136,26,.12)}}
+@media(prefers-reduced-motion:reduce){.tour-hi,.tour-focus{animation:none}}
 .tour-pop{position:fixed;z-index:9200;width:330px;max-width:calc(100vw - 32px);background:var(--paper);
   border:1px solid var(--rule);border-radius:10px;box-shadow:0 18px 44px rgba(0,0,0,.26);padding:14px 16px 12px;display:none}
 .tour-pop.on{display:block}
@@ -1216,7 +1229,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <button class="tour-btn pri" onclick="dismissTourWelcome();startTour()">Start the tour</button>
   </div>
 </div></div>
-<div class="tour-veil" id="tourVeil"></div>
+<div class="tour-veil" id="tourVeil"><div></div><div></div><div></div><div></div></div>
 <div class="tour-pop" id="tourPop" role="dialog" aria-live="polite">
   <h4 id="tourTitle"></h4>
   <p id="tourBody"></p>
@@ -7348,6 +7361,15 @@ const TOUR_KEY="music.tutorialSeen";
 const CAT_CARD='.egrid > .card:nth-of-type(1)';
 const AN_CARD ='.egrid > .card:nth-of-type(2)';
 const _advBtnCat=()=>document.querySelector('.sec[data-step="cat-am"] .btn.gho');
+/* The results live in a panel that stays hidden until the first Calculate.
+   The tour still has to explain them, so it reveals the panel for those steps
+   and puts it back afterwards. Before a solve it shows its placeholder state,
+   which is exactly what a new user is about to see. */
+let _tourResHidden=false;
+const _showRes=()=>{const el=$("resPanel");
+  if(el&&el.style.display==="none"){_tourResHidden=true;el.style.display=""}};
+const _hideRes=()=>{const el=$("resPanel");
+  if(el&&_tourResHidden){el.style.display="none";_tourResHidden=false}};
 
 const TOUR_STEPS=[
  /* ── Cell parameters ── */
@@ -7387,13 +7409,22 @@ const TOUR_STEPS=[
 
  /* ── Results ── */
  {sec:'#calcBtn', h:"Calculate",
-  b:"Press Calculate to solve the balance. Out come both electrode masses, the N/P actually achieved at the 1st and N<sup>th</sup> cycle, a <strong>Diagnostics</strong> tab showing where the capacity goes, and a <strong>Simulation</strong> tab drawing the cell's voltage curves cycle by cycle. After the first run, changing an input marks the results stale and you press Recalculate — but display toggles, like switching between the 1st and N<sup>th</sup> cycle, never need it."},
- {sec:'.hero', h:"Your answer",
-  b:"The headline result: both electrode masses, and the N/P actually achieved at the 1st and N<sup>th</sup> cycle, coloured by how far they sit from your target. The status chip above sums it up in a phrase."},
- {sec:'.rtab-bar', at:'.rtab-btn:nth-of-type(2)', h:"Diagnose the balance",
-  b:"Diagnostics shows where the capacity goes: the Q<sub>a</sub> and Q<sub>c</sub> bars side by side — each colour keyed underneath, so you can see exactly how much comes from the active material and how much from the salt — plus the capacity-ratio table across rates and each electrode's potential window."},
- {sec:'.rtab-bar', at:'.rtab-btn:nth-of-type(4)', h:"Simulate the cell",
-  b:"The Simulation tab draws the galvanostatic voltage curves — each electrode and the whole cell, cycle by cycle, including IR drop, salt plateaus and your voltage limits. It shows why a limit is reached, not just that it was."},
+  b:"Press Calculate to solve the balance. After the first run, changing an input marks the results stale and you press Recalculate — but display toggles, like switching between the 1st and N<sup>th</sup> cycle, never need it."},
+ {sec:'#resPanel', at:'.hero', always:true, h:"The results",
+  b:"This is where the answer appears once you press Calculate. The headline gives both electrode masses and the N/P actually achieved at the 1st and N<sup>th</sup> cycle, each coloured by how far it sits from your target, with a status chip summing it up in a phrase. The four tabs below go deeper.",
+  onEnter:_showRes, onExit:_hideRes},
+ {sec:'#resPanel', at:'.rtab-btn:nth-of-type(1)', always:true, h:"Balance — the breakdown",
+  b:"The first tab shows what each electrode is made of: pie charts of the active material, conductive additive, binder and any sacrificial salt, plus the mass loadings in mg/cm² for common electrode diameters.",
+  onEnter:_showRes, onExit:_hideRes},
+ {sec:'#resPanel', at:'.rtab-btn:nth-of-type(2)', always:true, h:"Diagnostics — where the capacity goes",
+  b:"The Q<sub>a</sub> and Q<sub>c</sub> bars side by side, with <strong>a colour key naming every contribution</strong> so you can see how much comes from the active material and how much from the salt. Switch between the 1st and N<sup>th</sup> cycle freely — display toggles never need a recalculation. Below it, the capacity ratio across rates and each electrode's potential window.",
+  onEnter:_showRes, onExit:_hideRes},
+ {sec:'#resPanel', at:'.rtab-btn:nth-of-type(3)', always:true, h:"Rates and current densities",
+  b:"The cell current at each C-rate, and what that current means as a density on each electrode. The row matching your design rate is highlighted; clicking any row assigns it to the simulation if you want to override the design point.",
+  onEnter:_showRes, onExit:_hideRes},
+ {sec:'#resPanel', at:'.rtab-btn:nth-of-type(4)', always:true, h:"Simulation — the voltage curves",
+  b:"The galvanostatic curves for each electrode and the whole cell, cycle by cycle, including IR drop, salt plateaus and your voltage limits. This is where you see <em>why</em> a limit is reached, not just that it was — and it runs at the currents from your design rates.",
+  onEnter:_showRes, onExit:_hideRes},
 
  /* ── Library finale ── */
  {sec:'#lib', h:"Build your own library",
@@ -7419,6 +7450,24 @@ function _tourClearHi(){
   if(_tourSecEl){_tourSecEl.classList.remove("tour-hi");_tourSecEl=null}
   if(_tourRO){_tourRO.disconnect();_tourRO=null}
 }
+function _tourClearFocus(){
+  document.querySelectorAll(".tour-focus").forEach(e=>e.classList.remove("tour-focus"));
+}
+/* Frame the lit zone with four dimming panels, leaving it uncovered. */
+function _tourSpotlight(){
+  const veil=$("tourVeil"); if(!veil) return;
+  const p=veil.children; if(p.length<4) return;
+  if(!_tourSecEl){ for(const d of p) d.style.display="none"; return; }
+  const r=_tourSecEl.getBoundingClientRect(),M=6;
+  const top=Math.max(0,r.top-M), bot=Math.min(innerHeight,r.bottom+M);
+  const left=Math.max(0,r.left-M), right=Math.min(innerWidth,r.right+M);
+  const set=(el,x,y,w,h)=>{el.style.display="";el.style.left=x+"px";el.style.top=y+"px";
+                           el.style.width=Math.max(0,w)+"px";el.style.height=Math.max(0,h)+"px"};
+  set(p[0],0,0,innerWidth,top);                        // above
+  set(p[1],0,bot,innerWidth,innerHeight-bot);          // below
+  set(p[2],0,top,left,bot-top);                        // left
+  set(p[3],right,top,innerWidth-right,bot-top);        // right
+}
 function _tourPlace(){
   const el=_tourAtEl,pop=$("tourPop");
   if(!el||!pop) return;
@@ -7440,6 +7489,7 @@ function _tourPlace(){
     left=Math.max(M,Math.min(left,window.innerWidth-pr.width-M));
   }
   pop.style.top=top+"px";pop.style.left=left+"px";
+  _tourSpotlight();
 }
 function _tourShow(){
   const st=_tourSteps[_tourIdx]; if(!st) return endTour();
@@ -7464,6 +7514,10 @@ function _tourShow(){
     }
   }
   _tourAtEl=atEl;
+  // Point at the one field this step is about. It is a marker only — the rest
+  // of the lit zone stays editable.
+  _tourClearFocus();
+  if(atEl!==secEl) (atEl.closest(".fld")||atEl).classList.add("tour-focus");
   atEl.scrollIntoView({behavior:"smooth",block:"center"});
   $("tourTitle").textContent=st.h;
   $("tourBody").innerHTML=st.b;
@@ -7483,7 +7537,7 @@ function tourGo(d){
   _tourIdx=next;_tourShow();
 }
 function startTour(){
-  _tourSteps=TOUR_STEPS.filter(st=>_tourVisible(document.querySelector(st.sec)));
+  _tourSteps=TOUR_STEPS.filter(st=>st.always||_tourVisible(document.querySelector(st.sec)));
   if(!_tourSteps.length) return;
   try{localStorage.setItem(TOUR_KEY,"1")}catch(e){}
   _tourReopened=[];_tourIdx=0;
@@ -7496,7 +7550,7 @@ function startTour(){
 function endTour(opts){
   const cur=_tourSteps[_tourIdx];
   if(cur&&cur.onExit&&!(opts&&opts.skipExit)){try{cur.onExit()}catch(e){}}
-  _tourClearHi();
+  _tourClearHi();_tourClearFocus();
   _tourAtEl=null;
   $("tourVeil").classList.remove("on");
   $("tourPop").classList.remove("on");
