@@ -452,9 +452,11 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     out.popMoved = document.getElementById("tourPop").style.top !== pos0 ||
                    document.getElementById("tourPop").style.left !== "";
     out.oneHighlight = document.querySelectorAll(".tour-hi").length === 1;
-    // the lit section sits above the click-blocking veil, so it stays usable
-    const cs = getComputedStyle(sec0), veil = getComputedStyle(document.getElementById("tourVeil"));
-    out.secAboveVeil = parseInt(cs.zIndex, 10) > parseInt(veil.zIndex, 10);
+    // The zone stays usable because nothing is drawn over it — hit-test rather
+    // than compare z-indexes (the spotlight frames the zone, it does not cover it).
+    const zr = sec0.getBoundingClientRect();
+    out.secUsable = !document.elementsFromPoint(zr.left + 30, zr.top + zr.height / 2)
+      .some(e => e.parentElement && e.parentElement.id === "tourVeil");
     // walking the whole tour must not throw and must land on the library step
     let guard = 0; const titles = [];
     while (guard++ < 40 && document.getElementById("tourPop").classList.contains("on")) {
@@ -473,7 +475,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("tour opens by lighting the whole Cell parameters section", TS.firstIsCellCard === true);
   check("a sub-step keeps the same section lit and only moves the message",
     TS.sameSection === true && TS.oneHighlight === true, JSON.stringify({s:TS.sameSection,o:TS.oneHighlight}));
-  check("the lit section sits above the veil, so it stays interactive", TS.secAboveVeil === true);
+  check("nothing is drawn over the lit section, so it stays interactive", TS.secUsable === true);
   check("tour covers the advanced options and ends at the library",
     TS.advancedStep === true && TS.reachedLibrary === true, JSON.stringify(TS.titles));
   check("panels the tour opened are put back afterwards",
@@ -527,40 +529,78 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the key drops the salt on the Nth cycle, where it contributes nothing",
     !/Sacrificial salt/.test(LG.nthTxt), LG.nthTxt);
 
-  // ── The tour never points at something that is not on screen ──
-  const TV = await page.evaluate(() => {
-    const walk = () => {
-      startTour();
-      const sizes = []; let g = 0;
-      while (g++ < 30 && document.getElementById("tourPop").classList.contains("on")) {
-        const hi = document.querySelector(".tour-hi");
-        const r = hi ? hi.getBoundingClientRect() : { width: 0, height: 0 };
-        sizes.push({ t: document.getElementById("tourTitle").textContent, w: r.width, h: r.height });
-        tourGo(1);
-      }
-      return sizes;
-    };
-    const shown = document.getElementById("resPanel").style.display;
-    document.getElementById("resPanel").style.display = "none";     // as before any Calculate
-    const hidden = walk();
-    document.getElementById("resPanel").style.display = "";          // results on screen
-    const visible = walk();
-    document.getElementById("resPanel").style.display = shown;
+  // ── Spotlight: the zone is lit and usable, everything else is dimmed ──
+  await page.evaluate(() => startTour());
+  await page.waitForTimeout(600);                        // let the scroll settle
+  const SP = await page.evaluate(() => {
+    // "Blocked" means a dimming panel sits above the element in the hit stack.
+    const blocked = (x, y) => document.elementsFromPoint(x, y)
+      .some(e => e.parentElement && e.parentElement.id === "tourVeil");
+    const zone = document.querySelector(".tour-hi").getBoundingClientRect();
+    const clamp = r => Math.max(0, Math.min(innerWidth, r.right) - Math.max(0, r.left)) *
+                       Math.max(0, Math.min(innerHeight, r.bottom) - Math.max(0, r.top));
+    const dimmed = [...document.getElementById("tourVeil").children]
+      .reduce((a, d) => a + clamp(d.getBoundingClientRect()), 0);
     return {
-      hiddenZero: hidden.filter(x => x.w === 0 || x.h === 0).length,
-      visibleZero: visible.filter(x => x.w === 0 || x.h === 0).length,
-      hiddenHasResults: hidden.some(x => /Your answer/.test(x.t)),
-      visibleHasResults: visible.some(x => /Your answer/.test(x.t)),
-      grew: visible.length > hidden.length,
-      calcMentionsResults: TOUR_STEPS.some(x => /Calculate/.test(x.h) && /Diagnostics/.test(x.b)),
+      dimmedFraction: dimmed / (innerWidth * innerHeight),
+      insideOpen: !blocked(zone.left + 40, zone.top + zone.height / 2),
+      leftDim: blocked(2, zone.top + zone.height / 2),
+      belowDim: blocked(60, Math.min(innerHeight - 5, zone.bottom + 80)),
     };
   });
-  check("tour never highlights an off-screen target",
-    TV.hiddenZero === 0 && TV.visibleZero === 0, JSON.stringify(TV));
-  check("results steps are skipped before Calculate and included after",
-    TV.hiddenHasResults === false && TV.visibleHasResults === true && TV.grew === true, JSON.stringify(TV));
-  check("the always-visible Calculate step explains what the results give you",
-    TV.calcMentionsResults === true);
+  check("tour dims everything outside the lit zone",
+    SP.dimmedFraction > 0.4 && SP.leftDim === true && SP.belowDim === true, JSON.stringify(SP));
+  check("the lit zone itself is not covered", SP.insideOpen === true);
+
+  await page.evaluate(() => { tourGo(1); tourGo(1); });
+  await page.waitForTimeout(500);
+  const SF = await page.evaluate(() => {
+    const blocked = (x, y) => document.elementsFromPoint(x, y)
+      .some(e => e.parentElement && e.parentElement.id === "tourVeil");
+    const f = document.querySelector(".tour-focus");
+    // A neighbouring control in the same zone must not be dimmed away.
+    const other = document.getElementById("np-target");
+    const r = other.getBoundingClientRect();
+    const out = {
+      focusRinged: !!f && getComputedStyle(f).boxShadow !== "none",
+      focusIsWrapper: !!f && f.classList.contains("fld"),
+      neighbourNotBlocked: !blocked(r.left + r.width / 2, r.top + r.height / 2),
+    };
+    endTour();
+    out.ringCleared = document.querySelectorAll(".tour-focus").length === 0;
+    out.veilOff = !document.getElementById("tourVeil").classList.contains("on");
+    return out;
+  });
+  check("a sub-step rings its field and leaves neighbours usable",
+    SF.focusRinged === true && SF.neighbourNotBlocked === true, JSON.stringify(SF));
+  check("ending the tour clears the ring and the dimming",
+    SF.ringCleared === true && SF.veilOff === true, JSON.stringify(SF));
+
+  // ── The results are always explained, even before the first Calculate ──
+  const RS = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    g("resPanel").style.display = "none";              // as before any Calculate
+    startTour();
+    const titles = []; let guard = 0, revealed = false;
+    while (guard++ < 40 && g("tourPop").classList.contains("on")) {
+      titles.push(g("tourTitle").textContent);
+      if (/results|Diagnostics|Simulation|Rates and/i.test(g("tourTitle").textContent) &&
+          g("resPanel").style.display !== "none") revealed = true;
+      tourGo(1);
+    }
+    return {
+      titles,
+      hasResults: titles.some(t => /^The results/.test(t)),
+      hasDiagnostics: titles.some(t => /Diagnostics/.test(t)),
+      hasSimulation: titles.some(t => /Simulation/.test(t)),
+      revealedWhileExplaining: revealed,
+      panelRestored: g("resPanel").style.display === "none",
+    };
+  });
+  check("the results section is explained even before Calculate",
+    RS.hasResults === true && RS.hasDiagnostics === true && RS.hasSimulation === true, JSON.stringify(RS.titles));
+  check("the results panel is revealed for those steps and put back after",
+    RS.revealedWhileExplaining === true && RS.panelRestored === true, JSON.stringify(RS));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
