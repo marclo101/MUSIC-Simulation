@@ -8,10 +8,13 @@ A single-page web tool for sizing and balancing the cathode and anode of a Li/Na
 |------|---------|
 | `MUSIC_electrode_balance_V10.html` | The application. Open it in a browser. |
 | `materials-library.js` | The benchmark material library, loaded automatically when the HTML opens. |
-| `plotly.min.js` | Plotting engine (Plotly.js v2.35.2) used by the **Simulation** tab. Loaded automatically. |
+| `materials-library-images.js` | Reference figures for the library citations. Loaded only when you open the library. |
+| `plotly.min.js` | Plotting engine (Plotly.js v2.35.2). Loaded the first time you open the **Simulation** tab. |
 | `plotly.LICENSE` | MIT license for the bundled Plotly.js. |
 
-All files must sit in the **same folder**. The HTML loads the library and plot engine via `<script src="materials-library.js">` and `<script src="plotly.min.js">`. If `plotly.min.js` is absent the app still runs, but the Simulation plot will not render. (An internet connection is used only to fetch the web fonts; the tool falls back to system fonts offline.)
+All files must sit in the **same folder**. If `plotly.min.js` is absent the app still runs, but the Simulation plot will not render; if `materials-library-images.js` is absent everything works except the reference figures.
+
+Only the small library file is read at startup — the figures and the plotting engine are fetched the first time you actually open the library or the Simulation tab, so the page is usable almost immediately. An internet connection is used only for the web fonts, and that request cannot delay the page: the tool renders with system fonts and upgrades if and when the fonts arrive.
 
 ## What the program does
 
@@ -52,8 +55,8 @@ Not modeled (no data for them in the library): reaction kinetics (Butler–Volme
 To add, edit, or remove materials and persist the changes:
 
 1. In the **Benchmark material library** panel, use **Add**, **✎ Edit**, **⎘ Dup**, or **✕ Del** to modify the library in memory.
-2. Click **💾 Save file**. The browser downloads a fresh `materials-library.js`.
-3. Move it into the same folder as `MUSIC_electrode_balance_V10.html`, replacing the existing file. (Most browsers save to your Downloads folder by default.)
+2. Click **💾 Save file**. The browser downloads a fresh `materials-library.js` — plus `materials-library-images.js` if any of your citations carry a figure.
+3. Move them into the same folder as `MUSIC_electrode_balance_V10.html`, replacing the existing files. (Most browsers save to your Downloads folder by default.)
 4. Reopen the HTML — the new library loads automatically.
 
 To share a library without overwriting the default file, use **Export JSON** / **Import** instead. **Reset** discards all customisations and restores the bundled defaults.

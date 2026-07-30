@@ -3,7 +3,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MUSIC · Electrode Balance Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Web fonts are a nicety, not a dependency: every family below has a system
+     fallback in the CSS. Loaded non-blockingly (media="print" until it arrives)
+     so a slow, blocked or absent connection to the font CDN cannot hold up the
+     page — that stall was costing well over ten seconds on restricted networks
+     and offline machines. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"></noscript>
 <style>
 :root{--bone:#F4F6F8;--bone2:#E8ECF0;--paper:#FFFFFF;--ink:#0F1B2D;--ink2:#3A4A5C;--ink3:#7A8A9A;--rule:#D0D8E0;--ruleS:#E4EAF0;--cp:#1A8A6E;--cl:#E0F5EF;--ap:#2D7AB6;--al:#DDE9F7;--sp:#C2693A;--sl:#F5E3D6;--pw:#7A8A9A;--oc:#B8893C;--ok:#1A8A6E;--okB:#E0F5EF;--wn:#D4881A;--wnB:#FFF3E0;--er:#C43C3C;--erB:#FDE8E8;--bgS:#F0F4F8;--music1:#2D8B9E;--music2:#1CB88B;--musicG:linear-gradient(135deg,#2D8B9E 0%,#1CB88B 100%);--fd:"Inter",system-ui,sans-serif;--fb:"Geist",system-ui,sans-serif;--fm:"JetBrains Mono",ui-monospace,monospace;--s1:0 1px 3px rgba(15,27,45,.06),0 0 0 1px rgba(15,27,45,.04);--s2:0 4px 12px rgba(15,27,45,.08),0 0 0 1px rgba(15,27,45,.03);--s3:0 8px 30px rgba(15,27,45,.1),0 0 0 1px rgba(15,27,45,.03);--r:10px}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{font-family:var(--fb);color:var(--ink);background:var(--bone);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
@@ -1131,7 +1139,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 </div>
 
 <!-- ══ LIBRARY ══ -->
-<div class="lib" id="lib"><div class="lib-h" onclick="$('lib').classList.toggle('cld')"><h3>Benchmark material library</h3><div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--fm);font-size:10px;color:var(--ink3)" id="libSum">10 materials</span><span class="cv">▾</span></div></div>
+<div class="lib" id="lib"><div class="lib-h" onclick="$('lib').classList.toggle('cld');if(!$('lib').classList.contains('cld')&&typeof ensureLibImages==='function')ensureLibImages()"><h3>Benchmark material library</h3><div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--fm);font-size:10px;color:var(--ink3)" id="libSum">10 materials</span><span class="cv">▾</span></div></div>
 <div class="lib-b"><div class="tbar" id="tBar"><button class="tbtn act" data-c="ac">Cathode AM <span class="cnt" id="cn-ac">(2)</span></button><button class="tbtn" data-c="saltNa">Na salts <span class="cnt" id="cn-saltNa">(2)</span></button><button class="tbtn" data-c="saltLi">Li salts <span class="cnt" id="cn-saltLi">(1)</span></button><button class="tbtn" data-c="anode">Anodes <span class="cnt" id="cn-anode">(5)</span></button></div>
 <div id="libC"><table class="ltbl"><thead><tr><th style="width:26%">Material</th><th>Sys</th><th style="min-width:340px">Rate data (rate · C₁/Cₙ · window · type · ref)</th><th style="text-align:right"></th></tr></thead><tbody><tr><td><div style="font-weight:500">Activated carbon (YP50)</div><div style="color:var(--ink3);font-size:10px"> · OCV 3 V</div></td><td><span class="pill ps">Na</span></td><td><div class="rate-line"><span class="rate-line-rt">100 mA/g</span><span class="rate-line-cap">— / 70 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|0" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">200 mA/g</span><span class="rate-line-cap">— / 65 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|1" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">300 mA/g</span><span class="rate-line-cap">— / 64 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|2" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">400 mA/g</span><span class="rate-line-cap">— / 64 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|3" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">500 mA/g</span><span class="rate-line-cap">— / 62 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|4" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">750 mA/g</span><span class="rate-line-cap">— / 60 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|5" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">1000 mA/g</span><span class="rate-line-cap">— / 56 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="ac-lic|6" title="Show citation">REF</button></div></td><td class="ac"><button class="btn gho" style="padding:3px 8px;font-size:10px" data-a="e" data-i="ac-lic">✎ Edit</button> <button class="btn gho" style="padding:3px 8px;font-size:10px" data-a="dup" data-i="ac-lic" title="Duplicate as a new editable copy">⎘ Dup</button> <button class="btn gho" style="padding:3px 8px;font-size:10px;color:var(--er);border-color:var(--er)" data-a="d" data-i="ac-lic">✕ Del</button></td></tr><tr><td><div style="font-weight:500">Activated carbon (CsCl)</div><div style="color:var(--ink3);font-size:10px"> · OCV 3 V</div></td><td><span class="pill ps">Na</span></td><td><div class="rate-line"><span class="rate-line-rt">100 mA/g</span><span class="rate-line-cap">— / 90 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|0" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">200 mA/g</span><span class="rate-line-cap">— / 85 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|1" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">300 mA/g</span><span class="rate-line-cap">— / 85 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|2" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">400 mA/g</span><span class="rate-line-cap">— / 84 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|3" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">500 mA/g</span><span class="rate-line-cap">— / 83 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|4" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">750 mA/g</span><span class="rate-line-cap">— / 82 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|5" title="Show citation">REF</button></div><div class="rate-line"><span class="rate-line-rt">1000 mA/g</span><span class="rate-line-cap">— / 80 mAh/g</span><span class="rate-line-win">2–4.2V</span><span class="pill pp" style="font-size:9px">capac</span><button class="rb" data-rb="u_morfo221|6" title="Show citation">REF</button></div></td><td class="ac"><button class="btn gho" style="padding:3px 8px;font-size:10px" data-a="e" data-i="u_morfo221">✎ Edit</button> <button class="btn gho" style="padding:3px 8px;font-size:10px" data-a="dup" data-i="u_morfo221" title="Duplicate as a new editable copy">⎘ Dup</button> <button class="btn gho" style="padding:3px 8px;font-size:10px;color:var(--er);border-color:var(--er)" data-a="d" data-i="u_morfo221">✕ Del</button></td></tr></tbody></table></div>
 <div class="ltb" data-help="Manage the benchmark library (loaded from &lt;code&gt;materials-library.js&lt;/code&gt; in the same folder). &lt;strong&gt;Add&lt;/strong&gt; a new material (with rate-paired C₁/Cₙ, V-window, electrolyte and Nature-style citation); &lt;strong&gt;Save file&lt;/strong&gt; downloads an updated &lt;code&gt;materials-library.js&lt;/code&gt; — replace the file in the folder to make the change permanent; &lt;strong&gt;Export/Import JSON&lt;/strong&gt; moves the library between files; &lt;strong&gt;Reset&lt;/strong&gt; restores the bundled defaults." data-help-key="lib_actions"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn pri" onclick="openAddM()"><span style="font-family:var(--fm);font-size:14px;margin-right:1px">+</span> Add</button><button class="btn save-btn" onclick="saveFile()">💾 Save file</button><button class="btn gho" onclick="expLib()">Export JSON</button><button class="btn gho" onclick="$('impF').click()">Import</button><button class="btn gho" onclick="rstLib()">Reset</button></div><span style="font-family:var(--fm);font-size:10px;color:var(--ink3)">Loaded from materials-library.js</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Manage the benchmark library (loaded from &lt;code&gt;materials-library.js&lt;/code&gt; in the same folder). &lt;strong&gt;Add&lt;/strong&gt; a new material (with rate-paired C₁/Cₙ, V-window, electrolyte and Nature-style citation); &lt;strong&gt;Save file&lt;/strong&gt; downloads an updated &lt;code&gt;materials-library.js&lt;/code&gt; — replace the file in the folder to make the change permanent; &lt;strong&gt;Export/Import JSON&lt;/strong&gt; moves the library between files; &lt;strong&gt;Reset&lt;/strong&gt; restores the bundled defaults."></button></div></div></div>
@@ -1245,7 +1253,8 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
 <script type="application/json" id="embedded-lib">{}</script>
 <script src="materials-library.js"></script>
-<script src="plotly.min.js"></script>
+<!-- plotly.min.js (4.3 MB) is loaded on demand the first time the Simulation
+     tab is opened — see ensurePlotly(). Blocking startup on it cost seconds. -->
 <script>
 /* ══════════════════════════════════════════════════════════════ */
 /*  LIBRARY — now with rates array, storageType, ocv, ocvRef    */
@@ -1442,22 +1451,40 @@ function ldLib(){
   return structuredClone(DL);
 }
 
+/* The figures are megabytes and live in their own file; a copy of them in
+   localStorage would blow the quota and fail the whole cache write. Persist the
+   library without them — they are re-attached from the sidecar on demand. */
+function _libNoImages(){
+  return JSON.parse(JSON.stringify(lib,(k,v)=>
+    (k==="image"&&typeof v==="string"&&v.startsWith("data:"))?"":v));
+}
 function svLib(){
-  try{localStorage.setItem(SK,JSON.stringify(lib))}catch{}
+  try{localStorage.setItem(SK,JSON.stringify(_libNoImages()))}catch{}
   try{window.MUSIC_LIBRARY=lib}catch{}
 }
 
 function saveFile(){
   // Download the external materials-library.js with the current library state.
   // Replace the file in the same folder as the HTML to make changes permanent.
-  const body="window.MUSIC_LIBRARY="+JSON.stringify(lib)+";\n";
-  const blob=new Blob([body],{type:"text/javascript;charset=utf-8"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="materials-library.js";
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast("Library saved — replace materials-library.js in the folder");
+  // Figures are written to a sibling file so the library itself stays small and
+  // the page keeps loading fast. Both are only needed if figures exist.
+  const images={};
+  ["ac","saltNa","saltLi","anode"].forEach(k=>(lib[k]||[]).forEach(m=>{
+    const grab=r=>{ if(r&&r.id&&typeof r.image==="string"&&r.image.startsWith("data:")) images[r.id]=r.image; };
+    (m.refs||[]).forEach(grab); (m.rates||[]).forEach(rt=>grab(rt.ref));
+  }));
+  const slim=JSON.parse(JSON.stringify(lib,(k,v)=>
+    (k==="image"&&typeof v==="string"&&v.startsWith("data:"))?"":v));
+  const dl=(name,body)=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([body],{type:"text/javascript;charset=utf-8"}));
+    a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  };
+  dl("materials-library.js","window.MUSIC_LIBRARY="+JSON.stringify(slim)+";\n");
+  const nImg=Object.keys(images).length;
+  if(nImg) dl("materials-library-images.js","window.MUSIC_LIBRARY_IMAGES="+JSON.stringify(images)+";\n");
+  toast(nImg ? "Saved 2 files — replace materials-library.js and -images.js in the folder"
+             : "Library saved — replace materials-library.js in the folder");
 }
 
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
@@ -2647,7 +2674,8 @@ function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").for
 function setResultsTab(t,btn){
   document.querySelectorAll(".rtab-btn").forEach(b=>b.classList.toggle("act",b===btn));
   document.querySelectorAll(".rtab-pane").forEach(p=>p.classList.toggle("act",p.id==="rtab-"+t));
-  if(t==="sim" && typeof renderSimPlot==="function") renderSimPlot();
+  if(t==="sim"){ if(typeof ensurePlotly==="function") ensurePlotly();
+                 if(typeof renderSimPlot==="function") renderSimPlot(); }
 }
 
 /* ── Simulation rate selection state ──
@@ -6135,6 +6163,44 @@ function pickRateForTarget(rates,targetC){
   return best||rates[0];
 }
 
+/* ══ DEFERRED PAYLOADS ══
+   Two things dominate startup and neither is needed to show the form: the
+   reference figures in the library (a few MB of base64) and the Plotly bundle
+   (4.3 MB, Simulation tab only). Both now load on demand, behind a promise so
+   callers can await them without caring whether the fetch has already run. */
+function _loadScriptOnce(src,key){
+  if(window[key]) return window[key];
+  window[key]=new Promise((resolve,reject)=>{
+    const el=document.createElement("script");
+    el.src=src; el.async=true;
+    el.onload=()=>resolve(true);
+    el.onerror=()=>reject(new Error("could not load "+src));
+    document.head.appendChild(el);
+  });
+  return window[key];
+}
+/* Reference figures. Stored once per ref id in materials-library-images.js and
+   patched back onto the library the first time something needs to show one. */
+function ensureLibImages(){
+  return _loadScriptOnce("materials-library-images.js","_libImgP").then(()=>{
+    const m=window.MUSIC_LIBRARY_IMAGES; if(!m||window._libImgApplied) return;
+    const put=r=>{ if(r&&r.id&&m[r.id]&&!r.image) r.image=m[r.id]; };
+    ["ac","saltNa","saltLi","anode"].forEach(k=>(lib[k]||[]).forEach(mat=>{
+      (mat.refs||[]).forEach(put);
+      (mat.rates||[]).forEach(rt=>put(rt.ref));
+    }));
+    window._libImgApplied=true;
+    // Anything already on screen was drawn without the figures — redraw once.
+    if(typeof renderLT==="function" && document.getElementById("libC")) renderLT();
+  }).catch(e=>{ console.warn("[library images]",e.message); });
+}
+/* Plotly. renderSimPlot already no-ops while it is missing, so load, then draw. */
+function ensurePlotly(){
+  return _loadScriptOnce("plotly.min.js","_plotlyP")
+    .then(()=>{ if(typeof renderSimPlot==="function") renderSimPlot(); return true; })
+    .catch(e=>{ console.warn("[plotly]",e.message); return false; });
+}
+
 /* ══ PRESET APPLICATION ══ */
 function applyPS(prefix){
   let selId,matList;
@@ -7297,6 +7363,9 @@ function addModalRate(){
 // Citation modal — opens when a REF button is clicked. Renders a Nature-style reference.
 // Optional `electrolyte` string is shown as a separate line above the citation block.
 function showRefModal(ref,electrolyte){
+  // A figure may not have arrived yet; fetch, then re-open with it.
+  if(ref&&ref.hasImage&&!ref.image&&typeof ensureLibImages==="function"){
+    ensureLibImages().then(()=>showRefModal(ref,electrolyte)); }
   if(!ref&&!electrolyte)return;
   ref=ref||{};
   let bg=document.querySelector(".ref-bg");if(bg)bg.remove();
@@ -7431,7 +7500,8 @@ const TOUR_STEPS=[
  /* ── Library finale ── */
  {sec:'#lib', h:"Build your own library",
   b:"Opened for you: the benchmark library. If you have half-cell data at <strong>several rates</strong>, add the material here with <em>all</em> of those rate points rather than a single number — one entry, one row per measured rate. That is what lets the tool pick the right measurement for whatever design rate you set, and it makes the rate-dependent simulation meaningful. Use <strong>Add</strong> to create it, then <strong>Save file</strong> so it travels with the tool.",
-  onEnter:()=>{const l=$("lib"); if(l) l.classList.remove("cld")},
+  onEnter:()=>{const l=$("lib"); if(l) l.classList.remove("cld");
+               if(typeof ensureLibImages==="function") ensureLibImages()},
   onExit:()=>{const l=$("lib"); if(l) l.classList.add("cld")}},
 
  /* Sign-off — lands back on the button that starts the real work. */
@@ -7700,7 +7770,11 @@ recalc=function(){_origRecalc();updateGuide()};
 
 rebuildPS();renderLT();wire();wireCustomLogic();buildHelpIcons();recalc();
 
-window.addEventListener("load",()=>{
+/* Start as soon as the document is parsed. Waiting for "load" meant waiting for
+   every external resource — including the font stylesheet — so a stalled CDN
+   request delayed the whole app, not just its typography. Nothing in here needs
+   images or stylesheets to have finished. */
+function _boot(){
   if(typeof silentResetAll==="function"){silentResetAll();}
   // Force every collapsible section to start collapsed, regardless of any
   // earlier auto-expand logic that may have fired during init.
@@ -7720,9 +7794,11 @@ window.addEventListener("load",()=>{
   if(typeof updateFpVisibility==="function"){ updateFpVisibility("cat"); updateFpVisibility("an"); }
   if(typeof _fpWireSumCheck==="function"){ _fpWireSumCheck("cat"); _fpWireSumCheck("an"); }
   // The form ships empty: materials are chosen by the user, never pre-filled.
-  // First-time visitors are offered the walkthrough.
+  // Visitors are offered the walkthrough.
   if(typeof maybeOfferTour==="function") maybeOfferTour();
-});
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",_boot);
+else _boot();
 
 
 function silentResetAll(){ resetAll({silent:true}); }
