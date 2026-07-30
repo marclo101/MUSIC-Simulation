@@ -674,6 +674,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div id="salt-flds" style="display:none">
     <div class="row"><label data-help="Pick a pre-validated sacrificial salt (Na₂C₄O₄ squarate, Na₂C₂O₄ oxalate, NaCl, Li-salt analogues…). Auto-fills the salt name, available rates, and rate-paired C₁; Cₙ is essentially zero by definition." data-help-key="fld_salt_preset">Preset<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Pick a pre-validated sacrificial salt (Na₂C₄O₄ squarate, Na₂C₂O₄ oxalate, NaCl, Li-salt analogues…). Auto-fills the salt name, available rates, and rate-paired C₁; Cₙ is essentially zero by definition."></button></label><div class="fld"><select id="cat-s-ps" onchange="applyPS('cat-s')"><option value="">Custom</option><option value="na2c4o4">Na₂C₄O₄ (squarate)</option><option value="u_morf502a">Na₂C₅O₅ (croconate)</option><option value="li2c4o4">Li₂C₄O₄ (squarate)</option></select></div></div>
     <div class="row"><label data-help="Free-text salt name. Independent of the preset choice — used for labelling only." data-help-key="fld_salt_name">Material<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Free-text salt name. Independent of the preset choice — used for labelling only."></button></label><div class="fld"><input type="text" id="cat-s-name" value=""></div></div>
+    <div class="row"><label data-help="For an <strong>already-prepared cathode</strong> with a known recipe: enter the sacrificial salt as a percentage of the total electrode mass. The active-material / salt / carbon / binder split is then treated as <em>fixed</em> rather than solved, and the tool sizes the <strong>anode</strong> to balance your cathode — reporting one mass that balances the reversible (Nth) cycle and one that balances the formation (1st) cycle. Must be ≤ the active-material zone (100% − carbon% − binder%); the active material takes the remainder. Leave blank to let the solver choose the salt amount." data-help-key="fld_salt_frac">Known salt content <span class="su">prepared electrode</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="For an <strong>already-prepared cathode</strong> with a known recipe: enter the sacrificial salt as a percentage of the total electrode mass. The active-material / salt / carbon / binder split is then treated as <em>fixed</em> rather than solved, and the tool sizes the <strong>anode</strong> to balance your cathode — reporting one mass that balances the reversible (Nth) cycle and one that balances the formation (1st) cycle. Must be ≤ the active-material zone (100% − carbon% − binder%); the active material takes the remainder. Leave blank to let the solver choose the salt amount."></button></label><div class="fld"><input type="number" id="cat-s-frac" step="0.1" min="0" max="100" value="" placeholder="auto" oninput="recalc()"><span class="u">% of electrode</span></div></div>
     <div class="rate-row"><label data-help="First-cycle (formation) specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation, consumed entirely during the formation half-cycle. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss." data-help-key="fld_salt_c1"><em>C</em><sub>1st</sub><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle (formation) specific capacity of the sacrificial salt (mAh/g) — the irreversible charge it delivers on first oxidation, consumed entirely during the formation half-cycle. The whole point of the salt: a large C₁ inflates Qc1 without touching Qcₙ, letting you compensate the anode's first-cycle loss."></button></label>
       <div class="fld"><input type="number" id="cat-s-c1" step="1" value="" placeholder="mAh/g" oninput="onCapManual('cat-s','c1')"><span class="u">mAh/g</span></div>
       <div class="rate-pick unset" onclick="openRatePicker('cat-s','c1')"><span id="cat-s-r1-lbl">—</span></div>
@@ -6187,7 +6188,7 @@ function resetAll(){if(!confirm("Reset all inputs?"))return;
   $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();toast("Cleared")}
 
 /* ══ SOLVER ══ */
-function readInpRaw(){return{cat:{wAM:pct("cat-wAM"),wC:pct("cat-wC"),wB:pct("cat-wB"),ac:{c1:N("cat-ac-c1"),cN:N("cat-ac-cN"),r1:N("cat-ac-r1"),rN:N("cat-ac-rN"),st:$("cat-ac-st").value},salt:saltOn?{c1:N("cat-s-c1"),cN:N("cat-s-cN"),r1:N("cat-s-r1"),rN:N("cat-s-rN")}:{c1:0,cN:0,r1:0,rN:0},Vth:[N("cat-Vth-hi"),N("cat-Vth-lo")],Vop:[N("cat-Vop-hi"),N("cat-Vop-lo")],mass:getEM("cat")},an:{wAM:pct("an-wAM"),wC:pct("an-wC"),wB:pct("an-wB"),c1:N("an-c1"),cN:N("an-cN"),r1:N("an-r1"),rN:N("an-rN"),st:$("an-st").value,Vth:[N("an-Vth-hi"),N("an-Vth-lo"),],Vop:[N("an-Vop-hi"),N("an-Vop-lo")],mass:getEM("an")}}}
+function readInpRaw(){return{cat:{wAM:pct("cat-wAM"),wC:pct("cat-wC"),wB:pct("cat-wB"),ac:{c1:N("cat-ac-c1"),cN:N("cat-ac-cN"),r1:N("cat-ac-r1"),rN:N("cat-ac-rN"),st:$("cat-ac-st").value},salt:saltOn?{c1:N("cat-s-c1"),cN:N("cat-s-cN"),r1:N("cat-s-r1"),rN:N("cat-s-rN"),frac:has("cat-s-frac")?pct("cat-s-frac"):null}:{c1:0,cN:0,r1:0,rN:0,frac:null},Vth:[N("cat-Vth-hi"),N("cat-Vth-lo")],Vop:[N("cat-Vop-hi"),N("cat-Vop-lo")],mass:getEM("cat")},an:{wAM:pct("an-wAM"),wC:pct("an-wC"),wB:pct("an-wB"),c1:N("an-c1"),cN:N("an-cN"),r1:N("an-r1"),rN:N("an-rN"),st:$("an-st").value,Vth:[N("an-Vth-hi"),N("an-Vth-lo"),],Vop:[N("an-Vop-hi"),N("an-Vop-lo")],mass:getEM("an")}}}
 
 // readInp = raw input section values, with pie-driven overrides applied.
 // Mass overrides go to inp.{cat,an}.mass; composition overrides replace wAM/wC/wB.
@@ -6391,11 +6392,33 @@ function solve(inp){
   // formation cycle hits t1 and the reversible cycle hits t — and crucially
   // both solve directions (cathode-pinned / anode-pinned) now agree.
   const t1=np1stTargetVal();
-  let mAC,mS,mCat,mAn,sane=true;
+  let mAC,mS,mCat,mAn,sane=true,dualAn1st=null;
   if(!saltOn){
     if(mode==="cathode"){mAn=inp.an.mass;const d=CcN*kc;mAC=d>.01?(CaN*mAn*wA)/(d*t):0;mS=0;mCat=wC>.01?mAC/wC:0}
     else if(mode==="anode"){mCat=inp.cat.mass;mAC=mCat*wC;mS=0;const d=wA*CaN;mAn=d>.01?(t*mAC*CcN*kc)/d:0}
     else{mCat=inp.cat.mass;mAn=inp.an.mass;mAC=mCat*wC;mS=0}
+  }else if(inp.cat.salt.frac!=null){
+    // ── KNOWN / PREPARED cathode ── the sacrificial salt is a FIXED fraction of
+    // the total electrode mass (cat-s-frac), so the AM/salt split is not solved.
+    // wC is the cathode AM-zone (AM + salt); amOnly is what's left for the AM.
+    const saltFrac=Math.max(0,Math.min(inp.cat.salt.frac,wC));
+    const amOnly=Math.max(0,wC-saltFrac);
+    if(mode==="anode"){
+      // Cathode pinned + fixed salt → size the anode. It's the only free knob, so
+      // it balances exactly one cycle: one mass for the Nth target t, one for the
+      // 1st target t1. Both are reported.
+      mCat=inp.cat.mass;mAC=mCat*amOnly;mS=mCat*saltFrac;
+      const QcN_=mAC*CcN*kc+mS*CsN*kc, Qc1_=mAC*Cc1+mS*Cs1;
+      mAn       = (wA*CaN>1e-4) ? (t *QcN_)/(wA*CaN) : 0;   // primary: balances Nth
+      dualAn1st = (wA*Ca1>1e-4) ? (t1*Qc1_)/(wA*Ca1) : 0;   // alternative: balances 1st
+    } else if(mode==="cathode"){
+      // Anode pinned + fixed salt → size the cathode for the Nth target.
+      mAn=inp.an.mass;const denom=t*(amOnly*CcN*kc+saltFrac*CsN*kc);
+      mCat=(denom>1e-4)?(mAn*wA*CaN)/denom:0;mAC=mCat*amOnly;mS=mCat*saltFrac;
+    } else {
+      // Both pinned + fixed salt → split the cathode and report the ratios.
+      mCat=inp.cat.mass;mAn=inp.an.mass;mAC=mCat*amOnly;mS=mCat*saltFrac;
+    }
   }else{
     // Salt sized so Qc1 = Qa1/t1 (formation hits t1) while AM mass holds rN = t.
     if(mode==="cathode"){mAn=inp.an.mass;const d=CcN*kc;mAC=d>.01?(CaN*mAn*wA)/(d*t):0;mS=Cs1>.01?(mAn*wA*Ca1/t1-mAC*Cc1)/Cs1:0;mCat=wC>.01?(mAC+mS)/wC:0}
@@ -6412,7 +6435,8 @@ function solve(inp){
   // Deviation from the user's TARGET (not from 1.00). Used by status pill + colors.
   const o1=(r1-t1)*100,oN=(rN-t)*100;
   const Qr=Math.min(QaN,QcN),c10=Qr>0?Qr/10:0,np=QcN>0?QaN/QcN:0;
-  return{mAC,mS,mCat,mAn,pAC,pS,Qc1,QcN,Qa1,QaN,r1,rN,o1,oN,c10,kc,np,sane,target:t,target1:t1}
+  return{mAC,mS,mCat,mAn,pAC,pS,Qc1,QcN,Qa1,QaN,r1,rN,o1,oN,c10,kc,np,sane,target:t,target1:t1,
+         mAn1st:dualAn1st,dualAnode:dualAn1st!=null}
 }
 
 /* ══ RENDER ══ */
@@ -6479,10 +6503,19 @@ else if(mode==="anode") lastSolvedRefSide='cat';
 
   // Hero
   $("r-mc").innerHTML=fM(r.mCat);$("r-mc").className="hv cc";
-  $("r-ma").innerHTML=fM(r.mAn);$("r-ma").className="hv ac";
+  if(r.dualAnode){
+    // Known/prepared cathode → the anode mass is the only free knob, so it can
+    // balance one cycle at a time. Show both candidate masses.
+    $("r-ma").innerHTML=fM(r.mAn)+' <span class="su">balances N<sup>th</sup></span>'+
+      '<div class="su" style="margin-top:4px;font-weight:600;color:var(--ink2)">'+fM(r.mAn1st)+
+      ' <span style="font-weight:400">balances 1<sup>st</sup></span></div>';
+  } else {
+    $("r-ma").innerHTML=fM(r.mAn);
+  }
+  $("r-ma").className="hv ac";
 
   // Mode indicator
-  const modeLabel=mode==="cathode"?"Cathode calculated":mode==="anode"?"Anode calculated":"Both pinned — balance check";
+  const modeLabel=mode==="cathode"?"Cathode calculated":mode==="anode"?(r.dualAnode?"Anode sized · known cathode":"Anode calculated"):"Both pinned — balance check";
   $("r-mode").textContent=modeLabel;$("r-mode").style.display="";
 
   // Note: we deliberately DO NOT write the computed mass back into cat-mass/an-mass.

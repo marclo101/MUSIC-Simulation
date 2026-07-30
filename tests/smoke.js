@@ -134,6 +134,33 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("faradaic: staircase carries reversible plateau at 3.45 V", F.plateau === true);
   check("faradaic: plot renders", F.render === true, String(F.render));
 
+  // ── Known / prepared cathode: fixed salt % → two candidate anode masses ──
+  const K = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    if (!saltOn) tgSalt();
+    if (np1stOn) toggleNp1st();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("an-st").value = "faradaic"; onStorageTypeChange("an");
+    g("cat-ac-c1").value = "100"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "200"; g("an-cN").value = "200";
+    g("cat-s-c1").value = "300"; g("cat-s-cN").value = "";
+    g("cat-wAM").value = "80"; g("cat-wC").value = "10"; g("cat-wB").value = "10";
+    g("an-wAM").value = "90"; g("an-wC").value = "5"; g("an-wB").value = "5";
+    g("cat-s-frac").value = "10";                       // known 10% salt → fixed split
+    // Pin the cathode only, so the solver sizes the anode.
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    sMM("an", "d", document.querySelector("#an-mmb .mmb"));
+    g("an-mass").value = ""; g("an-ld").value = ""; g("cat-mass").value = "10";
+    npTarget = 1.0; g("np-target").value = "1.00";
+    recalcNow();
+    const r = window.lastR || {};
+    return { mode: window.lastMode, dual: r.dualAnode, nth: r.mAn, first: r.mAn1st, mAC: r.mAC, mS: r.mS };
+  });
+  check("known cathode (10% salt) → anode 3.89 mg (Nth) / 5.56 mg (1st)",
+    K.mode === "anode" && K.dual === true && near(K.nth, 3.889, 0.01) && near(K.first, 5.556, 0.01) &&
+    near(K.mAC, 7, 0.01) && near(K.mS, 1, 0.01), JSON.stringify(K));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
