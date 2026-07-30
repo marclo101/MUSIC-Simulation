@@ -754,7 +754,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div id="cat-md"><div class="row"><label data-help="Direct cathode mass in mg (AM + Conductive + Binder, plus Salt if enabled). Pinning it puts the solver into &lt;em&gt;cathode-fixed&lt;/em&gt; mode — the anode mass is computed to satisfy your target N/P." data-help-key="fld_cat_mass_total">Total mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Direct cathode mass in mg (AM + Conductive + Binder, plus Salt if enabled). Pinning it puts the solver into &lt;em&gt;cathode-fixed&lt;/em&gt; mode — the anode mass is computed to satisfy your target N/P."></button></label><div class="fld-with-clear"><div class="fld" id="cat-mw"><input type="number" id="cat-mass" step="0.01" value="" placeholder="mg"><span class="u">mg</span></div><button class="clr-btn" onclick="clearMassInput('cat-mass')" title="Clear">×</button></div></div></div>
     <div id="cat-ml" style="display:none"><div class="row"><label data-help="Areal mass loading in mg/cm², multiplied by the Area below to get the total electrode mass. By default this is interpreted as &lt;strong&gt;AM-zone loading&lt;/strong&gt; (AM₁+Salt for the cathode); tick the box below to switch to total electrode-film loading instead." data-help-key="fld_cat_mass_load">Mass loading<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Areal mass loading in mg/cm², multiplied by the Area below to get the total electrode mass. By default this is interpreted as &lt;strong&gt;AM-zone loading&lt;/strong&gt; (AM₁+Salt for the cathode); tick the box below to switch to total electrode-film loading instead."></button></label><div class="fld-with-clear"><div class="fld"><input type="number" id="cat-ld" step="0.01" value="" placeholder="mg/cm² (AM)"><span class="u" id="cat-ld-u">mg AM/cm²</span></div><button class="clr-btn" onclick="clearMassInput('cat-ld')" title="Clear">×</button></div></div>
     <div class="row" style="grid-template-columns:1fr;margin-top:-6px;margin-bottom:6px"><label data-help="Changes how the Loading number above is interpreted. &lt;strong&gt;Off&lt;/strong&gt; (default): mg/cm² of AM only (AM₁+Salt when salt is on); &lt;strong&gt;on&lt;/strong&gt;: mg/cm² of the total film (AM+B+C). Useful when you weigh a punch on the balance and don't break out the components." data-help-key="fld_cat_total_tick" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="cat-ld-total" onchange="onLoadingModeChange('cat')"> Total electrode film mass (AM+B+C)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Changes how the Loading number above is interpreted. &lt;strong&gt;Off&lt;/strong&gt; (default): mg/cm² of AM only (AM₁+Salt when salt is on); &lt;strong&gt;on&lt;/strong&gt;: mg/cm² of the total film (AM+B+C). Useful when you weigh a punch on the balance and don't break out the components."></button></label></div>
-    <div class="row w2"><label data-help="Geometric electrode area, with the diameter of a circular punch mirrored on the right (12 mm Ø ⇒ 1.131 cm², 10 mm Ø ⇒ 0.785 cm²). The two fields are linked: editing one updates the other, assuming the electrode is a disk." data-help-key="fld_cat_area">Area / Diameter<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Geometric electrode area, with the diameter of a circular punch mirrored on the right (12 mm Ø ⇒ 1.131 cm², 10 mm Ø ⇒ 0.785 cm²). The two fields are linked: editing one updates the other, assuming the electrode is a disk."></button></label><div class="fld"><input type="number" id="cat-ar" step="0.01" value="1.13" oninput="syncAreaDia('cat','ar')"><span class="u">cm²</span></div><div class="fld"><input type="number" id="cat-dia" step="0.1" value="12" oninput="syncAreaDia('cat','dia')"><span class="u">mm Ø</span></div></div>
+    <div class="row w2"><label data-help="Geometric electrode area, with the diameter of a circular punch mirrored on the right (12 mm Ø ⇒ 1.131 cm², 10 mm Ø ⇒ 0.785 cm²). The two fields are linked: editing one updates the other, assuming the electrode is a disk." data-help-key="fld_cat_area">Area / Diameter<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Geometric electrode area, with the diameter of a circular punch mirrored on the right (12 mm Ø ⇒ 1.131 cm², 10 mm Ø ⇒ 0.785 cm²). The two fields are linked: editing one updates the other, assuming the electrode is a disk."></button></label><div class="fld"><input type="number" id="cat-ar" step="0.01"  oninput="syncAreaDia('cat','ar')" placeholder="cm² (e.g. 1.13)"><span class="u">cm²</span></div><div class="fld"><input type="number" id="cat-dia" step="0.1"  oninput="syncAreaDia('cat','dia')" placeholder="mm (e.g. 12)"><span class="u">mm Ø</span></div></div>
     <div class="row"><label data-help="Read-only echo of the total mass derived from the Loading inputs (loading × area, divided by wₐₘ when the &quot;Total&quot; tick is off). A sanity-check display, not an input — to actually pin the cathode mass, use Direct mode or the pie-centre override." data-help-key="fld_cat_mass_comp">Computed mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Read-only echo of the total mass derived from the Loading inputs (loading × area, divided by wₐₘ when the &quot;Total&quot; tick is off). A sanity-check display, not an input — to actually pin the cathode mass, use Direct mode or the pie-centre override."></button></label><div class="fld cmp"><input type="text" id="cat-mc" value="—" readonly=""><span class="u">mg</span></div></div></div></div></div>
 </div></div>
 
@@ -809,7 +809,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div id="an-md"><div class="row"><label data-help="Direct anode mass in mg (AM + Conductive + Binder). Pinning it puts the solver into &lt;em&gt;anode-fixed&lt;/em&gt; mode — the cathode mass is computed to satisfy your target N/P." data-help-key="fld_an_mass_total">Total mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Direct anode mass in mg (AM + Conductive + Binder). Pinning it puts the solver into &lt;em&gt;anode-fixed&lt;/em&gt; mode — the cathode mass is computed to satisfy your target N/P."></button></label><div class="fld-with-clear"><div class="fld" id="an-mw"><input type="number" id="an-mass" step="0.01" value="" placeholder="mg"><span class="u">mg</span></div><button class="clr-btn" onclick="clearMassInput('an-mass')" title="Clear">×</button></div></div></div>
     <div id="an-ml" style="display:none"><div class="row"><label data-help="Areal anode loading in mg/cm² × Area. Default interpretation is mg AM/cm² (active material only); toggle the tick below to switch to total electrode-film loading." data-help-key="fld_an_mass_load">Mass loading<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Areal anode loading in mg/cm² × Area. Default interpretation is mg AM/cm² (active material only); toggle the tick below to switch to total electrode-film loading."></button></label><div class="fld-with-clear"><div class="fld"><input type="number" id="an-ld" step="0.01" value="" placeholder="mg/cm² (AM)"><span class="u" id="an-ld-u">mg AM/cm²</span></div><button class="clr-btn" onclick="clearMassInput('an-ld')" title="Clear">×</button></div></div>
     <div class="row" style="grid-template-columns:1fr;margin-top:-6px;margin-bottom:6px"><label data-help="&lt;strong&gt;Off&lt;/strong&gt;: the Loading number is mg of AM per cm². &lt;strong&gt;On&lt;/strong&gt;: it is mg of total film (AM+B+C) per cm². Match the tick to whatever you actually weighed." data-help-key="fld_an_total_tick" style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:11px;color:var(--ink2);font-weight:400"><input type="checkbox" id="an-ld-total" onchange="onLoadingModeChange('an')"> Total electrode film mass (AM+B+C)<button type="button" class="help-icon hi-field" aria-label="Help" data-help="&lt;strong&gt;Off&lt;/strong&gt;: the Loading number is mg of AM per cm². &lt;strong&gt;On&lt;/strong&gt;: it is mg of total film (AM+B+C) per cm². Match the tick to whatever you actually weighed."></button></label></div>
-    <div class="row w2"><label data-help="Anode geometric area, paired with diameter (assumes a circular punch). Editing one field updates the other." data-help-key="fld_an_area">Area / Diameter<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Anode geometric area, paired with diameter (assumes a circular punch). Editing one field updates the other."></button></label><div class="fld"><input type="number" id="an-ar" step="0.01" value="1.13" oninput="syncAreaDia('an','ar')"><span class="u">cm²</span></div><div class="fld"><input type="number" id="an-dia" step="0.1" value="12" oninput="syncAreaDia('an','dia')"><span class="u">mm Ø</span></div></div>
+    <div class="row w2"><label data-help="Anode geometric area, paired with diameter (assumes a circular punch). Editing one field updates the other." data-help-key="fld_an_area">Area / Diameter<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Anode geometric area, paired with diameter (assumes a circular punch). Editing one field updates the other."></button></label><div class="fld"><input type="number" id="an-ar" step="0.01"  oninput="syncAreaDia('an','ar')" placeholder="cm² (e.g. 1.13)"><span class="u">cm²</span></div><div class="fld"><input type="number" id="an-dia" step="0.1"  oninput="syncAreaDia('an','dia')" placeholder="mm (e.g. 12)"><span class="u">mm Ø</span></div></div>
     <div class="row"><label data-help="Read-only echo of the total anode mass derived from the Loading inputs. A sanity-check display, not an input." data-help-key="fld_an_mass_comp">Computed mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Read-only echo of the total anode mass derived from the Loading inputs. A sanity-check display, not an input."></button></label><div class="fld cmp"><input type="text" id="an-mc" value="—" readonly=""><span class="u">mg</span></div></div></div></div></div>
 </div></div>
 </div>
@@ -1294,11 +1294,15 @@ let lastSolvedRefSide='an';     // 'an' means keep anode fixed -> solve cathode
 let lastSolvedMasses={cat:null,an:null};
 // Mode is auto-detected from inputs
 function detectMode(){
-  const catManual=(catMM==='d'?has('cat-mass'):has('cat-ld')) ||
-                  (mCatOverride!==null && mCatOverride>0);
-
-  const anManual =(anMM==='d'?has('an-mass'):has('an-ld')) ||
-                  (mAnOverride!==null && mAnOverride>0);
+  // In loading mode a typed loading is not yet a mass — it needs an area too.
+  // Treating it as pinned before then would solve the wrong electrode.
+  const pinned=side=>{
+    const mm=side==='cat'?catMM:anMM;
+    if(mm==='d') return has(side+'-mass');
+    return has(side+'-ld') && has(side+'-ar');
+  };
+  const catManual=pinned('cat') || (mCatOverride!==null && mCatOverride>0);
+  const anManual =pinned('an')  || (mAnOverride !==null && mAnOverride >0);
 
   // Both masses explicitly provided
   if(catManual && anManual) return "analysis";
@@ -2159,10 +2163,40 @@ function sMM(s,m,btn){if(s==="cat")catMM=m;else anMM=m;$(s+"-mmb").querySelector
    Default (tick off): user's "mg/cm²" means AM-zone loading (AM₁+Salt for cathode,
    AM for anode). Solver works in total electrode mass, so back-calculate via wAM.
    Tick on: user's number is already total electrode-film mass per cm². */
+/* Loading mode is meaningless without an electrode area, and silently showing
+   nothing is worse than saying why. Toggles a one-line hint under the loading
+   input when a loading has been typed but the area is still blank. */
+function _ldAreaHint(side,show){
+  const host=$(side+"-ml"); if(!host) return;
+  let el=host.querySelector(".ld-area-hint");
+  if(show){
+    if(!el){
+      el=document.createElement("div");
+      el.className="ld-area-hint";
+      el.style.cssText="font-size:10.5px;color:var(--wn);margin-top:4px;line-height:1.4";
+      el.textContent="Enter the electrode area (or diameter) to use loading mode.";
+      host.appendChild(el);
+    }
+  } else if(el) el.remove();
+}
+/* Keep the missing-area hints in step with what is typed. Runs on every edit,
+   not just on a full solve, so the hint appears and clears immediately. */
+function updateLdHints(){
+  ["cat","an"].forEach(side=>{
+    const loadingMode=(side==="cat"?catMM:anMM)==="l";
+    _ldAreaHint(side, loadingMode && has(side+"-ld") && !has(side+"-ar"));
+  });
+}
 function getEM(s){
   const m=s==="cat"?catMM:anMM;
   if(m==="d") return N(s==="cat"?"cat-mass":"an-mass");
   const l=N(s+"-ld"), a=N(s+"-ar");
+  // Loading mode needs an area to become a mass. Missing area → no mass at all
+  // (null, not 0), so this side does not read as "pinned" downstream.
+  if(!(l>0)||!(a>0)){
+    const el0=$(s+"-mc"); if(el0) el0.value="—";
+    return null;
+  }
   const totalChk=$(s+"-ld-total");
   const isTotalInput=!!(totalChk && totalChk.checked);
   const wAM=(s==="cat"?N("cat-wAM"):N("an-wAM"))/100;
@@ -6025,7 +6059,8 @@ function resetAll(opts){
   $("an-Vth-hi").value="2.0";$("an-Vth-lo").value="0.05";$("an-Vop-hi").value="1.7";$("an-Vop-lo").value="0.05";
   // Reset all rates back to "—" (unset). User must pick again from the rate selector.
   ["cat-ac","an","cat-s"].forEach(p=>{resetRate(p,"c1");resetRate(p,"cN")});
-  $("cat-ar").value="1.13";$("an-ar").value="1.13";$("cat-dia").value="12";$("an-dia").value="12";
+  // Geometry is a property of the user's cell, not something to guess for them.
+  $("cat-ar").value="";$("an-ar").value="";$("cat-dia").value="";$("an-dia").value="";
   $("cat-ac-ps").value="";$("cat-s-ps").value="";$("an-ps").value="";
   // Lock V_th edit toggles
   document.querySelectorAll(".vth-edit.on").forEach(b=>b.click());
@@ -6208,6 +6243,7 @@ function _calcStaleUI(dirty){
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
 }
 function recalc(){
+  if(typeof updateLdHints==="function") updateLdHints();
   // The FIRST calculation is automatic: until a solve has produced results
   // there is nothing to go stale, and requiring a click just to see the
   // first numbers is pointless friction. The initial setup also flows
@@ -6243,6 +6279,7 @@ function rerenderResults(){
 function recalcNow(){
   calcDirty=false;
   _calcStaleUI(false);
+  updateLdHints();
   // Auto-detect mode from inputs
   mode=detectMode();
   updateMassFieldStyles();

@@ -298,6 +298,34 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("diagnostics table measures against the target, not 1.00",
     NP.header === true && NP.oNAgainstTarget === true, JSON.stringify(NP));
 
+  // ── Geometry is not guessed for the user ──
+  const G = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    // A fresh reset must leave every mass/geometry field empty.
+    resetAll({ silent: true });
+    out.empty = ["cat-mass","cat-ld","an-mass","an-ld","cat-ar","an-ar","cat-dia","an-dia"]
+      .map(id => g(id).value).every(v => v === "");
+    out.placeholders = !!g("cat-ar").placeholder && !!g("cat-dia").placeholder;
+    // Loading typed but no area → not pinned, and the hint appears.
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "";
+    recalc();                                   // as a keystroke would
+    out.notPinned = detectMode() !== "cathode";
+    out.massNull = getEM("an") === null;
+    out.hint = !!document.querySelector("#an-ml .ld-area-hint");
+    g("an-ar").value = "1"; recalc();
+    out.pinnedWithArea = detectMode() === "cathode";
+    out.hintGone = !document.querySelector("#an-ml .ld-area-hint");
+    return out;
+  });
+  check("boot/reset leaves mass and geometry fields empty", G.empty === true && G.placeholders === true, JSON.stringify(G));
+  check("loading without an area is not treated as a pinned mass",
+    G.notPinned === true && G.massNull === true, JSON.stringify(G));
+  check("loading without an area explains what is missing", G.hint === true);
+  check("supplying the area pins the electrode and clears the hint",
+    G.pinnedWithArea === true && G.hintGone === true, JSON.stringify(G));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
