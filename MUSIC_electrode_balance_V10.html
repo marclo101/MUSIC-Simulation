@@ -515,7 +515,20 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .rtab-pane.act{display:block}
 .rtab-pad{padding:16px 22px}
 /* Rate equivalent display */
-.rate-eq{display:block;font-size:9px;color:var(--ink3);font-family:var(--fm);margin-top:1px;font-weight:400}
+/* The rate a capacity was measured at is now central to the design, so it gets
+   a real pill rather than a grey whisper, graded by how far it sits from the
+   cell's target rate. */
+.rate-eq{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px;font-family:var(--fm);font-size:11px;font-weight:500}
+.rate-eq .rq{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;border:1px solid transparent;white-space:nowrap}
+.rate-eq .rq b{font-weight:700;letter-spacing:.02em}
+.rate-eq .rq .sub{font-weight:400;opacity:.85}
+.rate-eq .rq.ok{background:var(--okB);border-color:rgba(26,138,110,.35);color:var(--ok)}
+.rate-eq .rq.warn{background:var(--wnB);border-color:rgba(212,136,26,.40);color:var(--wn)}
+.rate-eq .rq.bad{background:var(--erB);border-color:rgba(196,60,60,.40);color:var(--er)}
+.rate-eq .rq.na{background:var(--bone2);border-color:var(--rule);color:var(--ink3)}
+.rate-note{grid-column:1/-1;font-family:var(--fb);font-size:10.5px;line-height:1.45;font-weight:500;margin-top:4px;padding:5px 9px;border-radius:5px;border-left:3px solid}
+.rate-note.warn{background:var(--wnB);border-color:var(--wn);color:var(--wn)}
+.rate-note.bad{background:var(--erB);border-color:var(--er);color:var(--er)}
 /* Rate mismatch warning */
 .rate-warn{display:none;padding:8px 14px;margin:8px 0;border-radius:6px;font-size:11px;line-height:1.5;font-weight:500}
 .rate-warn.yellow{background:var(--wnB);border:1px solid rgba(212,136,26,.3);color:var(--wn)}
@@ -890,7 +903,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <!-- ══ RESULTS ══ -->
 <div class="res" id="resPanel" style="display:none">
 <div class="res-h"><h2 class="res-t">Results</h2><div class="sts em" id="sChip"><span class="dt"></span><span id="sTxt">Awaiting input</span></div><button class="clr-all-btn" style="margin-left:auto" onclick="clearAllMasses()" title="Clear all mass inputs and pie overrides on both electrodes">⟲ Clear all masses</button></div>
-<div class="recalc-stale" id="recalcStale" style="display:none">Inputs changed — the results below are <strong>stale</strong>. Click <strong>Recalculate</strong> (the button above the results) to update them. <span style="opacity:.75">Display toggles — tabs, 1st/N<sup>th</sup>, units — never need it.</span></div>
+<div class="recalc-stale" id="recalcStale" style="display:none">Applying your changes… <span style="opacity:.75">Results refresh automatically a moment after you stop typing — or click <strong>Recalculate</strong> to apply them now.</span></div>
 <div id="r-mode" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)." data-help-key="res_mode_indicator" style="display:none;text-align:center;padding:6px 18px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cp);background:var(--cl);border-bottom:1px solid var(--ruleS)"><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Tells you which solver branch produced the numbers: &lt;strong&gt;Cathode calculated&lt;/strong&gt; (anode mass pinned), &lt;strong&gt;Anode calculated&lt;/strong&gt; (cathode mass pinned), &lt;strong&gt;Both pinned — balance check&lt;/strong&gt; (analysis mode), or &lt;strong&gt;Mass loading ratio · 1 cm²&lt;/strong&gt; (no mass given, ratio-only mode)."></button></div>
 
 <!-- Top-level results tabs -->
@@ -6139,7 +6152,38 @@ function updateRateEquiv(){
     else if(maG>=1000) densStr=(maG/1000).toPrecision(3)+" A/g";
     else if(maG<1)     densStr=(maG*1000).toPrecision(3)+" µA/g";
     else               densStr=maG.toPrecision(3)+" mA/g";
-    el.textContent="≈ "+fCrate(cr)+(densStr?" · "+densStr:"")+" · "+h.toPrecision(2)+"h";
+    // Grade against the cell target for this cycle: a capacity measured far from
+    // the rate you are designing for does not describe your cell.
+    const target=(cycle==="c1")?cellRate1st:cellRateNth;
+    const ratio=(target>0)?cr/target:null;
+    let cls="na",note="";
+    if(ratio){
+      const off=Math.abs(Math.log(ratio));
+      if(off<=Math.log(1.25))      cls="ok";
+      else if(off<=Math.log(2.5))  cls="warn";
+      else                         cls="bad";
+      if(cls!=="ok"){
+        const faster=ratio>1;
+        note=`Measured at <strong>${fCrate(cr)}</strong> (${fRateTime(cr)}) — your target is `+
+             `<strong>${fCrate(target)}</strong> (${fRateTime(target)}). `+
+             `That is ${(faster?ratio:1/ratio).toPrecision(2)}× too ${faster?"fast":"slow"}; `+
+             `use the value measured nearest ${fCrate(target)}.`;
+      }
+    }
+    el.innerHTML=`<span class="rq ${cls}"><b>${fCrate(cr)}</b>`+
+                 `<span class="sub">${fRateTime(cr)}</span>`+
+                 (densStr?`<span class="sub">· ${densStr}</span>`:"")+`</span>`+
+                 (cls==="ok"?`<span class="rq ok"><b>✓</b><span class="sub">on target</span></span>`:"");
+    // The warning belongs under the capacity it is about, not in a banner
+    // somewhere else on the page that everyone learns to ignore.
+    const row=el.closest(".rate-row");
+    if(row){
+      let n=row.querySelector(".rate-note");
+      if(note){
+        if(!n){n=document.createElement("div");n.className="rate-note";row.appendChild(n)}
+        n.className="rate-note "+cls; n.innerHTML=note;
+      } else if(n) n.remove();
+    }
   });
   checkRateMismatch();
 }
@@ -6479,6 +6523,9 @@ function solve(inp){
 // R_eq, smoothing, constraints, axis units) stay live: they re-render the
 // existing solution without re-solving.
 let calcDirty=false;
+// How long edits settle before the solver re-runs on its own.
+const AUTO_CALC_MS=350;
+let _autoCalcT=null;
 function _calcStaleUI(dirty){
   const b=$("calcBtn"); if(b) b.classList.toggle("dirty",dirty);
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
@@ -6496,8 +6543,15 @@ function recalc(){
      (window.lastMode==="ratio" && typeof detectMode==="function" && detectMode()!=="ratio")){
     recalcNow(); return;
   }
+  // Auto-apply. Manual mode existed so a half-typed number could not thrash the
+  // solver, but it left people staring at numbers that no longer matched their
+  // inputs and wondering which control had failed. Edits now settle for a
+  // moment and then apply themselves; the Recalculate button is still there to
+  // apply them at once.
   calcDirty=true;
   _calcStaleUI(true);
+  clearTimeout(_autoCalcT);
+  _autoCalcT=setTimeout(()=>{ if(calcDirty) recalcNow(); }, AUTO_CALC_MS);
 }
 /* Render-only refresh — repaint the results from the CACHED solution without
    re-solving and without touching the stale flag.
@@ -6518,6 +6572,7 @@ function rerenderResults(){
   renderCD(inp,r);drawBar(inp,r);
 }
 function recalcNow(){
+  clearTimeout(_autoCalcT);
   calcDirty=false;
   _calcStaleUI(false);
   updateLdHints();

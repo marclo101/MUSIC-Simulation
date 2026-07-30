@@ -534,27 +534,38 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     !/Sacrificial salt/.test(LG.nthTxt), LG.nthTxt);
 
   // ── Spotlight: the zone is lit and usable, everything else is dimmed ──
-  await page.evaluate(() => startTour());
-  await page.waitForTimeout(600);                        // let the scroll settle
+  await page.evaluate(() => {
+    startTour();
+    // Park the lit zone in view instantly; the tour's own scroll is smooth and
+    // would otherwise leave it half off-screen while we probe.
+    const z = document.querySelector(".tour-hi");
+    if (z) z.scrollIntoView({ block: "center" });
+  });
+  await page.waitForTimeout(600);
   const SP = await page.evaluate(() => {
-    // "Blocked" means a dimming panel sits above the element in the hit stack.
+    _tourSpotlight();                                    // re-frame after the scroll
     const blocked = (x, y) => document.elementsFromPoint(x, y)
       .some(e => e.parentElement && e.parentElement.id === "tourVeil");
-    const zone = document.querySelector(".tour-hi").getBoundingClientRect();
+    const z = document.querySelector(".tour-hi").getBoundingClientRect();
+    // Probe inside the *visible* part of the zone, never off-screen.
+    const midY = (Math.max(0, z.top) + Math.min(innerHeight, z.bottom)) / 2;
     const clamp = r => Math.max(0, Math.min(innerWidth, r.right) - Math.max(0, r.left)) *
                        Math.max(0, Math.min(innerHeight, r.bottom) - Math.max(0, r.top));
     const dimmed = [...document.getElementById("tourVeil").children]
       .reduce((a, d) => a + clamp(d.getBoundingClientRect()), 0);
     return {
+      zoneBox: [Math.round(z.left), Math.round(z.top), Math.round(z.width), Math.round(z.height)],
       dimmedFraction: dimmed / (innerWidth * innerHeight),
-      insideOpen: !blocked(zone.left + 40, zone.top + zone.height / 2),
-      leftDim: blocked(2, zone.top + zone.height / 2),
-      belowDim: blocked(60, Math.min(innerHeight - 5, zone.bottom + 80)),
+      insideOpen: !blocked(z.left + 40, midY),
+      sideDim:  z.left > 20 ? blocked(Math.round(z.left / 2), midY) : true,
+      belowDim: z.bottom + 40 < innerHeight ? blocked(60, z.bottom + 40) : true,
+      aboveDim: z.top > 40 ? blocked(60, z.top - 20) : true,
     };
   });
   check("tour dims everything outside the lit zone",
-    SP.dimmedFraction > 0.4 && SP.leftDim === true && SP.belowDim === true, JSON.stringify(SP));
-  check("the lit zone itself is not covered", SP.insideOpen === true);
+    SP.dimmedFraction > 0.4 && SP.sideDim === true && SP.belowDim === true && SP.aboveDim === true,
+    JSON.stringify(SP));
+  check("the lit zone itself is not covered", SP.insideOpen === true, JSON.stringify(SP));
 
   await page.evaluate(() => { tourGo(1); tourGo(1); });
   await page.waitForTimeout(500);
@@ -694,6 +705,47 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the font stylesheet cannot block first paint", PERF.fontsNonBlocking === true);
   check("Plotly still loads when the Simulation tab needs it", PERF.plotlyOnDemand === true);
   check("reference figures still load when the library needs them", PERF.figuresOnDemand > 0, String(PERF.figuresOnDemand));
+
+  // ── Rate pills grade each capacity against the cell target ──
+  const RP = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const read = eqId => {
+      const e = g(eqId), pill = e.querySelector(".rq");
+      const row = e.closest(".rate-row"), n = row && row.querySelector(".rate-note");
+      return { grade: pill ? pill.className.replace("rq", "").trim() : "none",
+               shows: e.textContent, note: n ? n.textContent : "" };
+    };
+    g("cell-rate-1st").value = "0.1"; g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    // on target: 100 mA/g on 1000 mAh/g = C/10
+    g("cat-ac-c1").value = "1000"; setRateValue("cat-ac", "c1", 100, "mA/g", "100 mA/g");
+    // far too fast: 200 mA/g on 225 mAh/g ≈ C/1.1
+    g("cat-ac-cN").value = "225"; setRateValue("cat-ac", "cN", 0.2, "A/g", "0.2 A/g");
+    updateRateEquiv();
+    return { onTarget: read("cat-ac-r1-eq"), tooFast: read("cat-ac-rN-eq") };
+  });
+  check("a capacity measured at the target rate reads green",
+    RP.onTarget.grade === "ok" && RP.onTarget.note === "", JSON.stringify(RP.onTarget));
+  check("a capacity measured far off target reads red",
+    RP.tooFast.grade === "bad", JSON.stringify(RP.tooFast).slice(0, 120));
+  check("the pill shows the C-rate and its equivalent time",
+    /C\/10/.test(RP.onTarget.shows) && /10 h/.test(RP.onTarget.shows), RP.onTarget.shows);
+  check("the mismatch is explained under the capacity it concerns, naming the target",
+    /your target is/.test(RP.tooFast.note) && /C\/10/.test(RP.tooFast.note), RP.tooFast.note.slice(0, 120));
+
+  // ── Edits apply themselves; no Recalculate click required ──
+  const AR = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    recalcNow();
+    const before = g("r-mc").textContent.trim();
+    const ld = g("an-ld");
+    ld.value = String((parseFloat(ld.value) || 1) * 2);
+    ld.dispatchEvent(new Event("input", { bubbles: true }));   // as typing would
+    await new Promise(r => setTimeout(r, AUTO_CALC_MS + 400));
+    return { before, after: g("r-mc").textContent.trim(),
+             stale: g("calcBtn").classList.contains("dirty") };
+  });
+  check("an edit re-solves on its own, without pressing Recalculate",
+    AR.before !== AR.after && AR.stale === false, JSON.stringify(AR));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
