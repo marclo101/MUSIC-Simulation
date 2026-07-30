@@ -123,10 +123,6 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .hcell .hv .vu{font-size:11px;color:var(--ink3);margin-left:3px;font-weight:400}
 .hcell .hv.cc{color:var(--cp)}.hcell .hv.ac{color:var(--ap)}.hcell .hv.ph{color:var(--ink3);font-size:13px;font-weight:400;font-family:var(--fb)}
 .hcell .hv.gd{color:var(--ok)}.hcell .hv.ct{color:var(--wn)}.hcell .hv.bd{color:var(--er)}
-.editable-ratio{cursor:pointer;border-bottom:1px dashed transparent;transition:border-color .15s,background .15s;padding:2px 6px;border-radius:4px}
-.editable-ratio:hover{border-bottom-color:var(--ink3);background:rgba(0,0,0,.02)}
-.editable-ratio.r-editing{cursor:text;background:var(--bgS);border-bottom:1px solid var(--cp)}
-.ratio-edit-hint{font-size:10px;color:var(--ink3);margin-left:4px;opacity:.6}
 .r-edit-input{font-family:var(--fm);font-size:24px;font-weight:500;width:90px;border:none;background:transparent;text-align:center;color:inherit;outline:none}
 .r-edit-input::-webkit-inner-spin-button,.r-edit-input::-webkit-outer-spin-button{-webkit-appearance:none}
 .r-edit-input{-moz-appearance:textfield}
@@ -876,8 +872,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 
   <!-- Key numbers strip — masses (top row) and capacity ratios (bottom row) -->
   <div class="hero"><div class="hcell"><span class="hl" data-help="Total cathode mass — either the value you pinned (Direct/Loading), the value the solver computed in cathode-mode, or your in-place pie-centre override. The hero number always reflects whichever of those is currently active." data-help-key="res_cat_mass">Cathode mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Total cathode mass — either the value you pinned (Direct/Loading), the value the solver computed in cathode-mode, or your in-place pie-centre override. The hero number always reflects whichever of those is currently active."></button></span><span class="hv" id="r-mc"><span class="ph">Input cathode C_Nth</span></span></div><div class="hcell"><span class="hl" data-help="Total anode mass — pinned, solved, or pie-overridden. Mirrors the cathode-mass hero on the other side." data-help-key="res_an_mass">Anode mass<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Total anode mass — pinned, solved, or pie-overridden. Mirrors the cathode-mass hero on the other side."></button></span><span class="hv ph" id="r-ma">—</span></div></div>
-  <div class="hero"><div class="hcell"><span class="hl" data-help="First-cycle Qa1/Qc1 expressed as a percent (100% = balanced). Click to edit: when salt is on, the cathode AM₁/Salt split is redistributed to match your target while keeping mCat fixed; when salt is off, mass is rescaled instead, which drifts the Nth ratio away from the target." data-help-key="res_np_1st">N/P · 1st cycle <span class="ratio-edit-hint" title="Click value to edit">✎</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle Qa1/Qc1 expressed as a percent (100% = balanced). Click to edit: when salt is on, the cathode AM₁/Salt split is redistributed to match your target while keeping mCat fixed; when salt is off, mass is rescaled instead, which drifts the Nth ratio away from the target."></button></span><span class="hv ph" id="r-r1pct" data-cycle="1st" onclick="onRatioEditClick('1st')">—</span></div><div class="hcell"><span class="hl" data-help="Nth-cycle Qaₙ/Qcₙ as a percent. Click to edit: in cathode/anode mode with salt on, the solver runs a 2-knob fit that pins your Nth value &lt;em&gt;and&lt;/em&gt; drives the 1st cycle back to the target N/P; without salt, only mass is adjusted, so the 1st cycle drifts." data-help-key="res_np_Nth">N/P · N<sup>th</sup> cycle <span class="ratio-edit-hint" title="Click value to edit">✎</span><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Nth-cycle Qaₙ/Qcₙ as a percent. Click to edit: in cathode/anode mode with salt on, the solver runs a 2-knob fit that pins your Nth value &lt;em&gt;and&lt;/em&gt; drives the 1st cycle back to the target N/P; without salt, only mass is adjusted, so the 1st cycle drifts."></button></span><span class="hv ph" id="r-rNpct" data-cycle="Nth" onclick="onRatioEditClick('Nth')">—</span></div></div>
-  <div id="r-edit-msg" style="display:none;max-width:540px;margin:2px auto 6px;padding:8px 12px;background:var(--wnB);border:1px solid var(--wn);border-radius:6px;font-size:11.5px;color:var(--ink);text-align:center"></div>
+  <div class="hero"><div class="hcell"><span class="hl" data-help="First-cycle Q&lt;sub&gt;a1&lt;/sub&gt;/Q&lt;sub&gt;c1&lt;/sub&gt; expressed as a percent (100% = balanced). This is a &lt;em&gt;result&lt;/em&gt;: it is measured against your 1st-cycle target in Cell parameters, and the colour shows how far off it is. To change it, edit the target (or the sacrificial-salt amount) and recalculate." data-help-key="res_np_1st">N/P · 1st cycle<button type="button" class="help-icon hi-field" aria-label="Help" data-help="First-cycle Q&lt;sub&gt;a1&lt;/sub&gt;/Q&lt;sub&gt;c1&lt;/sub&gt; expressed as a percent (100% = balanced). This is a &lt;em&gt;result&lt;/em&gt;: it is measured against your 1st-cycle target in Cell parameters, and the colour shows how far off it is. To change it, edit the target (or the sacrificial-salt amount) and recalculate."></button></span><span class="hv ph" id="r-r1pct" data-cycle="1st">—</span></div><div class="hcell"><span class="hl" data-help="N&lt;sup&gt;th&lt;/sup&gt;-cycle Q&lt;sub&gt;aN&lt;/sub&gt;/Q&lt;sub&gt;cN&lt;/sub&gt; as a percent — the steady-state balance the cell settles into. Measured against your target N/P in Cell parameters; the colour shows how far off it is. To change it, edit the target or the electrode masses and recalculate." data-help-key="res_np_Nth">N/P · N<sup>th</sup> cycle<button type="button" class="help-icon hi-field" aria-label="Help" data-help="N&lt;sup&gt;th&lt;/sup&gt;-cycle Q&lt;sub&gt;aN&lt;/sub&gt;/Q&lt;sub&gt;cN&lt;/sub&gt; as a percent — the steady-state balance the cell settles into. Measured against your target N/P in Cell parameters; the colour shows how far off it is. To change it, edit the target or the electrode masses and recalculate."></button></span><span class="hv ph" id="r-rNpct" data-cycle="Nth">—</span></div></div>
 
   <!-- More details toggle -->
   <div class="advt" onclick="tgAdv()"><span id="advLbl">More details</span><span class="ar" id="advAr">▾</span></div>
@@ -932,7 +927,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
     <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st">1st</button><button data-p="Nth">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg></div>
     <!-- Ratio table -->
     <div class="cd-box">
-      <h4 data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Qa/Qc ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;Excess vs 1.00&quot; column is the deviation from &lt;em&gt;physical&lt;/em&gt; balance, not from your N/P target — colour-coded green / amber / red."></button></h4>
+      <h4 data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red."></button></h4>
       <div class="rtg" id="rGrid"></div>
     </div>
     <!-- Potential window -->
@@ -1282,7 +1277,6 @@ let npTarget1=1.00;    // 1st-cycle (formation) Qa/Qc target — only used when 
 let np1stOn=false;     // "Different 1st cycle" toggle: give the formation cycle its own target
 // User-edited ratio overrides from the result hero (drives mass/composition fits).
 // {cycle:"1st"|"Nth", value:number} — null when no override is active.
-let ratioOverride=null;
 let syncRateEnabled=false; // checkbox: sync rates between electrodes
 
 // Pie-driven user overrides for "real-world" electrode values:
@@ -1499,11 +1493,11 @@ function fLd(mg,area){if(!mg||!area||area<=0)return"—";return(mg/area).toPreci
 // `over` is the % deviation from the user's npTarget (e.g. +9.1 means r is 0.091 above target).
 function setHeroRatio(id,ratio,over){
   const el=$(id);if(!el)return;
-  if(!Number.isFinite(ratio)||ratio===0){el.innerHTML="—";el.className="hv ph editable-ratio";return}
+  if(!Number.isFinite(ratio)||ratio===0){el.innerHTML="—";el.className="hv ph";return}
   const pct=ratio*100;
   const txt=Math.abs(pct)<10?pct.toFixed(2):pct.toFixed(1);
   el.innerHTML=txt+'<span class="vu">%</span>';
-  el.className="hv editable-ratio "+rC(over);
+  el.className="hv "+rC(over);
 }
 
 const A12=Math.PI*0.6*0.6; // 1.131 cm² (12mm diam)
@@ -2228,16 +2222,12 @@ function onNpTargetChange(){
     return;
   }
   // Editing the target invalidates any pending result-side override
-  ratioOverride=null;
-  hideRatioEditMsg();
   recalc();
 }
 
 function resetNpTarget(){
   npTarget=1.00;
   $("np-target").value="1.00";
-  ratioOverride=null;
-  hideRatioEditMsg();
   recalc();
 }
 
@@ -2294,8 +2284,6 @@ function toggleNp1st(){
     const f=$("np-target-1st"); if(f) f.value=npTarget.toFixed(2);
   }
   _np1stTgChrome();
-  ratioOverride=null;
-  hideRatioEditMsg();
   recalc();
 }
 
@@ -2308,196 +2296,9 @@ function onNp1stChange(){
   } else {
     return;  // out of range — keep previous value
   }
-  ratioOverride=null;
-  hideRatioEditMsg();
   recalc();
 }
 
-/* ══ EDITABLE RESULT RATIOS ══
-
-   The hero N/P percentages can be edited in place. Behavior:
-
-   • EDIT 1ST-CYCLE RATIO (r.r1, salt on)
-     Adjust the cathode AM₁/Salt split so Qa1/Qc1 = user_value, while keeping Nth
-     balance close to npTarget. The current auto-solved mCat is held; only mAC vs mS
-     redistributes inside the AM-zone.
-     Closed-form: Qc1 = mAC·Cc1 + mS·Cs1, Qc1 = Qa1/r_user, mAC + mS = mCat·wAM_total
-     →  mAC = (mCat·wAM_total·Cs1 − Qa1/r_user) / (Cs1 − Cc1)
-
-   • EDIT 1ST-CYCLE RATIO (r.r1, salt off)
-     Show "consider sacrificial salt" message. We can still nudge the result by
-     moving the auto-solved electrode mass: scale m_other so Qa1/Qc1 = user_value.
-     Caveat: this also moves rN away from npTarget — that's the price of no salt.
-
-   • EDIT NTH-CYCLE RATIO (r.rN, mode != analysis, salt on)
-     Two unknowns (electrode mass m, salt fraction s in AM-zone), two equations:
-        Qa/Qc · Nth = r_user   (pin user's Nth ratio)
-        Qa/Qc · 1st = npTarget (drive 1st cycle to target — option C)
-     For cathode-mode (m_an pinned) this is two linear equations in (mAC, mS); we
-     extract m and s afterwards. Same for anode-mode.
-
-   • EDIT NTH-CYCLE RATIO (r.rN, mode != analysis, salt off)
-     "consider salt" message; mass adjusts to satisfy user's Nth ratio.
-
-   • EDIT EITHER RATIO (mode == analysis, both masses pinned)
-     Composition-only (option b): salt-split adjustment if salt is on; otherwise show
-     "consider salt" message and leave masses untouched. */
-
-/* Compute the AM₁/Salt split (as a fraction of total cathode mass) that makes
-   Qa1/Qc1 equal to `r1Target` for the given solver state `r` and input `inp`.
-   Returns {sFrac, aFrac, ok} or {ok:false, reason} on failure. */
-function fitSaltSplitFor1st(r, inp, r1Target){
-  if(!(saltOn && r.mCat>0)) return {ok:false, reason:"Salt is off — cannot redistribute"};
-  if(!(r1Target>0)) return {ok:false, reason:"Ratio must be > 0"};
-  const Cc1=inp.cat.ac.c1, Cs1=inp.cat.salt.c1;
-  if(Math.abs(Cs1-Cc1)<0.5) return {ok:false, reason:"Salt and AM₁ have nearly identical 1st-cycle capacity"};
-  // Total cathode AM-zone mass that's available to redistribute (AM₁ + Salt):
-  const wAMtot=(compCatOverride?compCatOverride.wAM_total:inp.cat.wAM);
-  const mAMzone=r.mCat*wAMtot;
-  // Target Qc1 to satisfy user's r1
-  const Qc1Target=r.Qa1/r1Target;
-  // mAC + mS = mAMzone   AND   mAC·Cc1 + mS·Cs1 = Qc1Target
-  // Solve for mAC: mAC = (mAMzone·Cs1 − Qc1Target) / (Cs1 − Cc1)
-  let mAC=(mAMzone*Cs1 - Qc1Target)/(Cs1-Cc1);
-  let mS = mAMzone - mAC;
-  if(mAC<-1e-6 || mS<-1e-6){
-    return {ok:false, reason:"Out of range — try a value closer to current (cannot reach with non-negative AM₁/Salt)"};
-  }
-  mAC=Math.max(0, mAC); mS=Math.max(0, mS);
-  return {ok:true, sFrac:mS/r.mCat, aFrac:mAC/r.mCat};
-}
-
-/* Two-knob fit for option C: pin r.rN = rNTarget (user's edit) AND drive r.r1 → npTarget.
-   Knobs: cathode AM-zone mass (mAMzone) and the salt fraction within it.
-   Active variables in cathode-mode: mAC, mS (mAn pinned by user input).
-   In Qa/Qc convention, with r1=Qa1/Qc1 and rN=QaN/QcN:
-       Qc1 = Qa1/r1Tgt     →  mAC·Cc1 + mS·Cs1 = mAn·wA·Ca1/r1Tgt
-       QcN = QaN/rNTgt     →  mAC·CcN + mS·CsN = mAn·wA·CaN/rNTgt
-   Two equations, two unknowns. Solve linear system; recover mCat = (mAC+mS)/wAMtot. */
-function fitMassAndSplit(inp, r1Tgt, rNTgt, side){
-  // side = "cathode" | "anode" — which mass is being recomputed
-  if(!(r1Tgt>0 && rNTgt>0)) return {ok:false, reason:"Targets must be > 0"};
-  const Cc1=inp.cat.ac.c1, CcN=inp.cat.ac.cN, Cs1=inp.cat.salt.c1, CsN=inp.cat.salt.cN;
-  const wA=inp.an.wAM, Ca1=inp.an.c1, CaN=inp.an.cN;
-  const wAMtot=(compCatOverride?compCatOverride.wAM_total:inp.cat.wAM);
-  if(side==="cathode"){
-    const mAn=inp.an.mass;
-    if(!(mAn>0)) return {ok:false, reason:"Anode mass is zero"};
-    // a*mAC + b*mS = e, c*mAC + d*mS = f
-    const a=Cc1, b=Cs1, c=CcN, d=CsN;
-    const e=mAn*wA*Ca1/r1Tgt, f=mAn*wA*CaN/rNTgt;
-    const det=a*d - b*c;
-    if(Math.abs(det)<1e-3) return {ok:false, reason:"Salt and AM₁ capacities are too similar to fit both cycles"};
-    const mAC=(e*d - b*f)/det, mS=(a*f - e*c)/det;
-    if(mAC<-1e-3 || mS<-1e-3) return {ok:false, reason:"Targets unreachable (would require negative AM₁ or Salt)"};
-    const mACc=Math.max(0,mAC), mSc=Math.max(0,mS);
-    const mCat=wAMtot>0.001 ? (mACc+mSc)/wAMtot : 0;
-    return {ok:true, mCat, mAC:mACc, mS:mSc, mAn, sFrac:mCat>0?mSc/mCat:0, aFrac:mCat>0?mACc/mCat:0};
-  } else {
-    // anode-mode: mCat pinned, find mAn so QaN/QcN=rNTgt under salt-split that achieves Qa1/Qc1=r1Tgt
-    const mCat=inp.cat.mass;
-    if(!(mCat>0)) return {ok:false, reason:"Cathode mass is zero"};
-    const mAMzone=mCat*wAMtot;
-    // We have 2 unknowns (mAC, mAn) and 2 equations:
-    //   mAC + mS = mAMzone (mS=mAMzone-mAC; substitute below)
-    //   Qc1 = mAC·Cc1 + mS·Cs1 = mAn·wA·Ca1/r1Tgt
-    //   QcN = mAC·CcN + mS·CsN = mAn·wA·CaN/rNTgt
-    //   ⇒ mAC·(Cc1−Cs1) + mAMzone·Cs1 = mAn·wA·Ca1/r1Tgt
-    //   ⇒ mAC·(CcN−CsN) + mAMzone·CsN = mAn·wA·CaN/rNTgt
-    // Two linear eqs in (mAC, mAn): solve.
-    const a=Cc1-Cs1, b=-wA*Ca1/r1Tgt, e=-mAMzone*Cs1;
-    const c=CcN-CsN, d=-wA*CaN/rNTgt, f=-mAMzone*CsN;
-    // a·mAC + b·mAn = e
-    // c·mAC + d·mAn = f
-    const det=a*d - b*c;
-    if(Math.abs(det)<1e-3) return {ok:false, reason:"Capacities too similar to fit both cycles"};
-    const mAC=(e*d - b*f)/det, mAn=(a*f - e*c)/det;
-    const mS=mAMzone - mAC;
-    if(mAC<-1e-3 || mS<-1e-3 || mAn<-1e-3) return {ok:false, reason:"Targets unreachable (would require negative quantity)"};
-    return {ok:true, mCat, mAC:Math.max(0,mAC), mS:Math.max(0,mS), mAn:Math.max(0,mAn),
-            sFrac:mCat>0?Math.max(0,mS)/mCat:0, aFrac:mCat>0?Math.max(0,mAC)/mCat:0};
-  }
-}
-
-/* Compute the mass of the auto-solved electrode that produces a target ratio at a given
-   cycle when salt is OFF. Used as a fallback when the user edits a ratio with no salt
-   to redistribute against. */
-function fitMassNoSalt(inp, rTarget, cycle){
-  // r = Qa/Qc; in salt-off cathode-mode mAn is pinned, mAC=mCat·wC, Qc=mAC·Cc; in anode-mode opposite.
-  const wA=inp.an.wAM, wC=inp.cat.wAM;
-  const Ccyc=cycle==="1st"?inp.cat.ac.c1:inp.cat.ac.cN;
-  const Acyc=cycle==="1st"?inp.an.c1   :inp.an.cN;
-  if(!(rTarget>0)) return {ok:false, reason:"Ratio must be > 0"};
-  if(mode==="cathode"){
-    const mAn=inp.an.mass;
-    if(!(mAn>0)) return {ok:false, reason:"Anode mass is zero"};
-    // Qa = mAn·wA·Acyc;  Qc = mCat·wC·Ccyc;  r = Qa/Qc → mCat = Qa/(r·wC·Ccyc)
-    if(!(wC>0.001 && Ccyc>0.001)) return {ok:false, reason:"Cathode capacity or AM% is zero"};
-    const mCat=(mAn*wA*Acyc)/(rTarget*wC*Ccyc);
-    return {ok:true, mCat, mAn, mAC:mCat*wC, mS:0};
-  } else if(mode==="anode"){
-    const mCat=inp.cat.mass;
-    if(!(mCat>0)) return {ok:false, reason:"Cathode mass is zero"};
-    if(!(wA>0.001 && Acyc>0.001)) return {ok:false, reason:"Anode capacity or AM% is zero"};
-    // Qc = mCat·wC·Ccyc;  Qa = mAn·wA·Acyc;  r·Qc = Qa → mAn = r·mCat·wC·Ccyc/(wA·Acyc)
-    const mAn=(rTarget*mCat*wC*Ccyc)/(wA*Acyc);
-    return {ok:true, mCat, mAn, mAC:mCat*wC, mS:0};
-  }
-  return {ok:false, reason:"Cannot rebalance in analysis mode without salt"};
-}
-
-/* Click handler on the editable hero ratios — replaces the static value with an
-   inline numeric input + Apply / Cancel / Reset buttons. */
-function onRatioEditClick(cycle){
-  const id=cycle==="1st"?"r-r1pct":"r-rNpct";
-  const el=$(id); if(!el) return;
-  if(el.classList.contains("r-editing")) return; // already editing
-  // Read current numeric value (strip the %)
-  const m=(el.textContent||"").match(/-?[\d.]+/);
-  const current=m?parseFloat(m[0]):100;
-  el.classList.add("r-editing");
-  el.innerHTML=
-    '<input type="number" class="r-edit-input" id="r-edit-fld" step="0.1" value="'+current.toFixed(2)+'">'+
-    '<span class="vu">%</span>'+
-    '<span class="r-edit-actions">'+
-      '<button class="r-edit-btn go" onclick="applyRatioEdit(\''+cycle+'\')">Apply</button>'+
-      '<button class="r-edit-btn" onclick="cancelRatioEdit(\''+cycle+'\')">Cancel</button>'+
-    '</span>';
-  const fld=$("r-edit-fld");
-  if(fld){fld.focus(); fld.select();
-    fld.addEventListener("keydown",e=>{
-      if(e.key==="Enter"){e.preventDefault();applyRatioEdit(cycle)}
-      else if(e.key==="Escape"){e.preventDefault();cancelRatioEdit(cycle)}
-    });
-  }
-}
-
-function cancelRatioEdit(cycle){
-  ratioOverride=null;
-  hideRatioEditMsg();
-  recalc();
-}
-
-function showRatioEditMsg(text, kind){
-  const el=$("r-edit-msg"); if(!el) return;
-  el.style.display=""; el.textContent=text;
-  el.style.background = kind==="error" ? "var(--erB)" : "var(--wnB)";
-  el.style.borderColor = kind==="error" ? "var(--er)" : "var(--wn)";
-}
-function hideRatioEditMsg(){const el=$("r-edit-msg"); if(el) el.style.display="none"}
-
-function applyRatioEdit(cycle){
-  const fld=$("r-edit-fld");
-  if(!fld){return}
-  const pctVal=parseFloat(fld.value);
-  if(!Number.isFinite(pctVal) || pctVal<=0){
-    showRatioEditMsg("Enter a positive percentage (e.g. 100 for balanced).", "error");
-    return;
-  }
-  const rTarget=pctVal/100;
-  ratioOverride={cycle, value:rTarget};
-  recalc();
-}
 
 /* Keep electrode area (cm²) and diameter (mm) in sync — assume circular electrodes.
    d in mm → r in cm = d/20 → A = π·(d/20)² = π·d²/400.
@@ -6250,8 +6051,6 @@ function resetAll(opts){
   np1stOn=false;npTarget1=1.00;
   {const f=$("np-target-1st");if(f)f.value="1.00";}
   _np1stTgChrome();
-  ratioOverride=null;
-  hideRatioEditMsg();
   $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();if(!silent)toast("Cleared")}
 
 /* ══ SOLVER ══ */
@@ -6327,117 +6126,6 @@ function applyCathodeSaltSplit(r,inp){
   r.c10=Math.min(r.QaN,r.QcN)/10;
 }
 
-/* Apply the user's result-side ratio override to a solved `r` for a given solved-mode.
-   Mutates `r` in place; pushes any required mass changes back into `inp` so downstream
-   renderers see consistent state. Returns true if applied, false if not (e.g. analysis
-   mode + salt off → message only). */
-function applyRatioOverride(r, inp){
-  if(!ratioOverride) return false;
-  const {cycle, value:rTarget} = ratioOverride;
-  if(!(rTarget>0)) return false;
-
-  // ─── ANALYSIS MODE (both masses pinned by user) ───
-  // Composition-only (option b). If salt off, show message.
-  if(mode==="analysis"){
-    if(!saltOn){
-      showRatioEditMsg("Cannot rebalance — both masses are pinned and no salt is available. Consider enabling sacrificial salt.", "warn");
-      return false;
-    }
-    if(cycle==="1st"){
-      const fit=fitSaltSplitFor1st(r, inp, rTarget);
-      if(!fit.ok){showRatioEditMsg(fit.reason,"error"); return false}
-      // Use the salt-split machinery
-      compCatOverride = {
-        wAM_total:(compCatOverride?compCatOverride.wAM_total:inp.cat.wAM),
-        wC:(compCatOverride?compCatOverride.wC:inp.cat.wC),
-        wB:(compCatOverride?compCatOverride.wB:inp.cat.wB),
-        saltSplit: fit.sFrac
-      };
-      applyCathodeSaltSplit(r, inp);
-      showRatioEditMsg("1st-cycle ratio set via cathode AM₁/Salt redistribution. Nth-cycle drifted as a side effect.", "warn");
-      return true;
-    } else { // Nth, analysis, salt on
-      const fit=fitSaltSplitFor1st(r, inp, rTarget); // re-using: same algebra works for any single cycle, just use cN
-      // Actually, for Nth we need CcN/CsN. fitSaltSplitFor1st uses Cc1/Cs1 — write a Nth variant inline:
-      const Cc=inp.cat.ac.cN, Cs=inp.cat.salt.cN;
-      const wAMtot=(compCatOverride?compCatOverride.wAM_total:inp.cat.wAM);
-      const mAMzone=r.mCat*wAMtot;
-      if(Math.abs(Cs-Cc)<0.5){showRatioEditMsg("Salt and AM₁ have nearly identical Nth-cycle capacity — cannot redistribute.","error"); return false}
-      const QcTarget=r.QaN/rTarget;
-      const mAC=(mAMzone*Cs - QcTarget)/(Cs-Cc);
-      const mS = mAMzone - mAC;
-      if(mAC<-1e-6 || mS<-1e-6){showRatioEditMsg("Out of range — cannot reach with non-negative AM₁/Salt.","error"); return false}
-      compCatOverride = {
-        wAM_total:wAMtot,
-        wC:(compCatOverride?compCatOverride.wC:inp.cat.wC),
-        wB:(compCatOverride?compCatOverride.wB:inp.cat.wB),
-        saltSplit: Math.max(0, mS/r.mCat)
-      };
-      applyCathodeSaltSplit(r, inp);
-      showRatioEditMsg("Nth-cycle ratio set via cathode AM₁/Salt redistribution. 1st-cycle drifted as a side effect.","warn");
-      return true;
-    }
-  }
-
-  // ─── CATHODE OR ANODE MODE — auto-solver active ───
-  if(mode==="cathode" || mode==="anode"){
-    if(cycle==="Nth" && saltOn){
-      // Option C: 2-knob fit — pin user's Nth + drive 1st to the formation target
-      const fit=fitMassAndSplit(inp, np1stTargetVal(), rTarget, mode);
-      if(!fit.ok){showRatioEditMsg(fit.reason,"error"); return false}
-      // Push the new mass to the side the solver is computing, and lock the salt split
-      if(mode==="cathode") inp.cat.mass=fit.mCat; else inp.an.mass=fit.mAn;
-      r.mCat=fit.mCat; r.mAn=fit.mAn; r.mAC=fit.mAC; r.mS=fit.mS;
-      r.pAC=fit.aFrac; r.pS=fit.sFrac;
-      r.Qc1=fit.mAC*inp.cat.ac.c1+fit.mS*inp.cat.salt.c1;
-      r.QcN=fit.mAC*inp.cat.ac.cN*r.kc+fit.mS*inp.cat.salt.cN*r.kc;
-      r.Qa1=fit.mAn*inp.an.wAM*inp.an.c1;
-      r.QaN=fit.mAn*inp.an.wAM*inp.an.cN;
-      r.r1 =r.Qc1>0?r.Qa1/r.Qc1:0;
-      r.rN =r.QcN>0?r.QaN/r.QcN:0;
-      const t=r.target||npTarget, t1=r.target1||t;
-      r.o1=(r.r1-t1)*100; r.oN=(r.rN-t)*100;
-      r.np=r.QcN>0?r.QaN/r.QcN:0;
-      r.c10=Math.min(r.QaN,r.QcN)/10;
-      showRatioEditMsg("Nth-cycle ratio pinned to your value; cathode mass + salt split adjusted to drive 1st-cycle to target ("+(np1stTargetVal()*100).toFixed(0)+"%).","warn");
-      return true;
-    }
-    if(cycle==="1st" && saltOn){
-      // Salt-split adjustment using the AM-zone redistribution
-      const fit=fitSaltSplitFor1st(r, inp, rTarget);
-      if(!fit.ok){showRatioEditMsg(fit.reason,"error"); return false}
-      compCatOverride = {
-        wAM_total:(compCatOverride?compCatOverride.wAM_total:inp.cat.wAM),
-        wC:(compCatOverride?compCatOverride.wC:inp.cat.wC),
-        wB:(compCatOverride?compCatOverride.wB:inp.cat.wB),
-        saltSplit: fit.sFrac
-      };
-      applyCathodeSaltSplit(r, inp);
-      showRatioEditMsg("1st-cycle ratio set via cathode AM₁/Salt redistribution. Nth-cycle stays close to target.","warn");
-      return true;
-    }
-    // Salt off → adjust mass only at the requested cycle
-    const fit=fitMassNoSalt(inp, rTarget, cycle);
-    if(!fit.ok){showRatioEditMsg(fit.reason,"error"); return false}
-    if(mode==="cathode") inp.cat.mass=fit.mCat; else inp.an.mass=fit.mAn;
-    r.mCat=fit.mCat; r.mAn=fit.mAn; r.mAC=fit.mAC; r.mS=0;
-    r.pAC=r.mCat>0?r.mAC/r.mCat:0; r.pS=0;
-    r.Qc1=fit.mAC*inp.cat.ac.c1; r.QcN=fit.mAC*inp.cat.ac.cN*r.kc;
-    r.Qa1=fit.mAn*inp.an.wAM*inp.an.c1;
-    r.QaN=fit.mAn*inp.an.wAM*inp.an.cN;
-    r.r1 =r.Qc1>0?r.Qa1/r.Qc1:0;
-    r.rN =r.QcN>0?r.QaN/r.QcN:0;
-    const t=r.target||npTarget, t1=r.target1||t;
-    r.o1=(r.r1-t1)*100; r.oN=(r.rN-t)*100;
-    r.np=r.QcN>0?r.QaN/r.QcN:0;
-    r.c10=Math.min(r.QaN,r.QcN)/10;
-    showRatioEditMsg("Salt is disabled — adjusted "+(mode==="cathode"?"cathode":"anode")+" mass to satisfy your "+cycle+"-cycle ratio. Consider adding sacrificial salt to control both cycles independently.","warn");
-    return true;
-  }
-
-  // ratio mode: handled separately in renderRatio
-  return false;
-}
 
 function solve(inp){
   // Defensive: refuse pathological negative input masses up front.
@@ -6582,9 +6270,6 @@ else if(mode==="anode") lastSolvedRefSide='cat';
   // touch the cathode internal AM₁ vs Salt split and recompute the affected metrics.
   applyCathodeSaltSplit(r,inp);
 
-  // Apply user-specified ratio override (click-to-edit on hero N/P percentages).
-  // Mutates r and inp.{cat,an}.mass; this drives mass refits + composition tweaks.
-  applyRatioOverride(r, inp);
 
   // Hero
   $("r-mc").innerHTML=fM(r.mCat);$("r-mc").className="hv cc";
@@ -6665,18 +6350,6 @@ function renderRatio(inp){
   // pie slices / mAC / mS / 1st-cycle ratio all reflect the user's edits.
   applyCathodeSaltSplit(r,ratioInp);
 
-  // Apply user-specified ratio override. In ratio mode the conceptual auto-solver is
-  // cathode-mode (we computed mCat per 1 mg anode), so temporarily flip mode for the
-  // helper. The user's ratio edit will adjust catLd/anLd and the salt-split if applicable.
-  if(ratioOverride){
-    const savedM=mode; mode="cathode";
-    applyRatioOverride(r, ratioInp);
-    mode=savedM;
-    // The hero should reflect the new mass loading; ratio mode normalizes the smaller
-    // electrode to 1 mg/cm². Recompute catLd/anLd from the now-mutated masses.
-    const newCatPerAn = ratioInp.an.mass>0 ? ratioInp.cat.mass/ratioInp.an.mass : catPerAn;
-    if(newCatPerAn>=1){catLd=newCatPerAn; anLd=1} else {catLd=1; anLd=1/newCatPerAn}
-  }
 
   // Hero — show as mg/cm² (since area = 1 cm², mass = loading).
   // By default we report AM-zone loading (mg AM/cm²); when "Show total" is on, full electrode-film loading.
@@ -6925,18 +6598,18 @@ function buildRT(inp,r){const g=$("rGrid"),es=[];
   const ruC1=$("cat-ac-r1-ru")?.value||"",ruCN=$("cat-ac-rN-ru")?.value||"";
   const ruA1=$("an-r1-ru")?.value||"",ruAN=$("an-rN-ru")?.value||"";
   const fmtR=(rv,ru)=>(ru==="unknown")?"—":fRtU(rv,ru);
-  // The ratio table reports physical balance: ratio is Qa/Qc, and "Excess" is the
-  // deviation from 1.00 (not from the user's npTarget). The user's target is a
-  // design choice, but the Excess column tells you whether the cell as currently
-  // configured leans anode- or cathode-heavy in absolute terms.
-  const dev=ratio=>(ratio-1)*100;
-  es.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,over:dev(r.r1)});
-  es.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,over:dev(r.rN)});
+  // Deviations are measured against the TARGET N/P, the same basis the hero
+  // percentages and the status chip use. Showing "off by X" against two
+  // different references on one screen is what made the balance confusing.
+  const tN=r.target||npTarget, t1=r.target1||tN;
+  const dev=(ratio,tgt)=>(ratio-tgt)*100;
+  es.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,over:dev(r.r1,t1)});
+  es.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,over:dev(r.rN,tN)});
   // Add entries from library rate data if available — Qa/Qc convention here too.
   anRates.forEach(ar=>{const arRv=ar.rv||ar.rate;const arRu=ar.ru||"C";if(Math.abs(arRv-inp.an.rN)<.001&&arRu===ruAN)return;
     const Qc=r.mAC*inp.cat.ac.cN*r.kc+(saltOn?r.mS*inp.cat.salt.cN*r.kc:0);const Qa=r.mAn*inp.an.wAM*ar.cN;const ratio=Qc>0?Qa/Qc:0;
-    if(ar.cN>0)es.push({lb:"An@"+fRtU(arRv,arRu),ri:fmtR(inp.cat.ac.rN,ruCN)+"/"+fRtU(arRv,arRu),ratio,over:dev(ratio)})});
-  let h=`<div class="rtg-h"><span>Condition</span><span style="text-align:center">Rate</span><span style="text-align:center">Q<sub>a</sub>/Q<sub>c</sub></span><span style="text-align:center">Excess vs 1.00</span></div>`;
+    if(ar.cN>0)es.push({lb:"An@"+fRtU(arRv,arRu),ri:fmtR(inp.cat.ac.rN,ruCN)+"/"+fRtU(arRv,arRu),ratio,over:dev(ratio,tN)})});
+  let h=`<div class="rtg-h"><span>Condition</span><span style="text-align:center">Rate</span><span style="text-align:center">Q<sub>a</sub>/Q<sub>c</sub></span><span style="text-align:center">vs target</span></div>`;
   es.forEach(e=>{const cl=rC(e.over);h+=`<div class="rtg-r"><span class="k">${e.lb}</span><span class="v" style="font-size:10px;color:var(--ink3)">${e.ri}</span><span class="v ${cl}">${fR(e.ratio)}</span><span class="v ${cl}">${fE(e.over)}</span></div>`});g.innerHTML=h}
 
 function valF(){[["cat-wAM","cat-wC","cat-wB","cat-fs"],["an-wAM","an-wC","an-wB","an-fs"]].forEach(p=>{const s=N(p[0])+N(p[1])+N(p[2]);const el=$(p[3]);if(!el)return;el.textContent="Σ="+s.toFixed(0)+"%";el.style.color=Math.abs(s-100)<1?"var(--ink3)":Math.abs(s-100)<5?"var(--wn)":"var(--er)"})}
@@ -7786,8 +7459,8 @@ function gatherExportData(){
   const ruC1=$("cat-ac-r1-ru")?.value||"",ruCN=$("cat-ac-rN-ru")?.value||"";
   const ruA1=$("an-r1-ru")?.value||"",ruAN=$("an-rN-ru")?.value||"";
   const fmtR=(rv,ru)=>(ru==="unknown")?"—":fRtU(rv,ru);
-  ratioRows.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,dev:(r.r1-1)*100});
-  ratioRows.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,dev:(r.rN-1)*100});
+  ratioRows.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,dev:r.o1});
+  ratioRows.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,dev:r.oN});
   if(typeof anRates!=="undefined" && Array.isArray(anRates)){
     anRates.forEach(ar=>{
       const arRv=ar.rv||ar.rate,arRu=ar.ru||"C";
@@ -7971,7 +7644,7 @@ function buildTXT(D,sel){
     D.anpovRows.forEach(row=>L.push([_fmt.dens(row.i_an),_fmt.curr(row.I_uA),row.cellRate.toFixed(3)+" /h",_fmt.dens(row.i_cat)].map(s=>s.padEnd(15)).join("")));
   }
   if(sel.ratioTbl){sec("Q_a/Q_c RATIO TABLE");
-    L.push(["Condition","Rate","Q_a/Q_c","Excess vs 1.00"].map(s=>s.padEnd(18)).join(""));
+    L.push(["Condition","Rate","Q_a/Q_c","vs target"].map(s=>s.padEnd(18)).join(""));
     L.push("-".repeat(72));
     D.ratioRows.forEach(row=>L.push([row.lb,row.ri,_fmt.ratio(row.ratio),_fmt.dev(row.dev)].map(s=>String(s).padEnd(18)).join("")));
   }
@@ -8101,7 +7774,7 @@ async function buildHTMLBody(D,sel,opts){
       D.anpovRows.map(rw=>[_fmt.dens(rw.i_an),_fmt.curr(rw.I_uA),rw.cellRate.toFixed(3)+" /h",_fmt.dens(rw.i_cat)]));
   }
   if(sel.ratioTbl){
-    h+=dataTable("Q<sub>a</sub>/Q<sub>c</sub> ratio table — at all rates",["Condition","Rate","Q<sub>a</sub>/Q<sub>c</sub>","Excess vs 1.00"],
+    h+=dataTable("Q<sub>a</sub>/Q<sub>c</sub> ratio table — at all rates",["Condition","Rate","Q<sub>a</sub>/Q<sub>c</sub>","vs target"],
       D.ratioRows.map(rw=>[rw.lb,rw.ri,_fmt.ratio(rw.ratio),_fmt.dev(rw.dev)]));
   }
   // Charts (skipped in Excel? Actually Excel handles base64 PNG via <img>; keep them)

@@ -275,6 +275,29 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     /Cell parameters/i.test(CP.status), CP.status);
   check("an explicit Rates-tab pick still overrides the design rate", CP.manualWins === true);
 
+  // ── One N/P mechanism: hero ratios are read-only, deviations share one basis ──
+  const NP = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    out.editorGone = typeof window.onRatioEditClick === "undefined" &&
+                     typeof window.applyRatioOverride === "undefined" &&
+                     typeof window.ratioOverride === "undefined";
+    out.msgBoxGone = !g("r-edit-msg");
+    out.noClickHandler = !g("r-r1pct").getAttribute("onclick") && !g("r-rNpct").getAttribute("onclick");
+    // Deviation basis: with target 1.20 the rGrid "vs target" column must agree
+    // with the solver's own o1/oN rather than measuring against 1.00.
+    g("np-target").value = "1.20"; onNpTargetChange(); recalcNow();
+    out.header = g("rGrid").textContent.includes("vs target");
+    const r = window.lastR;
+    out.oNAgainstTarget = Math.abs(r.oN - (r.rN - 1.2) * 100) < 1e-6;
+    g("np-target").value = "1.00"; onNpTargetChange(); recalcNow();
+    return out;
+  });
+  check("ratio-override editor removed entirely", NP.editorGone === true && NP.msgBoxGone === true, JSON.stringify(NP));
+  check("hero N/P values are read-only", NP.noClickHandler === true);
+  check("diagnostics table measures against the target, not 1.00",
+    NP.header === true && NP.oNAgainstTarget === true, JSON.stringify(NP));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
