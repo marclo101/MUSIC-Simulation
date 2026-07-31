@@ -2357,9 +2357,8 @@ function setShowTotalLoading(v){
   set("r-cld10-lbl","Cat "+tag+" ⌀10mm");
   set("r-ald12-lbl","An "+tag+" ⌀12mm");
   set("r-ald10-lbl","An "+tag+" ⌀10mm");
-  // View-only: the labels above and the numbers below must change together, so
-  // this repaints straight away rather than waiting for a Recalculate.
-  rerenderResults();
+  // Labels and numbers must move together, so apply immediately.
+  refreshResults();
 }
 
 /* Mass to display in loading metrics. Cathode AM-zone = mAC+mS (active material + salt);
@@ -2466,7 +2465,7 @@ function _cellRateApply(cycle,src){
   _cellRateMirror(cycle,src);
   reapplyPresetsForRate();
   _cellRateChrome();
-  rerenderResults();
+  refreshResults();
   if(typeof updateSimStatus==="function") updateSimStatus();
   if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
 }
@@ -2493,7 +2492,7 @@ function onCellRateChange(){
   _cellRateMirror("1st","mult");_cellRateMirror("nth","mult");
   reapplyPresetsForRate();
   _cellRateChrome();
-  rerenderResults();                                 // rate table highlight + currents
+  refreshResults();                                  // rate table highlight + currents
   if(typeof updateSimStatus==="function") updateSimStatus();
   if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
 }
@@ -2551,7 +2550,7 @@ function syncAreaDia(side,src){
       diaEl.value=d.toFixed(2).replace(/\.?0+$/,"");
     } else if(arEl.value===""){diaEl.value=""}
   }
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 
 // Clear a mass input (Direct or Loading) and force a fresh recalc.
@@ -2564,7 +2563,7 @@ function clearMassInput(id){
   if(side==="an" &&typeof mAnOverride !=="undefined"&&mAnOverride !==null){mAnOverride =null}
   const mc=$(side+"-mc");if(mc)mc.value="—";
   if(typeof valF==="function")valF();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
   syncOverrideChrome();
 }
 
@@ -2592,7 +2591,7 @@ lastSolvedRefSide='an';
 lastSolvedMasses={cat:null,an:null};
 
   if(typeof valF==="function") valF();
-  if(typeof recalc==="function") recalc();
+  if(typeof refreshResults==="function") refreshResults();
 
   syncOverrideChrome();
 }
@@ -2618,13 +2617,13 @@ function setMassOverride(side,valStr){
   if(side==="cat") mCatOverride=isClear?null:v;
   else             mAnOverride =isClear?null:v;
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function resetMassOverride(side){
   if(side==="cat"){mCatOverride=null;const el=$("pmo-cat");if(el)el.value=""}
   else            {mAnOverride =null;const el=$("pmo-an"); if(el)el.value=""}
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 
 // Initial composition seeds (used when user makes the first pie-legend edit on this side).
@@ -2682,22 +2681,25 @@ function setCompOverride(side,key,valStr){
     compAnOverride=c;
   }
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function resetCompOverride(side){
   if(side==="cat") compCatOverride=null;
   else             compAnOverride =null;
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function tgAdv(){advO=!advO;$("advSec").classList.toggle("hid",!advO);$("advLbl").textContent=advO?"Hide details":"More details";$("advAr").style.transform=advO?"rotate(180deg)":""}
 // View-only: picks which point-of-view the rate table shows. Repaints, never re-solves.
-function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));rerenderResults()}
+function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));refreshResults()}
 function setResultsTab(t,btn){
   document.querySelectorAll(".rtab-btn").forEach(b=>b.classList.toggle("act",b===btn));
   document.querySelectorAll(".rtab-pane").forEach(p=>p.classList.toggle("act",p.id==="rtab-"+t));
-  if(t==="sim"){ if(typeof ensurePlotly==="function") ensurePlotly();
-                 if(typeof renderSimPlot==="function") renderSimPlot(); }
+  // Both chart tabs need Plotly, and a tab you have just opened should never
+  // show numbers older than the inputs above it.
+  if(t==="sim"||t==="diag"){ if(typeof ensurePlotly==="function") ensurePlotly(); }
+  if(calcDirty) refreshResults();
+  if(t==="sim" && typeof renderSimPlot==="function") renderSimPlot();
 }
 
 /* ── Simulation rate selection state ──
@@ -2711,6 +2713,7 @@ let simAssignMode="1st";
 let simRateSel={"1st":null,"Nth":null}; // each: {pov, label, I_uA} or null
 
 function setSimAssignMode(m){
+  if(calcDirty) refreshResults();
   simAssignMode=(m==="Nth")?"Nth":"1st";
   const l1=$("simAssignLbl-1"),lN=$("simAssignLbl-N");
   if(l1) l1.classList.toggle("act-1",simAssignMode==="1st");
@@ -2720,6 +2723,7 @@ function setSimAssignMode(m){
 function _rateKey(pov,label){return (pov||"")+"|"+(label||"")}
 
 function pickSimRate(pov,label,I_uA){
+  if(calcDirty) refreshResults();          // assign against current inputs
   I_uA=parseFloat(I_uA);
   const key=_rateKey(pov,label),cur=simRateSel[simAssignMode];
   // Toggle off if clicking the same row in the same assigning mode
@@ -2738,6 +2742,7 @@ function pickSimRate(pov,label,I_uA){
 }
 
 function clearSimRateSel(){
+  if(calcDirty) refreshResults();
   simRateSel={"1st":null,"Nth":null};
   applyRateRowHighlight();
   updateSimStatus();
@@ -4681,6 +4686,13 @@ function _renderSimPlotTime(host, xUnit){
 function renderSimPlot(){
   const host=$("simPlot");
   if(!host || typeof Plotly==="undefined") return;
+  // Every sim control (cycle, R_eq, smoothing, constraints, axis pills) lands
+  // here, so one guard keeps them all from drawing a stale solution.
+  if(calcDirty && !_inSimRefresh){
+    _inSimRefresh=true;
+    try{ refreshResults(); } finally { _inSimRefresh=false; }
+    return;                                // recalcNow redraws the sim itself
+  }
   syncSimAxisFromInputs();
   _simSyncConsDefaults();
 
@@ -6535,6 +6547,7 @@ let calcDirty=false;
 // How long edits settle before the solver re-runs on its own.
 const AUTO_CALC_MS=350;
 let _autoCalcT=null;
+let _inSimRefresh=false;   // guards renderSimPlot <-> recalcNow reentry
 function _calcStaleUI(dirty){
   const b=$("calcBtn"); if(b) b.classList.toggle("dirty",dirty);
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
@@ -6579,17 +6592,22 @@ function setBarPhase(ph,btn){
   barPh=(ph==="Nth")?"Nth":"1st";
   const host=$("bTog");
   if(host) host.querySelectorAll("button[data-p]").forEach(b=>b.classList.toggle("act",b.dataset.p===barPh));
-  if(typeof recalcNow==="function" && window.lastInp) recalcNow();
-  else rerenderResults();
+  refreshResults();
 }
-function rerenderResults(){
-  const r=window.lastR,inp=window.lastInp;
-  if(!r||!inp||window.lastMode==="ratio") return;
-  // Loading read-outs depend on showTotalLoading.
-  $("r-cld12").innerHTML=fLd(ldCatMass(r),A12);$("r-cld10").innerHTML=fLd(ldCatMass(r),A10);
-  $("r-ald12").innerHTML=fLd(ldAnMass(r,inp),A12);$("r-ald10").innerHTML=fLd(ldAnMass(r,inp),A10);
-  // Rate table depends on cdTab; capacity bars depend on barPh.
-  renderCD(inp,r);drawBar(inp,r);
+/* Every control inside the results panel comes through here.
+
+   It used to be a partial repaint from the cached solution, which failed two
+   ways at once: it returned early in ratio mode — the mode you are in whenever
+   no mass is pinned, so the POV tabs changed their own highlight and repainted
+   nothing — and when it did run it drew numbers from the last solve, so any
+   edit made since was invisible. Both looked exactly like a dead control whose
+   only cure was pressing Recalculate.
+
+   A full solve has neither problem: it handles every mode and reads the inputs
+   as they are now. It costs single-digit milliseconds, so there is no reason to
+   keep a cheaper path that can be wrong. */
+function refreshResults(){
+  if(typeof recalcNow==="function") recalcNow();
 }
 function recalcNow(){
   clearTimeout(_autoCalcT);
@@ -7926,6 +7944,7 @@ function enableExportBtn(on){
 }
 
 function openExportDialog(){
+  if(calcDirty) refreshResults();          // never export numbers you cannot see
   if(!window.lastR||!window.lastInp){toast?toast("Run a calculation first"):alert("Run a calculation first");return}
   expFmt=null;
   $("expTi").textContent="Export results — choose format";

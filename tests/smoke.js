@@ -824,6 +824,80 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("1st/Nth toggle never leaves the results marked stale",
     BT.neverStale === true && BT.stillNotStale === true, JSON.stringify(BT));
 
+  // ── Item B: every Results control is live, in every mode ──
+  // Three scenarios per control: after a fresh solve, with an edit still
+  // pending (before the debounce), and in ratio mode — the last is the one
+  // that was silently broken, because the old repaint helper returned early.
+  const LIVE = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const seed = (ratioMode) => {
+      if (saltOn) tgSalt();
+      g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+      g("cat-ac-c1").value = "150"; g("cat-ac-cN").value = "100";
+      g("an-c1").value = "300"; g("an-cN").value = "200";
+      mCatOverride = null; mAnOverride = null;
+      sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+      g("cat-mass").value = "";
+      if (ratioMode) {
+        sMM("an", "d", document.querySelector("#an-mmb .mmb"));
+        g("an-mass").value = ""; g("an-ld").value = "";
+      } else {
+        sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+        g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+      }
+      recalcNow();
+    };
+    const povSwitches = () => {
+      setResultsTab("rates", [...document.querySelectorAll(".rtab-btn")][2]);
+      const btns = g("cdTabBar").querySelectorAll(".norm-btn");
+      const a = g("crate-table").innerHTML;
+      btns[1].click();
+      const b = g("crate-table").innerHTML;
+      btns[0].click();
+      return a !== b;
+    };
+    const out = { helperGone: typeof window.rerenderResults === "undefined" };
+
+    seed(false);
+    out.povFresh = povSwitches();
+    out.modeSolved = window.lastMode;
+
+    // pending edit: change a capacity, then use a control before the debounce
+    seed(false);
+    const cn = g("cat-ac-cN");
+    cn.value = "50"; cn.dispatchEvent(new Event("input", { bubbles: true }));
+    const before = g("r-mc").textContent.trim();
+    povSwitches();
+    out.povAppliesPendingEdit = g("r-mc").textContent.trim() !== before;
+
+    seed(true);                                    // ratio mode
+    out.modeRatio = window.lastMode;
+    out.povRatio = povSwitches();
+
+    // total-loading toggle, same three ways
+    seed(false);
+    const l0 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingFresh = g("r-cld12").innerHTML !== l0;
+    setShowTotalLoading(false);
+    seed(true);
+    const l1 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingRatio = g("r-cld12").innerHTML !== l1;
+    setShowTotalLoading(false);
+
+    out.neverStale = !g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("the stale-prone repaint helper is gone", LIVE.helperGone === true);
+  check("POV tabs update after a solve", LIVE.povFresh === true, JSON.stringify(LIVE));
+  check("POV tabs apply an edit that was still pending", LIVE.povAppliesPendingEdit === true, JSON.stringify(LIVE));
+  check("POV tabs update in ratio mode (the reported bug)",
+    LIVE.modeRatio === "ratio" && LIVE.povRatio === true, JSON.stringify(LIVE));
+  check("total-loading toggle updates in both modes",
+    LIVE.loadingFresh === true && LIVE.loadingRatio === true, JSON.stringify(LIVE));
+  check("no Results control leaves the page marked stale", LIVE.neverStale === true, JSON.stringify(LIVE));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
