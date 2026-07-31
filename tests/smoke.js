@@ -158,7 +158,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const r = {};
     try { r.sim = !!(simComputeSeries() || {}).ok; } catch (e) { r.sim = "THREW:" + e.message; }
     try { renderSimPlot(); r.simRender = true; } catch (e) { r.simRender = "THREW:" + e.message; }
-    try { const t = buildTXT(gatherExportData(), { summary:1,materials:1,masses:1,composition:1,ratios:1,loadings:1,rates:1,currents:1 }); r.txt = t.length; } catch (e) { r.txt = "THREW:" + e.message; }
+    try { const t = buildTXT(gatherExportData(), { summary:1,materials:1,masses:1,composition:1,ratios:1,loadings:1,rates:1,currents:1,ratioTbl:1,cratesTbl:1,catpovTbl:1,anpovTbl:1 }); r.txt = t.length; } catch (e) { r.txt = "THREW:" + e.message; }
     try { r.lib = lib.ac.length + lib.anode.length + lib.saltNa.length + lib.saltLi.length; renderLT(); } catch (e) { r.lib = "THREW:" + e.message; }
     return r;
   });
@@ -1025,6 +1025,61 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the constant-capacity assumption fills the region in",
     EX.assumeBoxShown === true && EX.assumedFillsIn === true, JSON.stringify(EX));
   check("a capacity typed by the user overrides the automatic one", EX.userValueUsed === true);
+
+  // ── Exports carry the same numbers AND the same caveats as the screen ──
+  // A rate the tool refuses to estimate has no numbers at all; an export that
+  // assumes they exist crashes, and one that prints estimates unlabelled lies.
+  const XP = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    const sel = { ratioTbl: 1 };
+    const run = async () => {
+      const D = gatherExportData();
+      const r = { rows: D.ratioRows.length };
+      try { r.txt = buildTXT(D, sel); } catch (e) { r.txt = "THREW:" + e.message; }
+      try { r.html = await buildHTMLBody(D, sel, { kind: "doc" }); } catch (e) { r.html = "THREW:" + e.message; }
+      return r;
+    };
+    // (a) the refusal state left by the previous block — no ladder on either side
+    const A = await run();
+    out.refusedTxtOk = typeof A.txt === "string" && !/^THREW/.test(A.txt);
+    out.refusedHtmlOk = typeof A.html === "string" && !/^THREW/.test(A.html);
+    out.refusalExplained = out.refusedTxtOk && /not enough data/i.test(A.txt) &&
+                           /declines to estimate/i.test(A.txt);
+    out.noNaN = out.refusedTxtOk && !/NaN|undefined|null/.test(A.txt);
+    out.refusedRows = A.rows;
+
+    // (b) a real ladder — every value must say where it came from
+    g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    g("cell-rate-nth").value = "1"; onCellRateChange();
+    setBarPhase("Nth");
+    recalcNow();
+    const B = await run();
+    out.laddered = typeof B.txt === "string" && !/^THREW/.test(B.txt);
+    out.hasSourceCol = out.laddered && /Source/.test(B.txt);
+    out.marksEstimates = out.laddered && /\best\./.test(B.txt) && /measured/.test(B.txt);
+    out.footnoted = out.laddered && /extrapolated from the measured half-cell points/.test(B.txt);
+    out.countsPoints = out.laddered && /Measured rate points on file: cathode \d+, anode \d+/.test(B.txt);
+    out.htmlMarks = typeof B.html === "string" && !/^THREW/.test(B.html) &&
+                    /<th[^>]*>Source<\/th>/.test(B.html);
+    // columns stay aligned: every body line starts at the same offset as the header
+    const seg = B.txt.slice(B.txt.indexOf("Cell rate"));
+    const lines = seg.split("\n").filter(s => /^(▸ )?C[\/0-9]/.test(s));
+    const at = s => s.indexOf("mA/g");
+    out.aligned = lines.length > 3 && new Set(lines.map(s => at(s) >= 0 ? 1 : 0)).size === 1 &&
+                  new Set(lines.map(s => s.length > 40)).size === 1;
+    return out;
+  });
+  check("an export survives rates the tool refused to estimate",
+    XP.refusedTxtOk === true && XP.refusedHtmlOk === true, JSON.stringify(XP));
+  check("the export explains the refusal instead of printing empty numbers",
+    XP.refusalExplained === true && XP.noNaN === true, JSON.stringify(XP));
+  check("exported capacities say whether they are measured, estimated or assumed",
+    XP.hasSourceCol === true && XP.marksEstimates === true && XP.htmlMarks === true, JSON.stringify(XP));
+  check("the export footnotes its provenance and counts the measured points",
+    XP.footnoted === true && XP.countsPoints === true, JSON.stringify(XP));
+  check("the exported rate table stays column-aligned", XP.aligned === true, JSON.stringify(XP));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 

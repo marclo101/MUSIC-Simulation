@@ -36,6 +36,8 @@ Where the data cannot support an estimate — a single measured rate, no rate da
 
 For every rate the table gives the cell C-rate and each electrode's mass-normalized current, both electrode capacities, the deliverable capacity as a percentage of the design point, the drifting N/P, the potential shift of the part-swept electrode, and which electrode is limiting — colour-graded on the same green/amber/red scale used elsewhere. Clicking a row simulates the cell at that rate.
 
+Every export carries the table with the same caveats as the screen: a **Source** column marking each value *measured* / *est.* / *assumed*, the reason printed under any rate that could not be estimated, the design-rate warning if your design point is not measurement-backed, and a count of the measured rate points behind it all.
+
 ### The Simulation tab
 
 The **Simulation** tab draws the galvanostatic charge–discharge (GCD) curves — V<sub>cat</sub>, V<sub>an</sub> and V<sub>cell</sub> vs capacity or time — of the balanced cell. Each electrode is a state-of-charge position on a canonical piecewise-linear Q–V map built from the balance results and the material inputs:
