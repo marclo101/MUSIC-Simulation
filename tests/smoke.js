@@ -158,7 +158,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const r = {};
     try { r.sim = !!(simComputeSeries() || {}).ok; } catch (e) { r.sim = "THREW:" + e.message; }
     try { renderSimPlot(); r.simRender = true; } catch (e) { r.simRender = "THREW:" + e.message; }
-    try { const t = buildTXT(gatherExportData(), { summary:1,materials:1,masses:1,composition:1,ratios:1,loadings:1,rates:1,currents:1 }); r.txt = t.length; } catch (e) { r.txt = "THREW:" + e.message; }
+    try { const t = buildTXT(gatherExportData(), { summary:1,materials:1,masses:1,composition:1,ratios:1,loadings:1,rates:1,currents:1,ratioTbl:1,cratesTbl:1,catpovTbl:1,anpovTbl:1 }); r.txt = t.length; } catch (e) { r.txt = "THREW:" + e.message; }
     try { r.lib = lib.ac.length + lib.anode.length + lib.saltNa.length + lib.saltLi.length; renderLT(); } catch (e) { r.lib = "THREW:" + e.message; }
     return r;
   });
@@ -900,7 +900,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
 
   // ── Item A: rate response ──
   const RR = await page.evaluate(async () => {
-    const g = id => document.getElementById(id);
+    const g = id => document.getElementById(id);   // eslint-disable-line
     // Two library materials with real rate ladders, anode pinned by loading.
     g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
     g("an-ps").value = "u_moregjf5"; applyPS("an");
@@ -914,13 +914,18 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     recalcNow();
     const d = window._rrData;
     const design = d.rows.find(x => x.isDesign);
-    const fast = d.rows[d.rows.length - 1];
+    const known = d.rows.filter(x => x.state !== "unknown");
+    const slow = known[0], fast = known[known.length - 1];
     const out = {
       rows: d.rows.length,
-      designAtTarget: Math.abs(design.np - d.target) < 1e-6 && Math.abs(design.pct - 1) < 1e-6,
+      stdLadder: d.rows.filter(x => !x.isMeasured).length,
+      designPresent: !!design,
+      designState: design ? design.state : "missing",
+      warnsWhenDesignUncovered: !design || design.state === "measured" ||
+        /design rate is|no rate data covers/.test(g("rrDesign").textContent),
       designBadged: !!document.querySelector(".rr-design-row .rr-badge"),
-      capacityFalls: fast.pct < design.pct,
-      balanceDrifts: Math.abs(fast.np - d.target) > Math.abs(design.np - d.target),
+      capacityFalls: fast.pct < slow.pct,
+      balanceDrifts: Math.abs(fast.np - d.target) > Math.abs(slow.np - d.target),
       gradesSpanColours: new Set(d.rows.map(r => r.status)).size >= 2,
       offDesignExplains: !!(fast.consequence && fast.consequence.length > 20),
       shiftReported: d.rows.some(r => r.shiftV != null && r.shiftV > 0.05),
@@ -943,9 +948,12 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     out.notStale = !g("calcBtn").classList.contains("dirty");
     return out;
   });
-  check("rate response builds a grid of rates", RR.rows >= 8, String(RR.rows));
-  check("the design rate sits exactly on target at 100% capacity",
-    RR.designAtTarget === true && RR.designBadged === true, JSON.stringify(RR));
+  check("the table shows the standard ladder, not every measured point",
+    RR.rows <= 8 && RR.stdLadder >= 7, JSON.stringify(RR));
+  check("the design rate is present and badged",
+    RR.designPresent === true && RR.designBadged === true, JSON.stringify(RR));
+  check("it warns when the design rate is not backed by a measurement",
+    RR.warnsWhenDesignUncovered === true, RR.designState);
   check("cycling faster costs capacity and drifts the balance",
     RR.capacityFalls === true && RR.balanceDrifts === true, JSON.stringify(RR));
   check("rows are graded, and an off-design rate explains the consequence",
@@ -958,6 +966,120 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("clicking a row seeds the simulation at that rate", RR.seedsSim === true);
   check("ratio table and potential windows are gone", RR.oldSectionsGone === true);
   check("rate-response controls never mark results stale", RR.notStale === true);
+
+  // ── Extrapolation, and refusing to extrapolate ──
+  const EX = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    // A material with a real ladder: standard rates are derived from it.
+    g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb")); g("cat-mass").value = "";
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+    g("cell-rate-nth").value = "1"; onCellRateChange();
+    if (g("rrShowMeasured").checked) g("rrShowMeasured").click();
+    if (g("rrAssumeFlat").checked) g("rrAssumeFlat").click();
+    recalcNow();
+    let d = window._rrData;
+    out.stdOnly = d.rows.length === 7;
+    out.rateLabels = d.rows.map(r => fCrate(r.rate)).join(" ");
+    out.hasEstimates = d.rows.some(r => r.state === "extrapolated");
+    out.hasMeasured = d.rows.some(r => r.state === "measured");
+    // Opt-in: measured points appear as extra rows, flagged
+    g("rrShowMeasured").click();
+    out.withMeasured = window._rrData.rows.length > 7 &&
+                       window._rrData.rows.some(r => r.isMeasured);
+    g("rrShowMeasured").click();
+
+    // No ladder at all → refuse to extrapolate, and say why
+    catAcRates = []; anRates = [];
+    g("cat-ac-c1").value = "150"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "300"; g("an-cN").value = "200";
+    recalcNow();
+    d = window._rrData;
+    out.allUnknown = d.rows.every(r => r.state === "unknown");
+    out.explains = /not enough data to extrapolate/i.test(g("rrTable").textContent) &&
+                   /no measured rate data/i.test(g("rrTable").textContent);
+    out.noInventedNumbers = d.rows.every(r => r.Q === null && r.np === null);
+    // The escape hatch the user asks for
+    g("rrAssumeFlat").click();
+    out.assumeBoxShown = g("rrAssumeBox").style.display !== "none";
+    out.assumedFillsIn = window._rrData.rows.every(r => r.state === "assumed" && r.Q > 0);
+    // A typed value overrides the auto edge value
+    g("rrAssumeCat").value = "10"; onRrAssumeEdit();
+    out.userValueUsed = Math.abs(window._rrData.rows[0].Qc - window._rrData.mCatAM * 10) < 1e-6;
+    g("rrAssumeCat").value = ""; onRrAssumeEdit();
+    g("rrAssumeFlat").click();
+    return out;
+  });
+  check("the table shows exactly the standard rate ladder by default",
+    EX.stdOnly === true && /C\/20 C\/10 C\/5 C\/2 1C 2C 5C/.test(EX.rateLabels), JSON.stringify(EX.rateLabels));
+  check("capacities are extrapolated from the library, and measured points marked",
+    EX.hasEstimates === true && EX.hasMeasured === true, JSON.stringify(EX));
+  check("a checkbox adds the measured rate points", EX.withMeasured === true);
+  check("with too few points it refuses to extrapolate rather than inventing numbers",
+    EX.allUnknown === true && EX.noInventedNumbers === true, JSON.stringify(EX));
+  check("it explains simply why it cannot extrapolate", EX.explains === true);
+  check("the constant-capacity assumption fills the region in",
+    EX.assumeBoxShown === true && EX.assumedFillsIn === true, JSON.stringify(EX));
+  check("a capacity typed by the user overrides the automatic one", EX.userValueUsed === true);
+
+  // ── Exports carry the same numbers AND the same caveats as the screen ──
+  // A rate the tool refuses to estimate has no numbers at all; an export that
+  // assumes they exist crashes, and one that prints estimates unlabelled lies.
+  const XP = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    const sel = { ratioTbl: 1 };
+    const run = async () => {
+      const D = gatherExportData();
+      const r = { rows: D.ratioRows.length };
+      try { r.txt = buildTXT(D, sel); } catch (e) { r.txt = "THREW:" + e.message; }
+      try { r.html = await buildHTMLBody(D, sel, { kind: "doc" }); } catch (e) { r.html = "THREW:" + e.message; }
+      return r;
+    };
+    // (a) the refusal state left by the previous block — no ladder on either side
+    const A = await run();
+    out.refusedTxtOk = typeof A.txt === "string" && !/^THREW/.test(A.txt);
+    out.refusedHtmlOk = typeof A.html === "string" && !/^THREW/.test(A.html);
+    out.refusalExplained = out.refusedTxtOk && /not enough data/i.test(A.txt) &&
+                           /declines to estimate/i.test(A.txt);
+    out.noNaN = out.refusedTxtOk && !/NaN|undefined|null/.test(A.txt);
+    out.refusedRows = A.rows;
+
+    // (b) a real ladder — every value must say where it came from
+    g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    g("cell-rate-nth").value = "1"; onCellRateChange();
+    setBarPhase("Nth");
+    recalcNow();
+    const B = await run();
+    out.laddered = typeof B.txt === "string" && !/^THREW/.test(B.txt);
+    out.hasSourceCol = out.laddered && /Source/.test(B.txt);
+    out.marksEstimates = out.laddered && /\best\./.test(B.txt) && /measured/.test(B.txt);
+    out.footnoted = out.laddered && /extrapolated from the measured half-cell points/.test(B.txt);
+    out.countsPoints = out.laddered && /Measured rate points on file: cathode \d+, anode \d+/.test(B.txt);
+    out.htmlMarks = typeof B.html === "string" && !/^THREW/.test(B.html) &&
+                    /<th[^>]*>Source<\/th>/.test(B.html);
+    // columns stay aligned: every body line starts at the same offset as the header
+    const seg = B.txt.slice(B.txt.indexOf("Cell rate"));
+    const lines = seg.split("\n").filter(s => /^(▸ )?C[\/0-9]/.test(s));
+    const at = s => s.indexOf("mA/g");
+    out.aligned = lines.length > 3 && new Set(lines.map(s => at(s) >= 0 ? 1 : 0)).size === 1 &&
+                  new Set(lines.map(s => s.length > 40)).size === 1;
+    return out;
+  });
+  check("an export survives rates the tool refused to estimate",
+    XP.refusedTxtOk === true && XP.refusedHtmlOk === true, JSON.stringify(XP));
+  check("the export explains the refusal instead of printing empty numbers",
+    XP.refusalExplained === true && XP.noNaN === true, JSON.stringify(XP));
+  check("exported capacities say whether they are measured, estimated or assumed",
+    XP.hasSourceCol === true && XP.marksEstimates === true && XP.htmlMarks === true, JSON.stringify(XP));
+  check("the export footnotes its provenance and counts the measured points",
+    XP.footnoted === true && XP.countsPoints === true, JSON.stringify(XP));
+  check("the exported rate table stays column-aligned", XP.aligned === true, JSON.stringify(XP));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
