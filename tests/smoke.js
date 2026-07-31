@@ -322,10 +322,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
                      typeof window.ratioOverride === "undefined";
     out.msgBoxGone = !g("r-edit-msg");
     out.noClickHandler = !g("r-r1pct").getAttribute("onclick") && !g("r-rNpct").getAttribute("onclick");
-    // Deviation basis: with target 1.20 the rGrid "vs target" column must agree
-    // with the solver's own o1/oN rather than measuring against 1.00.
+    // Deviation basis: with target 1.20 the rate-response "vs target" column
+    // must agree with the solver's own o1/oN, not measure against 1.00.
     g("np-target").value = "1.20"; onNpTargetChange(); recalcNow();
-    out.header = g("rGrid").textContent.includes("vs target");
+    out.header = g("rrTable").textContent.includes("vs target");
     const r = window.lastR;
     out.oNAgainstTarget = Math.abs(r.oN - (r.rN - 1.2) * 100) < 1e-6;
     g("np-target").value = "1.00"; onNpTargetChange(); recalcNow();
@@ -823,6 +823,141 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     BT.appliedPendingEdit === true, JSON.stringify(BT));
   check("1st/Nth toggle never leaves the results marked stale",
     BT.neverStale === true && BT.stillNotStale === true, JSON.stringify(BT));
+
+  // ── Item B: every Results control is live, in every mode ──
+  // Three scenarios per control: after a fresh solve, with an edit still
+  // pending (before the debounce), and in ratio mode — the last is the one
+  // that was silently broken, because the old repaint helper returned early.
+  const LIVE = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const seed = (ratioMode) => {
+      if (saltOn) tgSalt();
+      g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+      g("cat-ac-c1").value = "150"; g("cat-ac-cN").value = "100";
+      g("an-c1").value = "300"; g("an-cN").value = "200";
+      mCatOverride = null; mAnOverride = null;
+      sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+      g("cat-mass").value = "";
+      if (ratioMode) {
+        sMM("an", "d", document.querySelector("#an-mmb .mmb"));
+        g("an-mass").value = ""; g("an-ld").value = "";
+      } else {
+        sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+        g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+      }
+      recalcNow();
+    };
+    const povSwitches = () => {
+      setResultsTab("rates", [...document.querySelectorAll(".rtab-btn")][2]);
+      const btns = g("cdTabBar").querySelectorAll(".norm-btn");
+      const a = g("crate-table").innerHTML;
+      btns[1].click();
+      const b = g("crate-table").innerHTML;
+      btns[0].click();
+      return a !== b;
+    };
+    const out = { helperGone: typeof window.rerenderResults === "undefined" };
+
+    seed(false);
+    out.povFresh = povSwitches();
+    out.modeSolved = window.lastMode;
+
+    // pending edit: change a capacity, then use a control before the debounce
+    seed(false);
+    const cn = g("cat-ac-cN");
+    cn.value = "50"; cn.dispatchEvent(new Event("input", { bubbles: true }));
+    const before = g("r-mc").textContent.trim();
+    povSwitches();
+    out.povAppliesPendingEdit = g("r-mc").textContent.trim() !== before;
+
+    seed(true);                                    // ratio mode
+    out.modeRatio = window.lastMode;
+    out.povRatio = povSwitches();
+
+    // total-loading toggle, same three ways
+    seed(false);
+    const l0 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingFresh = g("r-cld12").innerHTML !== l0;
+    setShowTotalLoading(false);
+    seed(true);
+    const l1 = g("r-cld12").innerHTML;
+    setShowTotalLoading(true);
+    out.loadingRatio = g("r-cld12").innerHTML !== l1;
+    setShowTotalLoading(false);
+
+    out.neverStale = !g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("the stale-prone repaint helper is gone", LIVE.helperGone === true);
+  check("POV tabs update after a solve", LIVE.povFresh === true, JSON.stringify(LIVE));
+  check("POV tabs apply an edit that was still pending", LIVE.povAppliesPendingEdit === true, JSON.stringify(LIVE));
+  check("POV tabs update in ratio mode (the reported bug)",
+    LIVE.modeRatio === "ratio" && LIVE.povRatio === true, JSON.stringify(LIVE));
+  check("total-loading toggle updates in both modes",
+    LIVE.loadingFresh === true && LIVE.loadingRatio === true, JSON.stringify(LIVE));
+  check("no Results control leaves the page marked stale", LIVE.neverStale === true, JSON.stringify(LIVE));
+
+  // ── Item A: rate response ──
+  const RR = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    // Two library materials with real rate ladders, anode pinned by loading.
+    g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    g("cat-mass").value = "";
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+    setResultsTab("diag", [...document.querySelectorAll(".rtab-btn")][1]);
+    if (typeof ensurePlotly === "function") await ensurePlotly();
+    recalcNow();
+    const d = window._rrData;
+    const design = d.rows.find(x => x.isDesign);
+    const fast = d.rows[d.rows.length - 1];
+    const out = {
+      rows: d.rows.length,
+      designAtTarget: Math.abs(design.np - d.target) < 1e-6 && Math.abs(design.pct - 1) < 1e-6,
+      designBadged: !!document.querySelector(".rr-design-row .rr-badge"),
+      capacityFalls: fast.pct < design.pct,
+      balanceDrifts: Math.abs(fast.np - d.target) > Math.abs(design.np - d.target),
+      gradesSpanColours: new Set(d.rows.map(r => r.status)).size >= 2,
+      offDesignExplains: !!(fast.consequence && fast.consequence.length > 20),
+      shiftReported: d.rows.some(r => r.shiftV != null && r.shiftV > 0.05),
+      tableRows: document.querySelectorAll("#rrTable tbody tr").length,
+      chartTraces: (g("rrChart").data || []).length,
+      oldSectionsGone: !g("rGrid") && !g("wDiag"),
+    };
+    // x-unit pill relabels without re-solving
+    const x0 = g("rrTable").querySelector("th").textContent;
+    setRateXUnit("an");
+    out.xUnitSwitches = g("rrTable").querySelector("th").textContent !== x0;
+    setRateXUnit("C");
+    // 1st/Nth cycle switch
+    setRatePhase("1st");
+    out.cycleSwitches = window._rrData.cycle === "1st";
+    setRatePhase("Nth");
+    // row click seeds the simulation
+    rateRowToSim(d.rows.length - 1);
+    out.seedsSim = !!(simRateSel["Nth"] && simRateSel["Nth"].I_uA > 0);
+    out.notStale = !g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("rate response builds a grid of rates", RR.rows >= 8, String(RR.rows));
+  check("the design rate sits exactly on target at 100% capacity",
+    RR.designAtTarget === true && RR.designBadged === true, JSON.stringify(RR));
+  check("cycling faster costs capacity and drifts the balance",
+    RR.capacityFalls === true && RR.balanceDrifts === true, JSON.stringify(RR));
+  check("rows are graded, and an off-design rate explains the consequence",
+    RR.gradesSpanColours === true && RR.offDesignExplains === true, JSON.stringify(RR));
+  check("the potential shift of the part-swept electrode is reported", RR.shiftReported === true);
+  check("chart and table are both rendered from the same data",
+    RR.chartTraces === 2 && RR.tableRows === RR.rows, JSON.stringify(RR));
+  check("the x-unit pill and cycle toggle both work",
+    RR.xUnitSwitches === true && RR.cycleSwitches === true, JSON.stringify(RR));
+  check("clicking a row seeds the simulation at that rate", RR.seedsSim === true);
+  check("ratio table and potential windows are gone", RR.oldSectionsGone === true);
+  check("rate-response controls never mark results stale", RR.notStale === true);
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 

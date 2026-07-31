@@ -80,6 +80,37 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .cellp-fld>label{font-size:11.5px;color:var(--ink2);font-weight:500;cursor:pointer}
 .cellp-fld>label .su{display:block;margin-top:1px;font-size:10px;color:var(--ink3);font-family:var(--fm)}
 .cellp-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+
+/* Rate response */
+.rr-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rr-lede{font-size:11.5px;line-height:1.55;color:var(--ink2);margin:6px 0 10px;max-width:760px}
+.rr-design{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.rr-chip{font-family:var(--fm);font-size:11px;padding:4px 10px;border-radius:6px;background:var(--bgS);border:1px solid var(--rule);color:var(--ink2)}
+.rr-chip strong{color:var(--ink);font-weight:700}
+.rr-chip.rr-cycle{background:var(--cl);border-color:rgba(28,184,139,.3);color:var(--cp)}
+.rr-chip .rr-sub{opacity:.7}
+.rr-plotwrap{position:relative;margin-bottom:6px}
+.rr-plot-note{font-size:10.5px;color:var(--ink3);font-family:var(--fm)}
+.rr-xunit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 10px;font-size:10.5px;color:var(--ink3)}
+.rr-pill{font-family:var(--fm);font-size:10.5px;padding:3px 9px;border-radius:5px;border:1px solid var(--rule);background:var(--paper);color:var(--ink2);transition:all .15s}
+.rr-pill:hover{border-color:var(--music2)}
+.rr-pill.act{background:var(--musicG);color:#fff;border-color:transparent;font-weight:600}
+.rr-tablewrap{overflow-x:auto}
+.rr-table{width:100%;border-collapse:collapse;font-size:11px}
+.rr-table th{text-align:left;font-family:var(--fm);font-size:10px;letter-spacing:.03em;color:var(--ink3);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.rr-table td{padding:6px 8px;border-bottom:1px solid var(--ruleS);font-family:var(--fm);color:var(--ink2);white-space:nowrap}
+.rr-table .rr-sub{font-size:9.5px;color:var(--ink3)}
+.rr-row{cursor:pointer;transition:background .12s}
+.rr-row:hover,.rr-row.rr-hot{background:var(--bgS)}
+.rr-row.rr-ok .rr-np,.rr-row.rr-ok .rr-dev{color:var(--ok);font-weight:600}
+.rr-row.rr-warn .rr-np,.rr-row.rr-warn .rr-dev{color:var(--wn);font-weight:600}
+.rr-row.rr-bad .rr-np,.rr-row.rr-bad .rr-dev{color:var(--er);font-weight:700}
+.rr-row.rr-bad{background:rgba(196,60,60,.045)}
+.rr-row.rr-extrap td{opacity:.55}
+.rr-design-row{background:var(--cl)!important;box-shadow:inset 3px 0 0 var(--cp)}
+.rr-badge{display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--cp);color:#fff;padding:1px 5px;border-radius:3px;margin-right:4px}
+.rr-muted{font-size:10.5px;color:var(--ink3);line-height:1.5}
+.rr-note{margin-top:8px}
 .bar-key{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--ink2)}
 .bar-key span{display:inline-flex;align-items:center;gap:6px}
 .bar-key i{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
@@ -1004,21 +1035,25 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
   <div class="rtab-pad">
     <!-- Bar chart -->
     <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st" onclick="setBarPhase('1st',this)">1st</button><button data-p="Nth" onclick="setBarPhase('Nth',this)">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg><div class="bar-key" id="bar-key"></div></div>
-    <!-- Ratio table -->
-    <div class="cd-box">
-      <h4 data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red."></button></h4>
-      <div class="rtg" id="rGrid"></div>
-    </div>
-    <!-- Potential window -->
-    <div class="cd-box">
-      <h4 data-help="Cathode and anode voltage ranges plotted versus their OCV references. &lt;em&gt;Dashed&lt;/em&gt; outline = theoretical Vₜₕ from the library; &lt;strong&gt;solid fill&lt;/strong&gt; = the operating Vₒₚ you've set. For capacitive/pseudocapacitive materials, the visible fill ratio mirrors the Vₒₚ/Vₜₕ capacity scaling." data-help-key="diag_potential_windows">Potential windows<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Cathode and anode voltage ranges plotted versus their OCV references. &lt;em&gt;Dashed&lt;/em&gt; outline = theoretical Vₜₕ from the library; &lt;strong&gt;solid fill&lt;/strong&gt; = the operating Vₒₚ you've set. For capacitive/pseudocapacitive materials, the visible fill ratio mirrors the Vₒₚ/Vₜₕ capacity scaling."></button></h4>
-      <div class="wvis" style="margin-bottom:6px"><svg id="wDiag" width="200" height="160" viewBox="0 0 200 160"></svg></div>
-      <div style="font-size:10.5px;color:var(--ink2);line-height:1.5;max-width:520px;margin:0 auto;text-align:center">
-        Voltage range each electrode sweeps, plotted vs. its OCV reference.
-        The <span style="font-style:italic">dashed</span> outline is the <em>theoretical</em> window <em>V</em><sub>th</sub> taken from the library (the material's full-capacity limits).
-        The <span style="font-weight:600">solid fill</span> is the <em>operating</em> window <em>V</em><sub>op</sub> the user has set.
-        For capacitive / pseudocapacitive materials the accessible capacity is scaled by <em>V</em><sub>op</sub>/<em>V</em><sub>th</sub>; faradaic capacities are not scaled.
+    <!-- Rate response -->
+    <div class="cd-box" id="rateResp">
+      <div class="rr-head">
+        <h4 data-help="Your electrode masses were sized for one rate — the design rate in Cell parameters. Each electrode loses capacity at a different pace as the current rises, so at any other rate the ratio Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; drifts away from the target: one electrode runs out first, the other is left part-swept and its potential shifts to compensate. The chart and table below show what that costs in deliverable capacity now, and in cycle life later." data-help-key="diag_rate_response" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Rate response — the balance only holds at the design rate<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Your electrode masses were sized for one rate — the design rate in Cell parameters. Each electrode loses capacity at a different pace as the current rises, so at any other rate the ratio Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; drifts away from the target: one electrode runs out first, the other is left part-swept and its potential shifts to compensate. The chart and table below show what that costs in deliverable capacity now, and in cycle life later."></button></h4>
+        <div class="btog" id="rrTog" title="Which cycle to describe">
+          <button class="act" data-rp="Nth" onclick="setRatePhase('Nth')">N<sup>th</sup></button>
+          <button data-rp="1st" onclick="setRatePhase('1st')">1st</button>
+        </div>
       </div>
+      <p class="rr-lede">Your electrode masses were sized for <strong>one</strong> rate. Cycle the cell faster or slower and each electrode fades at its own pace, so the balance drifts: one runs out early, the other never reaches the potential it was designed to end at.</p>
+      <div class="rr-design" id="rrDesign"></div>
+      <div class="rr-plotwrap"><div id="rrChart"></div><div class="rr-plot-note" id="rrChartNote"></div></div>
+      <div class="rr-xunit"><span>Show current as</span>
+        <button type="button" class="rr-pill act" data-xu="C" onclick="setRateXUnit('C')">cell C-rate</button>
+        <button type="button" class="rr-pill" data-xu="cat" onclick="setRateXUnit('cat')">i cathode (mA/g)</button>
+        <button type="button" class="rr-pill" data-xu="an" onclick="setRateXUnit('an')">i anode (A/g)</button>
+      </div>
+      <div class="rr-tablewrap"><table class="rr-table" id="rrTable"></table></div>
+      <div class="rr-note" id="rrNote"></div>
     </div>
   </div>
 </div>
@@ -1507,8 +1542,8 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v11.1";
-const APP_BUILD="2026-07-31";
+const APP_VERSION="v12.0";
+const APP_BUILD="2026-08-01";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
 function has(id){const el=$(id);return el&&el.value.trim()!==""}
@@ -2357,9 +2392,8 @@ function setShowTotalLoading(v){
   set("r-cld10-lbl","Cat "+tag+" ⌀10mm");
   set("r-ald12-lbl","An "+tag+" ⌀12mm");
   set("r-ald10-lbl","An "+tag+" ⌀10mm");
-  // View-only: the labels above and the numbers below must change together, so
-  // this repaints straight away rather than waiting for a Recalculate.
-  rerenderResults();
+  // Labels and numbers must move together, so apply immediately.
+  refreshResults();
 }
 
 /* Mass to display in loading metrics. Cathode AM-zone = mAC+mS (active material + salt);
@@ -2466,7 +2500,7 @@ function _cellRateApply(cycle,src){
   _cellRateMirror(cycle,src);
   reapplyPresetsForRate();
   _cellRateChrome();
-  rerenderResults();
+  refreshResults();
   if(typeof updateSimStatus==="function") updateSimStatus();
   if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
 }
@@ -2493,7 +2527,7 @@ function onCellRateChange(){
   _cellRateMirror("1st","mult");_cellRateMirror("nth","mult");
   reapplyPresetsForRate();
   _cellRateChrome();
-  rerenderResults();                                 // rate table highlight + currents
+  refreshResults();                                  // rate table highlight + currents
   if(typeof updateSimStatus==="function") updateSimStatus();
   if(typeof renderSimPlot==="function" && $("rtab-sim")?.classList.contains("act")) renderSimPlot();
 }
@@ -2551,7 +2585,7 @@ function syncAreaDia(side,src){
       diaEl.value=d.toFixed(2).replace(/\.?0+$/,"");
     } else if(arEl.value===""){diaEl.value=""}
   }
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 
 // Clear a mass input (Direct or Loading) and force a fresh recalc.
@@ -2564,7 +2598,7 @@ function clearMassInput(id){
   if(side==="an" &&typeof mAnOverride !=="undefined"&&mAnOverride !==null){mAnOverride =null}
   const mc=$(side+"-mc");if(mc)mc.value="—";
   if(typeof valF==="function")valF();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
   syncOverrideChrome();
 }
 
@@ -2592,7 +2626,7 @@ lastSolvedRefSide='an';
 lastSolvedMasses={cat:null,an:null};
 
   if(typeof valF==="function") valF();
-  if(typeof recalc==="function") recalc();
+  if(typeof refreshResults==="function") refreshResults();
 
   syncOverrideChrome();
 }
@@ -2618,13 +2652,13 @@ function setMassOverride(side,valStr){
   if(side==="cat") mCatOverride=isClear?null:v;
   else             mAnOverride =isClear?null:v;
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function resetMassOverride(side){
   if(side==="cat"){mCatOverride=null;const el=$("pmo-cat");if(el)el.value=""}
   else            {mAnOverride =null;const el=$("pmo-an"); if(el)el.value=""}
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 
 // Initial composition seeds (used when user makes the first pie-legend edit on this side).
@@ -2682,22 +2716,25 @@ function setCompOverride(side,key,valStr){
     compAnOverride=c;
   }
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function resetCompOverride(side){
   if(side==="cat") compCatOverride=null;
   else             compAnOverride =null;
   syncOverrideChrome();
-  if(typeof recalc==="function")recalc();
+  if(typeof refreshResults==="function")refreshResults();
 }
 function tgAdv(){advO=!advO;$("advSec").classList.toggle("hid",!advO);$("advLbl").textContent=advO?"Hide details":"More details";$("advAr").style.transform=advO?"rotate(180deg)":""}
 // View-only: picks which point-of-view the rate table shows. Repaints, never re-solves.
-function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));rerenderResults()}
+function setCDTab(t,btn){cdTab=t;$("cdTabBar").querySelectorAll(".norm-btn").forEach(b=>b.classList.toggle("act",b===btn));refreshResults()}
 function setResultsTab(t,btn){
   document.querySelectorAll(".rtab-btn").forEach(b=>b.classList.toggle("act",b===btn));
   document.querySelectorAll(".rtab-pane").forEach(p=>p.classList.toggle("act",p.id==="rtab-"+t));
-  if(t==="sim"){ if(typeof ensurePlotly==="function") ensurePlotly();
-                 if(typeof renderSimPlot==="function") renderSimPlot(); }
+  // Both chart tabs need Plotly, and a tab you have just opened should never
+  // show numbers older than the inputs above it.
+  if(t==="sim"||t==="diag"){ if(typeof ensurePlotly==="function") ensurePlotly(); }
+  if(calcDirty) refreshResults();
+  if(t==="sim" && typeof renderSimPlot==="function") renderSimPlot();
 }
 
 /* ── Simulation rate selection state ──
@@ -2711,6 +2748,7 @@ let simAssignMode="1st";
 let simRateSel={"1st":null,"Nth":null}; // each: {pov, label, I_uA} or null
 
 function setSimAssignMode(m){
+  if(calcDirty) refreshResults();
   simAssignMode=(m==="Nth")?"Nth":"1st";
   const l1=$("simAssignLbl-1"),lN=$("simAssignLbl-N");
   if(l1) l1.classList.toggle("act-1",simAssignMode==="1st");
@@ -2720,6 +2758,7 @@ function setSimAssignMode(m){
 function _rateKey(pov,label){return (pov||"")+"|"+(label||"")}
 
 function pickSimRate(pov,label,I_uA){
+  if(calcDirty) refreshResults();          // assign against current inputs
   I_uA=parseFloat(I_uA);
   const key=_rateKey(pov,label),cur=simRateSel[simAssignMode];
   // Toggle off if clicking the same row in the same assigning mode
@@ -2738,6 +2777,7 @@ function pickSimRate(pov,label,I_uA){
 }
 
 function clearSimRateSel(){
+  if(calcDirty) refreshResults();
   simRateSel={"1st":null,"Nth":null};
   applyRateRowHighlight();
   updateSimStatus();
@@ -4681,6 +4721,13 @@ function _renderSimPlotTime(host, xUnit){
 function renderSimPlot(){
   const host=$("simPlot");
   if(!host || typeof Plotly==="undefined") return;
+  // Every sim control (cycle, R_eq, smoothing, constraints, axis pills) lands
+  // here, so one guard keeps them all from drawing a stale solution.
+  if(calcDirty && !_inSimRefresh){
+    _inSimRefresh=true;
+    try{ refreshResults(); } finally { _inSimRefresh=false; }
+    return;                                // recalcNow redraws the sim itself
+  }
   syncSimAxisFromInputs();
   _simSyncConsDefaults();
 
@@ -6535,6 +6582,7 @@ let calcDirty=false;
 // How long edits settle before the solver re-runs on its own.
 const AUTO_CALC_MS=350;
 let _autoCalcT=null;
+let _inSimRefresh=false;   // guards renderSimPlot <-> recalcNow reentry
 function _calcStaleUI(dirty){
   const b=$("calcBtn"); if(b) b.classList.toggle("dirty",dirty);
   const s=$("recalcStale"); if(s) s.style.display=dirty?"":"none";
@@ -6579,17 +6627,22 @@ function setBarPhase(ph,btn){
   barPh=(ph==="Nth")?"Nth":"1st";
   const host=$("bTog");
   if(host) host.querySelectorAll("button[data-p]").forEach(b=>b.classList.toggle("act",b.dataset.p===barPh));
-  if(typeof recalcNow==="function" && window.lastInp) recalcNow();
-  else rerenderResults();
+  refreshResults();
 }
-function rerenderResults(){
-  const r=window.lastR,inp=window.lastInp;
-  if(!r||!inp||window.lastMode==="ratio") return;
-  // Loading read-outs depend on showTotalLoading.
-  $("r-cld12").innerHTML=fLd(ldCatMass(r),A12);$("r-cld10").innerHTML=fLd(ldCatMass(r),A10);
-  $("r-ald12").innerHTML=fLd(ldAnMass(r,inp),A12);$("r-ald10").innerHTML=fLd(ldAnMass(r,inp),A10);
-  // Rate table depends on cdTab; capacity bars depend on barPh.
-  renderCD(inp,r);drawBar(inp,r);
+/* Every control inside the results panel comes through here.
+
+   It used to be a partial repaint from the cached solution, which failed two
+   ways at once: it returned early in ratio mode — the mode you are in whenever
+   no mass is pinned, so the POV tabs changed their own highlight and repainted
+   nothing — and when it did run it drew numbers from the last solve, so any
+   edit made since was invisible. Both looked exactly like a dead control whose
+   only cure was pressing Recalculate.
+
+   A full solve has neither problem: it handles every mode and reads the inputs
+   as they are now. It costs single-digit milliseconds, so there is no reason to
+   keep a cheaper path that can be wrong. */
+function refreshResults(){
+  if(typeof recalcNow==="function") recalcNow();
 }
 function recalcNow(){
   clearTimeout(_autoCalcT);
@@ -6654,10 +6707,10 @@ else if(mode==="anode") lastSolvedRefSide='cat';
   $("r-pAC").innerHTML=fP(r.pAC);$("r-pS").innerHTML=fP(r.pS);$("r-mAC").innerHTML=fM(r.mAC);$("r-mS").innerHTML=fM(r.mS);
   $("r-cld12").innerHTML=fLd(ldCatMass(r),A12);$("r-cld10").innerHTML=fLd(ldCatMass(r),A10);
   $("r-ald12").innerHTML=fLd(ldAnMass(r,inp),A12);$("r-ald10").innerHTML=fLd(ldAnMass(r,inp),A10);
-  renderCD(inp,r);buildRT(inp,r);drawBar(inp,r);
+  renderCD(inp,r);renderRateResponse();drawBar(inp,r);
   drawPie("pie-cat","lg-cat",bCatPie(inp,r),"cat");
   drawPie("pie-an","lg-an",[{l:"Active material",v:inp.an.wAM*r.mAn,c:"var(--ap)",k:"AM"},{l:"Conductive",v:inp.an.wC*r.mAn,c:"var(--pw)",k:"C"},{l:"Binder",v:inp.an.wB*r.mAn,c:"var(--oc)",k:"B"}],"an");
-  drawPW(inp);valF();syncOverrideChrome();updateRateEquiv();
+  valF();syncOverrideChrome();updateRateEquiv();
   // Expose to export module
   window.lastInp=inp;window.lastR=r;window.lastMode=mode;
   enableExportBtn(true);
@@ -6724,10 +6777,10 @@ function renderRatio(inp){
   $("r-mAC").innerHTML=fM(r.mAC);$("r-mS").innerHTML=fM(r.mS);
   $("r-cld12").innerHTML=fLd(ldCatMass(r),A12);$("r-cld10").innerHTML=fLd(ldCatMass(r),A10);
   $("r-ald12").innerHTML=fLd(ldAnMass(r,ratioInp),A12);$("r-ald10").innerHTML=fLd(ldAnMass(r,ratioInp),A10);
-  renderCD(ratioInp,r);buildRT(ratioInp,r);drawBar(ratioInp,r);
+  renderCD(ratioInp,r);renderRateResponse();drawBar(ratioInp,r);
   drawPie("pie-cat","lg-cat",bCatPie(ratioInp,r),"cat");
   drawPie("pie-an","lg-an",[{l:"Active material",v:inp.an.wAM*r.mAn,c:"var(--ap)",k:"AM"},{l:"Conductive",v:inp.an.wC*r.mAn,c:"var(--pw)",k:"C"},{l:"Binder",v:inp.an.wB*r.mAn,c:"var(--oc)",k:"B"}],"an");
-  drawPW(inp);valF();syncOverrideChrome();updateRateEquiv();
+  valF();syncOverrideChrome();updateRateEquiv();
   // Expose to export module (ratio mode — store the rebuilt ratioInp)
   window.lastInp=ratioInp;window.lastR=r;window.lastMode="ratio";
   enableExportBtn(true);
@@ -6743,8 +6796,8 @@ function renderEmpty(msg){
   ["r-pAC","r-pS","r-mAC","r-mS","r-cld12","r-cld10","r-ald12","r-ald10"].forEach(id=>{const el=$(id);if(el){el.innerHTML="—";el.className=el.className.replace(/\b(gd|ct|bd)\b/g,"")}});
   $("crate-table").innerHTML="";
   $("sChip").className="sts em";$("sTxt").textContent="Awaiting input";
-  $("rGrid").innerHTML="";$("bar-chart").innerHTML="";
-  ["pie-cat","pie-an","wDiag"].forEach(id=>$(id).innerHTML="");["lg-cat","lg-an"].forEach(id=>$(id).innerHTML="");
+  {const t=$("rrTable");if(t)t.innerHTML="";const d=$("rrDesign");if(d)d.innerHTML="";}$("bar-chart").innerHTML="";
+  ["pie-cat","pie-an"].forEach(id=>{const e=$(id);if(e)e.innerHTML=""});["lg-cat","lg-an"].forEach(id=>$(id).innerHTML="");
   // Clear the editable pie-center mass inputs only when no override is active
   ["pmo-cat","pmo-an"].forEach(id=>{const el=$(id);if(!el)return;const ov=(id==="pmo-cat"?mCatOverride:mAnOverride);if(ov===null)el.value=""});
   syncOverrideChrome();
@@ -6946,26 +6999,303 @@ function fCrate(c){
 }
 
 /* ══ RATIO TABLE ══ */
-function buildRT(inp,r){const g=$("rGrid"),es=[];
-  // Read units from hidden -ru inputs so display matches the picked unit.
-  const ruC1=$("cat-ac-r1-ru")?.value||"",ruCN=$("cat-ac-rN-ru")?.value||"";
-  const ruA1=$("an-r1-ru")?.value||"",ruAN=$("an-rN-ru")?.value||"";
-  const fmtR=(rv,ru)=>(ru==="unknown")?"—":fRtU(rv,ru);
-  // Deviations are measured against the TARGET N/P, the same basis the hero
-  // percentages and the status chip use. Showing "off by X" against two
-  // different references on one screen is what made the balance confusing.
-  const tN=r.target||npTarget, t1=r.target1||tN;
-  const dev=(ratio,tgt)=>(ratio-tgt)*100;
-  es.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,over:dev(r.r1,t1)});
-  es.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,over:dev(r.rN,tN)});
-  // Add entries from library rate data if available — Qa/Qc convention here too.
-  anRates.forEach(ar=>{const arRv=ar.rv||ar.rate;const arRu=ar.ru||"C";if(Math.abs(arRv-inp.an.rN)<.001&&arRu===ruAN)return;
-    const Qc=r.mAC*inp.cat.ac.cN*r.kc+(saltOn?r.mS*inp.cat.salt.cN*r.kc:0);const Qa=r.mAn*inp.an.wAM*ar.cN;const ratio=Qc>0?Qa/Qc:0;
-    if(ar.cN>0)es.push({lb:"An@"+fRtU(arRv,arRu),ri:fmtR(inp.cat.ac.rN,ruCN)+"/"+fRtU(arRv,arRu),ratio,over:dev(ratio,tN)})});
-  let h=`<div class="rtg-h"><span>Condition</span><span style="text-align:center">Rate</span><span style="text-align:center">Q<sub>a</sub>/Q<sub>c</sub></span><span style="text-align:center">vs target</span></div>`;
-  es.forEach(e=>{const cl=rC(e.over);h+=`<div class="rtg-r"><span class="k">${e.lb}</span><span class="v" style="font-size:10px;color:var(--ink3)">${e.ri}</span><span class="v ${cl}">${fR(e.ratio)}</span><span class="v ${cl}">${fE(e.over)}</span></div>`});g.innerHTML=h}
 
+/* Build the whole rate-response dataset for one cycle ("1st" | "Nth").
+   Returns null when there is nothing solved to describe. */
+/* Capacity (mAh/g) an electrode delivers at a given specific current, read off
+   its measured ladder and interpolated in log-current. Falls back to the typed
+   capacity when the material has no usable ladder. */
+function _rrCapAt(side, cycle, i_mAg, capTyped){
+  const ladder=_simRateLadder(side, cycle);
+  if(!Array.isArray(ladder) || ladder.length<1 || !(i_mAg>0))
+    return {c:capTyped, extrapolated:false, flat:true};
+  if(ladder.length===1)
+    return {c:ladder[0].c, extrapolated:false, flat:true};
+  const at=_simRateCapAt(ladder, i_mAg);
+  return {c:at.c, extrapolated:!!at.clamped, flat:false,
+          lo:ladder[0].i, hi:ladder[ladder.length-1].i};
+}
+
+function buildRateResponse(cycle){
+  const r=window.lastR, inp=window.lastInp;
+  if(!r||!inp||!r.sane) return null;
+  const isFirst=(cycle==="1st");
+  const wA=inp.an.wAM;
+  const mCatAM=r.mAC, mAnAM=r.mAn*wA, mS=r.mS||0;
+  if(!(mCatAM>0)||!(mAnAM>0)) return null;
+
+  const capC=isFirst?inp.cat.ac.c1:inp.cat.ac.cN;
+  const capA=isFirst?inp.an.c1:inp.an.cN;
+  const capS=isFirst?inp.cat.salt.c1:inp.cat.salt.cN;
+  const target=isFirst?(r.target1||r.target||npTarget):(r.target||npTarget);
+  const designRate=isFirst?cellRate1st:cellRateNth;
+
+  // Deliverable capacity the design point was built around — the yardstick the
+  // percentages are measured against.
+  const Qc_design=isFirst?r.Qc1:r.QcN, Qa_design=isFirst?r.Qa1:r.QaN;
+  const Q_design=Math.min(Qc_design,Qa_design);
+  if(!(Q_design>0)) return null;
+
+  // ── Rate grid: a standard ladder, the design rate, and the cell rate implied
+  //    by every measured library point on either electrode. Deduped in log
+  //    space so near-identical rates do not stack up.
+  const grid=[0.05,0.1,0.2,0.5,1,2,5];
+  grid.push(designRate);
+  [["cat",mCatAM],["an",mAnAM]].forEach(([side,mAM])=>{
+    (_simRateLadder(side,isFirst?"c1":"cN")||[]).forEach(pt=>{
+      const I=pt.i*mAM;                 // mA/g · mg = µA
+      if(I>0) grid.push(I/Q_design);    // µA / µAh = 1/h = C
+    });
+  });
+  const rates=[];
+  grid.filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).forEach(x=>{
+    if(!rates.length || Math.abs(Math.log(x/rates[rates.length-1]))>0.02) rates.push(x);
+  });
+
+  const vopC=Math.abs(inp.cat.Vop[0]-inp.cat.Vop[1]);
+  const vopA=Math.abs(inp.an.Vop[0]-inp.an.Vop[1]);
+  const stC=inp.cat.ac.st, stA=inp.an.st;
+
+  const rows=rates.map(rate=>{
+    const I=rate*Q_design;                       // µA
+    const i_cat=I/mCatAM, i_an=I/mAnAM;          // mA/g on each AM
+    const cc=_rrCapAt("cat",isFirst?"c1":"cN",i_cat,capC);
+    const ca=_rrCapAt("an", isFirst?"c1":"cN",i_an, capA);
+    let Qc=mCatAM*cc.c;
+    if(isFirst && saltOn && mS>0 && capS>0) Qc+=mS*capS;   // salt fires on cycle 1 only
+    const Qa=mAnAM*ca.c;
+    const Q=Math.min(Qc,Qa);
+    const np=Qc>0?Qa/Qc:0;
+    const spread=(Q>0)?Math.abs(Qa-Qc)/Math.max(Qa,Qc):0;
+    const limiting=(spread<0.005)?"balanced":((Qa<Qc)?"anode":"cathode");
+
+    // How far the balance has drifted, graded on the same scale as the
+    // capacity pills so a colour means one thing across the whole tool.
+    const off=(np>0&&target>0)?Math.abs(Math.log(np/target)):Infinity;
+    const status=(off<=Math.log(1.25))?"ok":(off<=Math.log(2.5))?"warn":"bad";
+
+    // The electrode that is NOT limiting only sweeps part of its own capacity;
+    // the rest of its window is never reached, so its potential sits away from
+    // where it was designed to end up.
+    const Qown=(limiting==="anode")?Qc:(limiting==="cathode"?Qa:Q);
+    const f=(Qown>0)?Q/Qown:1;
+    const idleSide=(limiting==="anode")?"cathode":"anode";   // who is left part-swept
+    const idleSt=(idleSide==="cathode")?stC:stA;
+    const idleVop=(idleSide==="cathode")?vopC:vopA;
+    const unused=Math.max(0,1-f);
+    const shiftV=(idleSt==="capacitive"||idleSt==="pseudocapacitive")?unused*idleVop:null;
+
+    let consequence="";
+    if(status!=="ok"){
+      consequence=(limiting==="cathode")
+        ? "Cathode exhausts first — capacity is cathode-limited and the anode never reaches its design potential."
+        : (limiting==="anode")
+        ? "Anode exhausts first — it is driven to the end of its window on charge; plating and fade risk."
+        : "";
+    }
+    return {rate,I,i_cat,i_an,Qc,Qa,Q,np,status,limiting,
+            pct:Q/Q_design, unused, shiftV, idleSide, consequence,
+            extrapolated:cc.extrapolated||ca.extrapolated,
+            flat:cc.flat&&ca.flat,
+            isDesign:Math.abs(Math.log(rate/designRate))<0.02};
+  }).filter(row=>!(row.extrapolated&&row.pct<0.02));   // drop meaningless far tails
+
+  return {cycle,rows,target,designRate,Q_design,mCatAM,mAnAM,
+          singleRate:rows.length?rows.every(x=>x.flat):true,
+          dual:!!r.dualAnode};
+}
+
+
+/* View state for the rate-response section. Both are display-only: which cycle
+   is described, and which current the x-axis / first column reports. */
+let ratePhase="Nth", rateXUnit="C";
+function setRatePhase(ph){
+  ratePhase=(ph==="1st")?"1st":"Nth";
+  const t=$("rrTog");
+  if(t) t.querySelectorAll("button[data-rp]").forEach(b=>b.classList.toggle("act",b.dataset.rp===ratePhase));
+  refreshResults();
+}
+function setRateXUnit(u){
+  rateXUnit=(u==="cat"||u==="an")?u:"C";
+  const h=$("rateResp");
+  if(h) h.querySelectorAll(".rr-pill").forEach(b=>b.classList.toggle("act",b.dataset.xu===rateXUnit));
+  renderRateResponse();          // relabel only — no re-solve needed
+}
+function _rrX(row){
+  return rateXUnit==="cat" ? row.i_cat
+       : rateXUnit==="an"  ? row.i_an/1000
+       : row.rate;
+}
+function _rrXLabel(){
+  return rateXUnit==="cat" ? "cathode current (mA/g)"
+       : rateXUnit==="an"  ? "anode current (A/g)"
+       : "cell rate (C)";
+}
+function _rrXText(row){
+  return rateXUnit==="cat" ? row.i_cat.toPrecision(3)+" mA/g"
+       : rateXUnit==="an"  ? (row.i_an/1000).toPrecision(3)+" A/g"
+       : fCrate(row.rate);
+}
+
+/* Table + header. The chart is drawn separately (and lazily) but from the same
+   dataset, so the two can never tell different stories. */
+function renderRateResponse(){
+  const host=$("rateResp"); if(!host) return;
+  const d=buildRateResponse(ratePhase);
+  const tbl=$("rrTable"), head=$("rrDesign"), note=$("rrNote");
+  if(!d||!d.rows.length){
+    if(tbl) tbl.innerHTML="";
+    if(head) head.innerHTML='<span class="rr-muted">Run a calculation to see how the cell behaves away from its design rate.</span>';
+    if(note) note.innerHTML="";
+    renderRateChart(null);
+    return;
+  }
+  const design=d.rows.find(x=>x.isDesign)||d.rows[0];
+  if(head){
+    head.innerHTML=
+      '<span class="rr-chip">Designed for <strong>'+fCrate(d.designRate)+'</strong> <span class="rr-sub">'+fRateTime(d.designRate)+'</span></span>'+
+      '<span class="rr-chip">Deliverable <strong>'+d.Q_design.toPrecision(3)+' µAh</strong></span>'+
+      '<span class="rr-chip">Target N/P <strong>'+d.target.toFixed(2)+'</strong></span>'+
+      '<span class="rr-chip rr-cycle">'+(d.cycle==="1st"?"formation (1st) cycle":"reversible (N<sup>th</sup>) cycle")+'</span>';
+  }
+  const cells=d.rows.map((row,i)=>{
+    const dev=(row.np-d.target)*100;
+    const shift=(row.shiftV!=null)
+      ? (row.shiftV>0.005 ? "±"+row.shiftV.toFixed(2)+" V" : "—")
+      : (row.unused>0.01 ? (row.unused*100).toFixed(0)+"% unswept" : "—");
+    return '<tr class="rr-row '+(row.isDesign?"rr-design-row ":"")+'rr-'+row.status+'"'+
+      ' data-i="'+i+'" onclick="rateRowToSim('+i+')"'+
+      ' onmouseenter="rateRowHover('+i+',true)" onmouseleave="rateRowHover('+i+',false)"'+
+      ' title="'+(row.consequence||"On target — the cell behaves as designed at this rate.")+'">'+
+      '<td class="rr-rate">'+(row.isDesign?'<span class="rr-badge">design</span> ':"")+_rrXText(row)+
+        '<span class="rr-sub"> '+fRateTime(row.rate)+'</span></td>'+
+      '<td>'+row.Qc.toPrecision(3)+'</td>'+
+      '<td>'+row.Qa.toPrecision(3)+'</td>'+
+      '<td><strong>'+row.Q.toPrecision(3)+'</strong> <span class="rr-sub">'+(row.pct*100).toFixed(0)+'%</span></td>'+
+      '<td class="rr-np">'+row.np.toFixed(3)+'</td>'+
+      '<td class="rr-dev">'+(dev>=0?"+":"")+dev.toFixed(1)+'%</td>'+
+      '<td>'+shift+'</td>'+
+      '<td>'+row.limiting+'</td></tr>';
+  }).join("");
+  if(tbl){
+    tbl.innerHTML=
+      '<thead><tr><th>'+_rrXLabel()+'</th><th>Q<sub>c</sub> (µAh)</th><th>Q<sub>a</sub> (µAh)</th>'+
+      '<th>Deliverable</th><th>Q<sub>a</sub>/Q<sub>c</sub></th><th>vs target</th>'+
+      '<th>Potential shift</th><th>Limiting</th></tr></thead><tbody>'+cells+'</tbody>';
+  }
+  if(note){
+    const bits=[];
+    if(d.singleRate) bits.push('Both materials have a single measured rate, so capacity cannot fade with current here — add their rate ladders in the library to see the real response.');
+    if(d.rows.some(x=>x.extrapolated)) bits.push('Muted rows sit outside the measured rate range and are extrapolated.');
+    if(d.dual) bits.push('Known-cathode mode: the anode mass balancing the reversible cycle is used.');
+    note.innerHTML=bits.length?('<span class="rr-muted">'+bits.join(" ")+'</span>'):"";
+  }
+  d.rows.forEach((row,i)=>{ if(row.extrapolated){const tr=tbl&&tbl.querySelector('tr[data-i="'+i+'"]'); if(tr) tr.classList.add("rr-extrap");} });
+  window._rrData=d;
+  renderRateChart(d);
+}
+
+/* Row → simulation. Seeds the picked current for the cycle being described so
+   "what happens at this rate" can be answered on the Simulation tab. */
+function rateRowToSim(i){
+  const d=window._rrData; if(!d||!d.rows[i]) return;
+  const row=d.rows[i];
+  if(typeof setSimAssignMode==="function") setSimAssignMode(d.cycle==="1st"?"1st":"Nth");
+  if(typeof pickSimRate==="function") pickSimRate("crate",fCrate(row.rate),row.I);
+  if(typeof toast==="function") toast("Simulation set to "+fCrate(row.rate)+" — open the Simulation tab");
+}
+/* Hover sync: table row ↔ chart marker. Pure view state, no recompute. */
+function rateRowHover(i,on){
+  const tr=document.querySelector('#rrTable tr[data-i="'+i+'"]');
+  if(tr) tr.classList.toggle("rr-hot",!!on);
+  const host=$("rrChart");
+  if(host && typeof Plotly!=="undefined" && host.data){
+    try{ on ? Plotly.Fx.hover(host,[{curveNumber:0,pointNumber:i}]) : Plotly.Fx.unhover(host); }catch(_){}
+  }
+}
+
+
+/* The chart. Deliverable capacity on the left, balance on the right, both
+   against rate on a log axis — so the design point reads as a single vertical
+   line and everything either side of it is the cost of moving away from it. */
+function renderRateChart(d){
+  const host=$("rrChart"), note=$("rrChartNote");
+  if(!host) return;
+  if(!d||!d.rows.length){ host.innerHTML=""; if(note) note.textContent=""; return; }
+  if(typeof Plotly==="undefined"){
+    if(note) note.textContent="Chart loads when this tab first opens…";
+    if(typeof ensurePlotly==="function") ensurePlotly().then(()=>renderRateChart(window._rrData));
+    return;
+  }
+  if(note) note.textContent="";
+  const xs=d.rows.map(_rrX), pct=d.rows.map(r=>r.pct*100), np=d.rows.map(r=>r.np);
+  const solid=d.rows.map(r=>r.extrapolated?0.35:1);
+  const hov=d.rows.map(r=>
+    "<b>"+fCrate(r.rate)+"</b> · "+fRateTime(r.rate)+"<br>"+
+    "cathode "+r.i_cat.toPrecision(3)+" mA/g · anode "+(r.i_an/1000).toPrecision(3)+" A/g<br>"+
+    "Q꜀ "+r.Qc.toPrecision(3)+" · Qₐ "+r.Qa.toPrecision(3)+" µAh<br>"+
+    "deliverable <b>"+r.Q.toPrecision(3)+" µAh</b> ("+(r.pct*100).toFixed(0)+"% of design)<br>"+
+    "N/P "+r.np.toFixed(3)+" — "+(r.status==="ok"?"on target":r.status==="warn"?"drifting":"off design")+
+    ", "+r.limiting+"-limited"+
+    (r.shiftV!=null&&r.shiftV>0.005?"<br>"+r.idleSide+" potential shifts ≈"+r.shiftV.toFixed(2)+" V":"")+
+    (r.consequence?"<br><i>"+r.consequence+"</i>":""));
+  const col=r=>r.status==="ok"?"#1A8A6E":r.status==="warn"?"#D4881A":"#C43C3C";
+
+  const xmin=Math.min(...xs), xmax=Math.max(...xs);
+  const bandOf=f=>({type:"rect",xref:"x",yref:"y2",x0:xmin,x1:xmax,
+                    y0:d.target/f,y1:d.target*f,line:{width:0}});
+  const shapes=[
+    Object.assign(bandOf(2.5),{fillcolor:"rgba(212,136,26,.08)"}),
+    Object.assign(bandOf(1.25),{fillcolor:"rgba(26,138,110,.12)"}),
+    {type:"line",xref:"x",yref:"y2",x0:xmin,x1:xmax,y0:d.target,y1:d.target,
+     line:{color:"#1A8A6E",width:1.4,dash:"dot"}},
+    {type:"line",xref:"x",yref:"paper",x0:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),
+     x1:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),y0:0,y1:1,
+     line:{color:"#0F1B2D",width:1.6,dash:"dash"}}
+  ];
+  const traces=[
+    {x:xs,y:np,name:"Q<sub>a</sub>/Q<sub>c</sub>",yaxis:"y2",mode:"lines+markers",type:"scatter",
+     line:{color:"#2D7AB6",width:2.4},
+     marker:{size:9,color:d.rows.map(col),line:{width:1.5,color:"#fff"},opacity:solid},
+     text:hov,hovertemplate:"%{text}<extra></extra>"},
+    {x:xs,y:pct,name:"deliverable capacity",mode:"lines+markers",type:"scatter",
+     line:{color:"#1A8A6E",width:2.2,dash:"solid"},marker:{size:6,opacity:solid},
+     text:hov,hovertemplate:"%{text}<extra></extra>"}
+  ];
+  const layout={
+    height:300,autosize:true,margin:{l:56,r:58,t:26,b:46},
+    paper_bgcolor:"#fff",plot_bgcolor:"#FCFCFD",
+    font:{family:"Inter,system-ui,sans-serif",size:11.5,color:"#1A202C"},
+    xaxis:{type:"log",title:{text:_rrXLabel(),font:{size:11.5}},
+           gridcolor:"#EDF1F5",zeroline:false,showline:true,linecolor:"#D0D8E0"},
+    yaxis:{title:{text:"deliverable capacity (% of design)",font:{size:11.5}},
+           rangemode:"tozero",gridcolor:"#EDF1F5",showline:true,linecolor:"#D0D8E0"},
+    yaxis2:{title:{text:"Q<sub>a</sub>/Q<sub>c</sub>",font:{size:11.5}},
+            overlaying:"y",side:"right",showgrid:false,showline:true,linecolor:"#D0D8E0"},
+    shapes,
+    annotations:[{x:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),y:1,yref:"paper",
+                  text:"designed here",showarrow:false,yanchor:"bottom",
+                  font:{size:10.5,color:"#0F1B2D"},bgcolor:"rgba(255,255,255,.85)"}],
+    legend:{orientation:"h",x:0,y:1.12,font:{size:11}},
+    hovermode:"closest"
+  };
+  const cfg={displaylogo:false,responsive:true,
+             modeBarButtonsToRemove:["select2d","lasso2d","autoScale2d","toggleSpikelines"]};
+  if(!host.data) Plotly.newPlot(host,traces,layout,cfg);
+  else           Plotly.react(host,traces,layout,cfg);
+  try{ Plotly.Plots.resize(host); }catch(_){}
+}
+
+
+/* Composition Σ indicator under each electrode's percentages. */
 function valF(){[["cat-wAM","cat-wC","cat-wB","cat-fs"],["an-wAM","an-wC","an-wB","an-fs"]].forEach(p=>{const s=N(p[0])+N(p[1])+N(p[2]);const el=$(p[3]);if(!el)return;el.textContent="Σ="+s.toFixed(0)+"%";el.style.color=Math.abs(s-100)<1?"var(--ink3)":Math.abs(s-100)<5?"var(--wn)":"var(--er)"})}
+
+/* Marks whichever mass field the solver is filling in. */
+function updateMassFieldStyles(){
+  // Mark the computed (solved-for) mass field
+  $("cat-mw").classList.toggle("cmp",mode==="cathode");
+  $("an-mw").classList.toggle("cmp",mode==="anode");
+}
 
 /* ══ CHARTS ══ */
 function drawBar(inp,r){const svg=$("bar-chart");svg.innerHTML="";const W=600,H=140,isF=barPh==="1st";
@@ -7051,23 +7381,6 @@ function drawPie(si,li,parts,side){
   }
 }
 
-function drawPW(inp){const svg=$("wDiag");svg.innerHTML="";const ns="http://www.w3.org/2000/svg",e=(t,a={})=>{const el=document.createElementNS(ns,t);for(const k in a)el.setAttribute(k,a[k]);return el};
-  const W=200,H=160,cW=40,pL=34,pT=14,pB=18;const allV=[...inp.cat.Vth,...inp.cat.Vop,...inp.an.Vth,...inp.an.Vop];
-  const mn=Math.min(...allV)-.2,mx=Math.max(...allV)+.2,mY=v=>pT+(mx-v)/(mx-mn)*(H-pT-pB);
-  svg.appendChild(e("line",{x1:pL-8,x2:pL-8,y1:pT,y2:H-pB,stroke:"var(--ink2)","stroke-width":1}));
-  for(let i=0;i<=4;i++){const v=mn+(i/4)*(mx-mn),y=mY(v);svg.appendChild(e("line",{x1:pL-10,x2:pL-8,y1:y,y2:y,stroke:"var(--ink2)"}));const t=e("text",{x:pL-12,y:y+3,"text-anchor":"end","font-family":"JetBrains Mono","font-size":8,fill:"var(--ink3)"});t.textContent=v.toFixed(1);svg.appendChild(t)}
-  dW(svg,pL,mY,inp.cat.Vth,inp.cat.Vop,"var(--cp)",cW,"Cathode");dW(svg,pL+cW+24,mY,inp.an.Vth,inp.an.Vop,"var(--ap)",cW,"Anode")}
-function dW(svg,x,mY,Vth,Vop,c,w,l){const ns="http://www.w3.org/2000/svg",e=(t,a={})=>{const el=document.createElementNS(ns,t);for(const k in a)el.setAttribute(k,a[k]);return el};
-  svg.appendChild(e("rect",{x,y:Math.min(mY(Vth[0]),mY(Vth[1])),width:w,height:Math.abs(mY(Vth[1])-mY(Vth[0])),fill:c,"fill-opacity":.12,stroke:c,"stroke-width":1,"stroke-dasharray":"2,3",rx:3}));
-  svg.appendChild(e("rect",{x:x+4,y:Math.min(mY(Vop[0]),mY(Vop[1])),width:w-8,height:Math.abs(mY(Vop[1])-mY(Vop[0])),fill:c,"fill-opacity":.55,rx:2}));
-  const t=e("text",{x:x+w/2,y:158,"text-anchor":"middle","font-family":"Geist","font-size":9,fill:"var(--ink2)"});t.textContent=l;svg.appendChild(t)}
-
-/* ══ MODE ══ */
-function updateMassFieldStyles(){
-  // Mark the computed (solved-for) mass field
-  $("cat-mw").classList.toggle("cmp",mode==="cathode");
-  $("an-mw").classList.toggle("cmp",mode==="anode");
-}
 
 /* ══ LIBRARY UI ══ */
 let aCat="ac";
@@ -7563,7 +7876,7 @@ const TOUR_STEPS=[
   b:"The first tab shows what each electrode is made of: pie charts of the active material, conductive additive, binder and any sacrificial salt, plus the mass loadings in mg/cm² for common electrode diameters.",
   onEnter:_showRes, onExit:_hideRes},
  {sec:'#resPanel', at:'.rtab-btn:nth-of-type(2)', always:true, h:"Diagnostics — where the capacity goes",
-  b:"The Q<sub>a</sub> and Q<sub>c</sub> bars side by side, with <strong>a colour key naming every contribution</strong> so you can see how much comes from the active material and how much from the salt. Switch between the 1st and N<sup>th</sup> cycle freely — display toggles never need a recalculation. Below it, the capacity ratio across rates and each electrode's potential window.",
+  b:"The Q<sub>a</sub> and Q<sub>c</sub> bars side by side, with <strong>a colour key naming every contribution</strong> so you can see how much comes from the active material and how much from the salt. Below them, <strong>Rate response</strong> shows what happens if you cycle away from the rate you designed for: the balance drifting off target, the capacity you lose, and the electrode that starts taking the strain. Click any row there to simulate the cell at that rate.",
   onEnter:_showRes, onExit:_hideRes},
  {sec:'#resPanel', at:'.rtab-btn:nth-of-type(3)', always:true, h:"Rates and current densities",
   b:"The cell current at each C-rate, and what that current means as a density on each electrode. The row matching your design rate is highlighted; clicking any row assigns it to the simulation if you want to override the design point.",
@@ -7926,6 +8239,7 @@ function enableExportBtn(on){
 }
 
 function openExportDialog(){
+  if(calcDirty) refreshResults();          // never export numbers you cannot see
   if(!window.lastR||!window.lastInp){toast?toast("Run a calculation first"):alert("Run a calculation first");return}
   expFmt=null;
   $("expTi").textContent="Export results — choose format";
@@ -7996,9 +8310,8 @@ function pickExportFormat(f){
     <div class="exp-cat">
       <div class="exp-cat-h">Diagnostics <span class="lk" onclick="toggleExpGroup('grpDiag',true)">all</span><span class="lk" onclick="toggleExpGroup('grpDiag',false)">none</span></div>
       <div id="grpDiag">
-        <label class="exp-row"><input type="checkbox" data-sec="ratioTbl" checked> Q<sub>a</sub>/Q<sub>c</sub> ratio table at all rates</label>
+        <label class="exp-row"><input type="checkbox" data-sec="ratioTbl" checked> Rate-response table</label>
         <label class="exp-row ${canCharts?"":"req"}"><input type="checkbox" data-sec="barChart" ${canCharts?"checked":"disabled"}> Capacity-balance bar chart (1<sup>st</sup> cycle view)${canCharts?"":' <span class="req-tag" style="background:var(--bone2);color:var(--ink3)">N/A in TXT</span>'}</label>
-        <label class="exp-row ${canCharts?"":"req"}"><input type="checkbox" data-sec="pwinChart" ${canCharts?"checked":"disabled"}> Potential-window diagram${canCharts?"":' <span class="req-tag" style="background:var(--bone2);color:var(--ink3)">N/A in TXT</span>'}</label>
       </div>
     </div>
 
@@ -8086,23 +8399,16 @@ function gatherExportData(){
     return{i_an,I_uA:I,cellRate:Q_cell>0?I/Q_cell:0,i_cat:mCat_AM>0?I/mCat_AM:0};
   });
 
-  // Q_a/Q_c ratio table — re-derived to mirror buildRT
-  const ratioRows=[];
-  const ruC1=$("cat-ac-r1-ru")?.value||"",ruCN=$("cat-ac-rN-ru")?.value||"";
-  const ruA1=$("an-r1-ru")?.value||"",ruAN=$("an-rN-ru")?.value||"";
-  const fmtR=(rv,ru)=>(ru==="unknown")?"—":fRtU(rv,ru);
-  ratioRows.push({lb:"1st cycle",ri:fmtR(inp.cat.ac.r1,ruC1)+" / "+fmtR(inp.an.r1,ruA1),ratio:r.r1,dev:r.o1});
-  ratioRows.push({lb:"Nth cycle",ri:fmtR(inp.cat.ac.rN,ruCN)+" / "+fmtR(inp.an.rN,ruAN),ratio:r.rN,dev:r.oN});
-  if(typeof anRates!=="undefined" && Array.isArray(anRates)){
-    anRates.forEach(ar=>{
-      const arRv=ar.rv||ar.rate,arRu=ar.ru||"C";
-      if(Math.abs(arRv-inp.an.rN)<.001&&arRu===ruAN)return;
-      const Qc=r.mAC*inp.cat.ac.cN*r.kc+(saltOn?r.mS*inp.cat.salt.cN*r.kc:0);
-      const Qa=r.mAn*inp.an.wAM*ar.cN;
-      const ratio=Qc>0?Qa/Qc:0;
-      if(ar.cN>0)ratioRows.push({lb:"An@"+fRtU(arRv,arRu),ri:fmtR(inp.cat.ac.rN,ruCN)+"/"+fRtU(arRv,arRu),ratio,dev:(ratio-1)*100});
-    });
-  }
+  // Rate response — same builder as the on-screen table, so an export can
+  // never disagree with what was on screen.
+  const _rr=(typeof buildRateResponse==="function")?buildRateResponse(barPh==="1st"?"1st":"Nth"):null;
+  const ratioRows=_rr?_rr.rows.map(row=>({
+    lb:(row.isDesign?"▸ ":"")+fCrate(row.rate),
+    ri:row.i_cat.toPrecision(3)+" mA/g / "+(row.i_an/1000).toPrecision(3)+" A/g",
+    ratio:row.np, dev:(row.np-_rr.target)*100,
+    q:row.Q, pct:row.pct*100, lim:row.limiting
+  })):[];
+  const ratioMeta=_rr?{cycle:_rr.cycle,target:_rr.target,designRate:_rr.designRate,Q_design:_rr.Q_design}:null;
 
   return{
     timestamp:new Date(),
@@ -8118,7 +8424,7 @@ function gatherExportData(){
       A12,A10,
     },
     cell:{c10:r.c10,Q_cell,QaN,QcN,limiting},
-    cratesRows,catpovRows,anpovRows,ratioRows,
+    cratesRows,catpovRows,anpovRows,ratioRows,ratioMeta,
     hasSalt,
   };
 }
@@ -8275,10 +8581,11 @@ function buildTXT(D,sel){
     L.push("-".repeat(60));
     D.anpovRows.forEach(row=>L.push([_fmt.dens(row.i_an),_fmt.curr(row.I_uA),row.cellRate.toFixed(3)+" /h",_fmt.dens(row.i_cat)].map(s=>s.padEnd(15)).join("")));
   }
-  if(sel.ratioTbl){sec("Q_a/Q_c RATIO TABLE");
-    L.push(["Condition","Rate","Q_a/Q_c","vs target"].map(s=>s.padEnd(18)).join(""));
-    L.push("-".repeat(72));
-    D.ratioRows.forEach(row=>L.push([row.lb,row.ri,_fmt.ratio(row.ratio),_fmt.dev(row.dev)].map(s=>String(s).padEnd(18)).join("")));
+  if(sel.ratioTbl){sec("RATE RESPONSE — deliverable capacity and balance vs rate");
+    if(D.ratioMeta) kv("Designed for:",fCrate(D.ratioMeta.designRate)+" · N/P target "+D.ratioMeta.target.toFixed(2)+" · cycle "+D.ratioMeta.cycle);
+    L.push(["Cell rate","i cat / i an","Q_a/Q_c","vs target","Deliverable","Limiting"].map(s=>s.padEnd(16)).join(""));
+    L.push("-".repeat(96));
+    D.ratioRows.forEach(row=>L.push([row.lb,row.ri,_fmt.ratio(row.ratio),_fmt.dev(row.dev),row.q.toPrecision(3)+" µAh ("+row.pct.toFixed(0)+"%)",row.lim].map(s=>String(s).padEnd(16)).join("")));
   }
   br();hr("─");L.push("End of export");
   return L.join("\n");
@@ -8293,7 +8600,6 @@ async function buildHTMLBody(D,sel,opts){
   if(sel.pieCat)need.push(["pieCat",$("pie-cat")]);
   if(sel.pieAn)need.push(["pieAn",$("pie-an")]);
   if(sel.barChart)need.push(["bar",$("bar-chart")]);
-  if(sel.pwinChart)need.push(["pwin",$("wDiag")]);
   await Promise.all(need.map(async([k,el])=>{charts[k]=await svgToPng(el,"#ffffff")}));
 
   const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -8406,8 +8712,10 @@ async function buildHTMLBody(D,sel,opts){
       D.anpovRows.map(rw=>[_fmt.dens(rw.i_an),_fmt.curr(rw.I_uA),rw.cellRate.toFixed(3)+" /h",_fmt.dens(rw.i_cat)]));
   }
   if(sel.ratioTbl){
-    h+=dataTable("Q<sub>a</sub>/Q<sub>c</sub> ratio table — at all rates",["Condition","Rate","Q<sub>a</sub>/Q<sub>c</sub>","vs target"],
-      D.ratioRows.map(rw=>[rw.lb,rw.ri,_fmt.ratio(rw.ratio),_fmt.dev(rw.dev)]));
+    h+=dataTable("Rate response — deliverable capacity and balance vs rate"+
+      (D.ratioMeta?` <span style="font-weight:400">(designed for ${fCrate(D.ratioMeta.designRate)}, target N/P ${D.ratioMeta.target.toFixed(2)})</span>`:""),
+      ["Cell rate","i cathode / i anode","Q<sub>a</sub>/Q<sub>c</sub>","vs target","Deliverable","Limiting"],
+      D.ratioRows.map(rw=>[rw.lb,rw.ri,_fmt.ratio(rw.ratio),_fmt.dev(rw.dev),rw.q.toPrecision(3)+" µAh ("+rw.pct.toFixed(0)+"%)",rw.lim]));
   }
   // Charts (skipped in Excel? Actually Excel handles base64 PNG via <img>; keep them)
   const chartBlock=(title,key,maxW,caption)=>{if(!charts[key])return"";let h2=`<h2 style="font-family:Calibri,Arial,sans-serif;font-size:14pt;color:#0F1B2D;border-bottom:2px solid #2D8B9E;padding-bottom:3pt;margin:16pt 0 8pt 0">${title}</h2><div style="text-align:center;margin-bottom:4pt"><img src="${charts[key]}" style="max-width:${maxW||"500pt"};height:auto;border:1px solid #d0d8e0"></div>`;if(caption)h2+=`<div style="text-align:center;font-family:Calibri,Arial,sans-serif;font-size:9.5pt;color:#3A4A5C;margin-bottom:12pt">${caption}</div>`;else h2=h2.replace("margin-bottom:4pt","margin-bottom:12pt");return h2};
@@ -8427,7 +8735,6 @@ async function buildHTMLBody(D,sel,opts){
   if(sel.pieCat)h+=chartBlock("Cathode composition","pieCat","320pt",catPie);
   if(sel.pieAn)h+=chartBlock("Anode composition","pieAn","320pt",anPie);
   if(sel.barChart)h+=chartBlock("Capacity balance — 1ˢᵗ cycle","bar","560pt");
-  if(sel.pwinChart)h+=chartBlock("Potential windows","pwin","320pt");
 
   return h;
 }
