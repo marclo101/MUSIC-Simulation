@@ -325,7 +325,12 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     // Deviation basis: with target 1.20 the rate-response "vs target" column
     // must agree with the solver's own o1/oN, not measure against 1.00.
     g("np-target").value = "1.20"; onNpTargetChange(); recalcNow();
-    out.header = g("rrTable").textContent.includes("vs target");
+    // The deviation moved into the row detail; it must still quote the target.
+    const k = (window._rrData.rows || []).findIndex(x => x.state !== "unknown");
+    if (k >= 0) rateRowToggle(k);
+    const det = g("rrTable").querySelector('tr.rr-detail[data-di="' + k + '"]');
+    out.header = k < 0 || (!!det && /target 1\.20/.test(det.textContent));
+    if (k >= 0) rateRowToggle(k);
     const r = window.lastR;
     out.oNAgainstTarget = Math.abs(r.oN - (r.rN - 1.2) * 100) < 1e-6;
     g("np-target").value = "1.00"; onNpTargetChange(); recalcNow();
@@ -916,42 +921,97 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const design = d.rows.find(x => x.isDesign);
     const known = d.rows.filter(x => x.state !== "unknown");
     const slow = known[0], fast = known[known.length - 1];
+    const sect = () => g("rateResp").textContent;
     const out = {
       rows: d.rows.length,
+      unknownRows: d.rows.filter(r => r.state === "unknown").length,
       stdLadder: d.rows.filter(x => !x.isMeasured).length,
       designPresent: !!design,
       designState: design ? design.state : "missing",
       warnsWhenDesignUncovered: !design || design.state === "measured" ||
-        /design rate is|no rate data covers/.test(g("rrDesign").textContent),
+        /design rate is|No rate data covers/.test(g("rrWarn").textContent),
       designBadged: !!document.querySelector(".rr-design-row .rr-badge"),
+      // The design row is a landmark, not an alarm: outlined, never filled green.
+      badgeNotFilled: (() => {
+        const b = document.querySelector(".rr-design-row .rr-badge");
+        if (!b) return false;
+        const bg = getComputedStyle(b).backgroundColor;
+        return !/26,\s*138,\s*110/.test(bg);
+      })(),
       capacityFalls: fast.pct < slow.pct,
       balanceDrifts: Math.abs(fast.np - d.target) > Math.abs(slow.np - d.target),
       gradesSpanColours: new Set(d.rows.map(r => r.status)).size >= 2,
       offDesignExplains: !!(fast.consequence && fast.consequence.length > 20),
       shiftReported: d.rows.some(r => r.shiftV != null && r.shiftV > 0.05),
-      tableRows: document.querySelectorAll("#rrTable tbody tr").length,
-      chartTraces: (g("rrChart").data || []).length,
+      tableRows: document.querySelectorAll("#rrTable tbody tr.rr-row").length,
       oldSectionsGone: !g("rGrid") && !g("wDiag"),
+      // Three columns, and they fit — the eight-column version scrolled sideways.
+      headers: [...g("rrTable").querySelectorAll("thead th")].length,
+      headerWords: [...g("rrTable").querySelectorAll("thead th")]
+        .map(t => (t.querySelector(".rr-unitbtn") || t).textContent.trim()).join(" | "),
+      noHScroll: (() => { const w = g("rrTable").closest(".rr-tablewrap");
+        return w.scrollWidth <= w.clientWidth + 1; })(),
+      // Balance reads as words, so the colour is reinforcement and not the signal.
+      balanceInWords: [...document.querySelectorAll("#rrTable td.rr-bal")]
+        .every(td => /on target|drifting|off design|balanced|not estimable/.test(td.textContent)),
     };
-    // x-unit pill relabels without re-solving
-    const x0 = g("rrTable").querySelector("th").textContent;
+    // One y-axis, and only the two electrode colours the bars above use.
+    const lay = g("rrChart").layout || {};
+    out.chartTraces = (g("rrChart").data || []).length;
+    out.oneYAxis = lay.yaxis2 === undefined;
+    out.noLegendBox = lay.showlegend === false;
+    out.chartColours = [...new Set((g("rrChart").data || [])
+      .map(t => (t.line && t.line.color) || (t.marker && t.marker.color))
+      .filter(c => typeof c === "string" && /^#/.test(c)))].sort().join(",");
+    out.labelsOnLines = (lay.annotations || []).some(a => /Cathode/.test(a.text)) &&
+                        (lay.annotations || []).some(a => /Anode/.test(a.text));
+    out.saysLowerLine = (lay.annotations || []).some(a => /lower line/.test(a.text));
+    // The design marker must land on the design rate, not at the axis edge.
+    const dline = (lay.shapes || []).find(sh => sh.type === "line");
+    out.designMarkerPlaced = !!dline &&
+      Math.abs(Math.log10(dline.x0 / design.rate)) < 0.02 &&
+      Math.log10(dline.x0) > lay.xaxis.range[0] && Math.log10(dline.x0) < lay.xaxis.range[1];
+    // A status segment per drawn rate, matching the row's own grade.
+    out.stripSegments = (lay.shapes || []).filter(sh => sh.type === "rect").length;
+
+    // Unit switcher lives on the column header it relabels
+    const h0 = g("rrTable").querySelector(".rr-unitbtn").textContent;
+    toggleRrUnitMenu();
+    out.unitMenuOpens = getComputedStyle(g("rrUnitMenu")).display !== "none";
     setRateXUnit("an");
-    out.xUnitSwitches = g("rrTable").querySelector("th").textContent !== x0;
+    out.xUnitSwitches = g("rrTable").querySelector(".rr-unitbtn").textContent !== h0;
+    out.unitMenuCloses = getComputedStyle(g("rrUnitMenu")).display === "none";
     setRateXUnit("C");
     // 1st/Nth cycle switch
     setRatePhase("1st");
     out.cycleSwitches = window._rrData.cycle === "1st";
     setRatePhase("Nth");
-    // row click seeds the simulation
-    rateRowToSim(d.rows.length - 1);
+    // A row opens its detail; the detail is what seeds the simulation.
+    const known0 = d.rows.findIndex(x => x.state !== "unknown");
+    rateRowToggle(known0);
+    const det = g("rrTable").querySelector('tr.rr-detail[data-di="' + known0 + '"]');
+    out.detailOpens = !!det && det.style.display !== "none";
+    out.detailHasNumbers = !!det && /N\/P/.test(det.textContent) && /mA\/g/.test(det.textContent);
+    out.detailHasButton = !!(det && det.querySelector(".rr-dbtn"));
+    if (det && det.querySelector(".rr-dbtn")) det.querySelector(".rr-dbtn").click();
     out.seedsSim = !!(simRateSel["Nth"] && simRateSel["Nth"].I_uA > 0);
+    // Only one row at a time
+    rateRowToggle(known0 + 1);
+    out.oneDetailAtATime =
+      g("rrTable").querySelectorAll('tr.rr-detail:not([style*="none"])').length === 1;
+    rateRowToggle(known0 + 1);
     out.notStale = !g("calcBtn").classList.contains("dirty");
     return out;
   });
   check("the table shows the standard ladder, not every measured point",
-    RR.rows <= 8 && RR.stdLadder >= 7, JSON.stringify(RR));
-  check("the design rate is present and badged",
-    RR.designPresent === true && RR.designBadged === true, JSON.stringify(RR));
+    RR.rows <= 8 && RR.stdLadder >= 7, JSON.stringify(RR.rows));
+  check("three columns — rate, capacity kept, balance — and no sideways scroll",
+    RR.headers === 3 && RR.noHScroll === true && /^Rate .*\| Capacity kept \| Balance$/.test(RR.headerWords),
+    JSON.stringify({ h: RR.headerWords, n: RR.headers, s: RR.noHScroll }));
+  check("balance is stated in words, not just a colour", RR.balanceInWords === true);
+  check("the design rate is present, badged, and not shouted",
+    RR.designPresent === true && RR.designBadged === true && RR.badgeNotFilled === true,
+    JSON.stringify(RR));
   check("it warns when the design rate is not backed by a measurement",
     RR.warnsWhenDesignUncovered === true, RR.designState);
   check("cycling faster costs capacity and drifts the balance",
@@ -959,11 +1019,25 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("rows are graded, and an off-design rate explains the consequence",
     RR.gradesSpanColours === true && RR.offDesignExplains === true, JSON.stringify(RR));
   check("the potential shift of the part-swept electrode is reported", RR.shiftReported === true);
-  check("chart and table are both rendered from the same data",
-    RR.chartTraces === 2 && RR.tableRows === RR.rows, JSON.stringify(RR));
-  check("the x-unit pill and cycle toggle both work",
-    RR.xUnitSwitches === true && RR.cycleSwitches === true, JSON.stringify(RR));
-  check("clicking a row seeds the simulation at that rate", RR.seedsSim === true);
+  check("the chart has one y-axis and only the two electrode colours",
+    RR.oneYAxis === true && RR.noLegendBox === true &&
+    RR.chartColours === "#1A8A6E,#2D7AB6", JSON.stringify(RR.chartColours));
+  check("the lines are labelled directly and say which one the cell delivers",
+    RR.labelsOnLines === true && RR.saysLowerLine === true, JSON.stringify(RR));
+  check("the design marker lands on the design rate",
+    RR.designMarkerPlaced === true, JSON.stringify(RR.designMarkerPlaced));
+  check("a status segment is drawn for every rate on the chart",
+    RR.stripSegments === RR.rows - RR.unknownRows, JSON.stringify({ seg: RR.stripSegments, rows: RR.tableRows }));
+  check("chart and table are rendered from the same rows",
+    RR.tableRows === RR.rows, JSON.stringify(RR));
+  check("the unit switcher on the Rate header, and the cycle toggle, both work",
+    RR.unitMenuOpens === true && RR.xUnitSwitches === true &&
+    RR.unitMenuCloses === true && RR.cycleSwitches === true, JSON.stringify(RR));
+  check("a row opens the numbers the three columns dropped",
+    RR.detailOpens === true && RR.detailHasNumbers === true && RR.oneDetailAtATime === true,
+    JSON.stringify(RR));
+  check("the detail's Simulate button seeds the simulation at that rate",
+    RR.detailHasButton === true && RR.seedsSim === true, JSON.stringify(RR));
   check("ratio table and potential windows are gone", RR.oldSectionsGone === true);
   check("rate-response controls never mark results stale", RR.notStale === true);
 
@@ -1000,8 +1074,18 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     recalcNow();
     d = window._rrData;
     out.allUnknown = d.rows.every(r => r.state === "unknown");
-    out.explains = /not enough data to extrapolate/i.test(g("rrTable").textContent) &&
-                   /no measured rate data/i.test(g("rrTable").textContent);
+    // Nothing estimable: one card, not a table of dashes — and the reason is
+    // stated exactly once in the whole section.
+    out.emptyCard = g("rrEmpty").style.display !== "none" && g("rrBody").style.display === "none";
+    out.tableCleared = g("rrTable").innerHTML === "";
+    out.explains = /can.t be estimated yet/i.test(g("rrEmpty").textContent) &&
+                   /no measured rate data/i.test(g("rrEmpty").textContent);
+    out.reasonSaidOnce =
+      (g("rateResp").textContent.match(/no measured rate data/g) || []).length === 1;
+    out.sidesGrouped = /cathode and anode/i.test(g("rrEmpty").textContent);
+    // The fix is offered where the problem is stated
+    out.fixInCard = g("rrAssumeFlat").closest("#rrEmpty") !== null &&
+                    g("rrMeasuredLbl").style.display === "none";
     out.noInventedNumbers = d.rows.every(r => r.Q === null && r.np === null);
     // The escape hatch the user asks for
     g("rrAssumeFlat").click();
@@ -1021,7 +1105,13 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("a checkbox adds the measured rate points", EX.withMeasured === true);
   check("with too few points it refuses to extrapolate rather than inventing numbers",
     EX.allUnknown === true && EX.noInventedNumbers === true, JSON.stringify(EX));
-  check("it explains simply why it cannot extrapolate", EX.explains === true);
+  check("it explains simply why it cannot extrapolate", EX.explains === true, JSON.stringify(EX));
+  check("nothing estimable shows one card, not a table of dashes",
+    EX.emptyCard === true && EX.tableCleared === true, JSON.stringify(EX));
+  check("the reason is stated once, with the electrodes grouped",
+    EX.reasonSaidOnce === true && EX.sidesGrouped === true, JSON.stringify(EX));
+  check("the assume-constant fix is offered inside the card that reports the problem",
+    EX.fixInCard === true, JSON.stringify(EX));
   check("the constant-capacity assumption fills the region in",
     EX.assumeBoxShown === true && EX.assumedFillsIn === true, JSON.stringify(EX));
   check("a capacity typed by the user overrides the automatic one", EX.userValueUsed === true);

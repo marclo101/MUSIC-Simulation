@@ -1,6 +1,9 @@
 # Plan — Simplify the Rate-response view
 
-**Status:** planning document only. No code in this change — implementation is handled by another model.
+**Status:** ✅ implemented in **v13.0**. Kept as the record of what was changed and why.
+Two things were learned during implementation and are worth carrying forward:
+- On a log axis this Plotly build reads **shape** x in *data* units but **annotation** x in *log* units (verified by pixel measurement), and a shape still feeds autorange as a data value — so `x0:1` on the design line became log10(0) = −∞ and destroyed the range. The x range is now pinned explicitly.
+- Purging a live plot to blank it races Plotly's pending auto-margin pass; the empty state re-renders with no traces instead.
 **Baseline:** branch head at v12.2 (`a6eb025`). Anchors are given as function/id names, not line numbers.
 **Version:** ship as **v13.0** (visible redesign of the Diagnostics tab).
 **Scope:** presentation only. `buildRateResponse()`, `_rrCapAt()`, the state machinery
