@@ -28,6 +28,10 @@ By default the target N/P applies to every cycle. Enabling **Different 1st cycle
 
 **First time here?** The app offers a guided tour every time it loads — dismiss it with one click, or replay it any time from the **Tutorial** button in the header. The tour lights up one section at a time, leaving it fully usable so you can try each input as it is explained, and it ends at the material library.
 
+### Rate response
+
+The **Diagnostics** tab ends with a chart and table showing what happens if the cell is cycled away from the rate it was designed for. Each electrode fades at its own pace as the current rises, so the balance Q<sub>a</sub>/Q<sub>c</sub> drifts off target: one electrode runs out first, the other is left part-swept and its potential shifts to compensate. The table reports, per rate, the cell C-rate and each electrode's mass-normalized current, both electrode capacities, the deliverable capacity as a percentage of the design point, the drifting N/P, the potential shift of the part-swept electrode, and which electrode is limiting — colour-graded on the same green/amber/red scale used elsewhere. Clicking a row simulates the cell at that rate.
+
 ### The Simulation tab
 
 The **Simulation** tab draws the galvanostatic charge–discharge (GCD) curves — V<sub>cat</sub>, V<sub>an</sub> and V<sub>cell</sub> vs capacity or time — of the balanced cell. Each electrode is a state-of-charge position on a canonical piecewise-linear Q–V map built from the balance results and the material inputs:

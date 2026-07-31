@@ -322,10 +322,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
                      typeof window.ratioOverride === "undefined";
     out.msgBoxGone = !g("r-edit-msg");
     out.noClickHandler = !g("r-r1pct").getAttribute("onclick") && !g("r-rNpct").getAttribute("onclick");
-    // Deviation basis: with target 1.20 the rGrid "vs target" column must agree
-    // with the solver's own o1/oN rather than measuring against 1.00.
+    // Deviation basis: with target 1.20 the rate-response "vs target" column
+    // must agree with the solver's own o1/oN, not measure against 1.00.
     g("np-target").value = "1.20"; onNpTargetChange(); recalcNow();
-    out.header = g("rGrid").textContent.includes("vs target");
+    out.header = g("rrTable").textContent.includes("vs target");
     const r = window.lastR;
     out.oNAgainstTarget = Math.abs(r.oN - (r.rN - 1.2) * 100) < 1e-6;
     g("np-target").value = "1.00"; onNpTargetChange(); recalcNow();
@@ -897,6 +897,67 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("total-loading toggle updates in both modes",
     LIVE.loadingFresh === true && LIVE.loadingRatio === true, JSON.stringify(LIVE));
   check("no Results control leaves the page marked stale", LIVE.neverStale === true, JSON.stringify(LIVE));
+
+  // ── Item A: rate response ──
+  const RR = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    // Two library materials with real rate ladders, anode pinned by loading.
+    g("cat-ac-ps").value = "ac-lic"; applyPS("cat-ac");
+    g("an-ps").value = "u_moregjf5"; applyPS("an");
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    g("cat-mass").value = "";
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+    setResultsTab("diag", [...document.querySelectorAll(".rtab-btn")][1]);
+    if (typeof ensurePlotly === "function") await ensurePlotly();
+    recalcNow();
+    const d = window._rrData;
+    const design = d.rows.find(x => x.isDesign);
+    const fast = d.rows[d.rows.length - 1];
+    const out = {
+      rows: d.rows.length,
+      designAtTarget: Math.abs(design.np - d.target) < 1e-6 && Math.abs(design.pct - 1) < 1e-6,
+      designBadged: !!document.querySelector(".rr-design-row .rr-badge"),
+      capacityFalls: fast.pct < design.pct,
+      balanceDrifts: Math.abs(fast.np - d.target) > Math.abs(design.np - d.target),
+      gradesSpanColours: new Set(d.rows.map(r => r.status)).size >= 2,
+      offDesignExplains: !!(fast.consequence && fast.consequence.length > 20),
+      shiftReported: d.rows.some(r => r.shiftV != null && r.shiftV > 0.05),
+      tableRows: document.querySelectorAll("#rrTable tbody tr").length,
+      chartTraces: (g("rrChart").data || []).length,
+      oldSectionsGone: !g("rGrid") && !g("wDiag"),
+    };
+    // x-unit pill relabels without re-solving
+    const x0 = g("rrTable").querySelector("th").textContent;
+    setRateXUnit("an");
+    out.xUnitSwitches = g("rrTable").querySelector("th").textContent !== x0;
+    setRateXUnit("C");
+    // 1st/Nth cycle switch
+    setRatePhase("1st");
+    out.cycleSwitches = window._rrData.cycle === "1st";
+    setRatePhase("Nth");
+    // row click seeds the simulation
+    rateRowToSim(d.rows.length - 1);
+    out.seedsSim = !!(simRateSel["Nth"] && simRateSel["Nth"].I_uA > 0);
+    out.notStale = !g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("rate response builds a grid of rates", RR.rows >= 8, String(RR.rows));
+  check("the design rate sits exactly on target at 100% capacity",
+    RR.designAtTarget === true && RR.designBadged === true, JSON.stringify(RR));
+  check("cycling faster costs capacity and drifts the balance",
+    RR.capacityFalls === true && RR.balanceDrifts === true, JSON.stringify(RR));
+  check("rows are graded, and an off-design rate explains the consequence",
+    RR.gradesSpanColours === true && RR.offDesignExplains === true, JSON.stringify(RR));
+  check("the potential shift of the part-swept electrode is reported", RR.shiftReported === true);
+  check("chart and table are both rendered from the same data",
+    RR.chartTraces === 2 && RR.tableRows === RR.rows, JSON.stringify(RR));
+  check("the x-unit pill and cycle toggle both work",
+    RR.xUnitSwitches === true && RR.cycleSwitches === true, JSON.stringify(RR));
+  check("clicking a row seeds the simulation at that rate", RR.seedsSim === true);
+  check("ratio table and potential windows are gone", RR.oldSectionsGone === true);
+  check("rate-response controls never mark results stale", RR.notStale === true);
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
