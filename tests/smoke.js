@@ -747,6 +747,17 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("an edit re-solves on its own, without pressing Recalculate",
     AR.before !== AR.after && AR.stale === false, JSON.stringify(AR));
 
+  // ── The running build identifies itself ──
+  const VER = await page.evaluate(() => ({
+    badge: (document.getElementById("verBadge") || {}).textContent || "",
+    footer: (document.getElementById("ftrVer") || {}).textContent || "",
+    constant: typeof APP_VERSION !== "undefined" ? APP_VERSION : "",
+    inMasthead: !!document.querySelector(".mast .ver-badge"),
+  }));
+  check("the masthead shows the build version", /^v\d+\.\d+$/.test(VER.badge) && VER.inMasthead === true, JSON.stringify(VER));
+  check("badge and footer agree with the version constant",
+    VER.badge === VER.constant && VER.footer.startsWith(VER.constant), JSON.stringify(VER));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
