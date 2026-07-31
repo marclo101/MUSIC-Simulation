@@ -1003,7 +1003,7 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 <div class="rtab-pane" id="rtab-diag">
   <div class="rtab-pad">
     <!-- Bar chart -->
-    <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st">1st</button><button data-p="Nth">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg><div class="bar-key" id="bar-key"></div></div>
+    <div class="bsec" style="padding:0 0 16px;border:none"><div class="bsec-h"><h4 data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa." data-help-key="diag_capacity_balance">Capacity balance<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Side-by-side bars of Qa and Qc (in µAh) at either the 1st or Nth cycle. The dashed gridline through the anode bar marks Qa visually against the cathode — wherever the cathode bar overshoots that line is &quot;anode-overcap&quot; and vice versa."></button></h4><div class="btog" id="bTog" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance." data-help-key="diag_cycle_toggle"><button class="act" data-p="1st" onclick="setBarPhase('1st',this)">1st</button><button data-p="Nth" onclick="setBarPhase('Nth',this)">Nth</button><button type="button" class="help-icon hi-field" aria-label="Help" data-help="Switches the bar chart between 1st-cycle and Nth-cycle capacities. &lt;strong&gt;1st&lt;/strong&gt; exposes how well the salt + anode pre-loss are matched; &lt;strong&gt;Nth&lt;/strong&gt; shows the long-term, steady-state balance."></button></div></div><svg id="bar-chart" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet"></svg><div class="bar-key" id="bar-key"></div></div>
     <!-- Ratio table -->
     <div class="cd-box">
       <h4 data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red." data-help-key="diag_ratio_table" style="text-transform:none;letter-spacing:.01em;font-size:12.5px;color:var(--ink);font-weight:600">Capacity ratio Q<sub>a</sub>/Q<sub>c</sub> (N/P) — at all rates<button type="button" class="help-icon hi-field" aria-label="Help" data-help="Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; ratios at every relevant rate — your own picked rates plus extra rows from the library's anode rate sweep when capacities differ at higher C-rates. The &quot;vs target&quot; column is the deviation from the target N/P you set in Cell parameters, matching the colours on the results above — green / amber / red."></button></h4>
@@ -1507,7 +1507,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v11.0";
+const APP_VERSION="v11.1";
 const APP_BUILD="2026-07-31";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -6571,6 +6571,17 @@ function recalc(){
    cycle the bar chart shows, which POV the rate table uses, AM vs total
    loading) must repaint immediately. Routing view controls through recalc()
    is what made them look broken — the user clicked and nothing moved. */
+/* The 1st/Nth switch on the capacity bars. It re-solves rather than repainting
+   the cached result: a repaint is cheaper but shows old numbers if anything
+   upstream moved, and this control is used precisely to compare the two cycles.
+   Wired inline on the buttons so it does not depend on wire() having run. */
+function setBarPhase(ph,btn){
+  barPh=(ph==="Nth")?"Nth":"1st";
+  const host=$("bTog");
+  if(host) host.querySelectorAll("button[data-p]").forEach(b=>b.classList.toggle("act",b.dataset.p===barPh));
+  if(typeof recalcNow==="function" && window.lastInp) recalcNow();
+  else rerenderResults();
+}
 function rerenderResults(){
   const r=window.lastR,inp=window.lastInp;
   if(!r||!inp||window.lastMode==="ratio") return;
@@ -7465,8 +7476,8 @@ function toast(msg){const h=$("tH"),t=document.createElement("div");t.className=
 function wire(){
   document.addEventListener("input",e=>{if(e.target.closest(".card"))recalc()});
   qsa(".tbtn").forEach(b=>b.addEventListener("click",()=>{aCat=b.dataset.c;qsa(".tbtn").forEach(x=>x.classList.toggle("act",x===b));renderLT()}));
-  // View-only: 1st/Nth just chooses which cycle the capacity bars show.
-  $("bTog").querySelectorAll("button").forEach(b=>{b.addEventListener("click",()=>{barPh=b.dataset.p;$("bTog").querySelectorAll("button").forEach(x=>x.classList.toggle("act",x===b));rerenderResults()})});
+  // The 1st/Nth bar toggle is wired inline on the buttons (setBarPhase) so it
+  // works even if this function never runs.
   const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");$("stamp").textContent=d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())};stamp();setInterval(stamp,30000)
 }
 

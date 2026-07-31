@@ -515,9 +515,19 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   // ── Capacity bars carry a colour key ──
   const LG = await page.evaluate(() => {
     const g = id => document.getElementById(id);
+    // Set the scenario up completely — the toggle now re-solves, so the state
+    // it reads must be the state this check intends, not whatever a previous
+    // block happened to leave behind.
     if (!saltOn) tgSalt();
-    g("cat-s-c1").value = "300"; g("cat-s-frac").value = "10";
-    recalcNow();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("cat-ac-c1").value = "100"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "200"; g("an-cN").value = "200";
+    g("cat-s-c1").value = "300"; g("cat-s-cN").value = "";
+    g("cat-s-frac").value = "10";
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    sMM("an", "d", document.querySelector("#an-mmb .mmb"));
+    g("cat-mass").value = "10"; g("an-mass").value = ""; g("an-ld").value = "";
     const k = g("bar-key");
     // The salt only contributes on the first cycle, so read the key there; the
     // Nth-cycle key correctly omits it.
@@ -735,6 +745,17 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   // ── Edits apply themselves; no Recalculate click required ──
   const AR = await page.evaluate(async () => {
     const g = id => document.getElementById(id);
+    // Own the scenario: anode pinned by loading, cathode solved — so a change
+    // to either the loading or a cathode capacity moves the cathode mass.
+    if (saltOn) tgSalt();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("cat-ac-c1").value = "150"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "300"; g("an-cN").value = "200";
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    g("cat-mass").value = "";
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
     recalcNow();
     const before = g("r-mc").textContent.trim();
     const ld = g("an-ld");
@@ -757,6 +778,51 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the masthead shows the build version", /^v\d+\.\d+$/.test(VER.badge) && VER.inMasthead === true, JSON.stringify(VER));
   check("badge and footer agree with the version constant",
     VER.badge === VER.constant && VER.footer.startsWith(VER.constant), JSON.stringify(VER));
+
+  // ── The 1st/Nth toggle: never needs a Recalculate, under any circumstance ──
+  const BT = await page.evaluate(async () => {
+    const g = id => document.getElementById(id);
+    const key = () => g("bar-key").textContent.trim();
+    const mass = () => g("r-mc").textContent.trim();
+    // Own the scenario: anode pinned by loading, cathode solved — so a change
+    // to either the loading or a cathode capacity moves the cathode mass.
+    if (saltOn) tgSalt();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("cat-ac-c1").value = "150"; g("cat-ac-cN").value = "100";
+    g("an-c1").value = "300"; g("an-cN").value = "200";
+    mCatOverride = null; mAnOverride = null;
+    sMM("cat", "d", document.querySelector("#cat-mmb .mmb"));
+    g("cat-mass").value = "";
+    sMM("an", "l", document.querySelector("#an-mmb .mmb:nth-child(2)"));
+    g("an-ld").value = "1"; g("an-ar").value = "1"; g("an-mass").value = "";
+    recalcNow();
+
+    const out = { inlineWired: [...g("bTog").querySelectorAll("button[data-p]")]
+                                 .every(b => /setBarPhase/.test(b.getAttribute("onclick") || "")) };
+    g("bTog").querySelector('button[data-p="1st"]').click();
+    const a = key();
+    g("bTog").querySelector('button[data-p="Nth"]').click();
+    const b = key();
+    out.switches = a !== b;
+    out.marksActive = g("bTog").querySelector('button[data-p="Nth"]').classList.contains("act");
+    out.neverStale = !g("calcBtn").classList.contains("dirty");
+    // The case that bites: edit an input, then toggle before the debounce runs.
+    const before = mass();
+    const cn = g("cat-ac-cN");
+    cn.value = String((parseFloat(cn.value) || 100) * 2);
+    cn.dispatchEvent(new Event("input", { bubbles: true }));
+    g("bTog").querySelector('button[data-p="1st"]').click();   // immediately
+    out.appliedPendingEdit = mass() !== before;
+    out.stillNotStale = !g("calcBtn").classList.contains("dirty");
+    return out;
+  });
+  check("1st/Nth toggle is wired inline, independent of the JS wiring pass", BT.inlineWired === true);
+  check("1st/Nth toggle switches the bars and marks the active button",
+    BT.switches === true && BT.marksActive === true, JSON.stringify(BT));
+  check("1st/Nth toggle applies a pending edit instead of showing stale numbers",
+    BT.appliedPendingEdit === true, JSON.stringify(BT));
+  check("1st/Nth toggle never leaves the results marked stale",
+    BT.neverStale === true && BT.stillNotStale === true, JSON.stringify(BT));
 
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
