@@ -109,6 +109,21 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
 .rr-row.rr-extrap td{opacity:.55}
 .rr-design-row{background:var(--cl)!important;box-shadow:inset 3px 0 0 var(--cp)}
 .rr-badge{display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--cp);color:#fff;padding:1px 5px;border-radius:3px;margin-right:4px}
+.rr-opts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:8px 0 4px}
+.rr-check{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);cursor:pointer}
+.rr-check input{cursor:pointer}
+.rr-assume{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px;color:var(--ink2);width:100%;padding:7px 10px;background:var(--wnB);border:1px solid rgba(212,136,26,.35);border-radius:6px}
+.rr-assume label{display:inline-flex;align-items:center;gap:5px}
+.rr-assume input{width:78px;font-family:var(--fm);font-size:11px;padding:3px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
+.rr-chip.rr-warnchip{background:var(--wnB);border-color:rgba(212,136,26,.45);color:var(--wn);font-weight:600}
+.rr-tag{margin-left:6px;font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 4px;border-radius:3px}
+.rr-t-ex{background:var(--bone2);color:var(--ink3)}
+.rr-t-as{background:var(--wnB);color:var(--wn)}
+.rr-b-m{background:var(--ink3)}
+.rr-unknown td{color:var(--ink3);background:repeating-linear-gradient(135deg,transparent,transparent 6px,rgba(0,0,0,.02) 6px,rgba(0,0,0,.02) 12px)}
+.rr-unknown{cursor:default}
+.rr-whycell{font-family:var(--fb);font-size:10.5px;font-style:italic}
+.rr-hint{color:var(--wn);font-style:normal}
 .rr-muted{font-size:10.5px;color:var(--ink3);line-height:1.5}
 .rr-note{margin-top:8px}
 .bar-key{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--ink2)}
@@ -1047,6 +1062,15 @@ input,button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;bo
       <p class="rr-lede">Your electrode masses were sized for <strong>one</strong> rate. Cycle the cell faster or slower and each electrode fades at its own pace, so the balance drifts: one runs out early, the other never reaches the potential it was designed to end at.</p>
       <div class="rr-design" id="rrDesign"></div>
       <div class="rr-plotwrap"><div id="rrChart"></div><div class="rr-plot-note" id="rrChartNote"></div></div>
+      <div class="rr-opts">
+        <label class="rr-check"><input type="checkbox" id="rrShowMeasured" onchange="setRrShowMeasured(this.checked)"> Also show the measured rate points</label>
+        <label class="rr-check"><input type="checkbox" id="rrAssumeFlat" onchange="setRrAssumeFlat(this.checked)"> Assume capacity is constant outside the measured range</label>
+        <div class="rr-assume" id="rrAssumeBox" style="display:none">
+          <span>Held constant at the nearest measured value unless you set one —</span>
+          <label>cathode <input type="number" id="rrAssumeCat" step="1" min="0" placeholder="mAh/g" oninput="onRrAssumeEdit()"></label>
+          <label>anode <input type="number" id="rrAssumeAn" step="1" min="0" placeholder="mAh/g" oninput="onRrAssumeEdit()"></label>
+        </div>
+      </div>
       <div class="rr-xunit"><span>Show current as</span>
         <button type="button" class="rr-pill act" data-xu="C" onclick="setRateXUnit('C')">cell C-rate</button>
         <button type="button" class="rr-pill" data-xu="cat" onclick="setRateXUnit('cat')">i cathode (mA/g)</button>
@@ -1542,7 +1566,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v12.0";
+const APP_VERSION="v12.1";
 const APP_BUILD="2026-08-01";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -7002,20 +7026,59 @@ function fCrate(c){
 
 /* Build the whole rate-response dataset for one cycle ("1st" | "Nth").
    Returns null when there is nothing solved to describe. */
-/* Capacity (mAh/g) an electrode delivers at a given specific current, read off
-   its measured ladder and interpolated in log-current. Falls back to the typed
-   capacity when the material has no usable ladder. */
-function _rrCapAt(side, cycle, i_mAg, capTyped){
-  const ladder=_simRateLadder(side, cycle);
-  if(!Array.isArray(ladder) || ladder.length<1 || !(i_mAg>0))
-    return {c:capTyped, extrapolated:false, flat:true};
-  if(ladder.length===1)
-    return {c:ladder[0].c, extrapolated:false, flat:true};
-  const at=_simRateCapAt(ladder, i_mAg);
-  return {c:at.c, extrapolated:!!at.clamped, flat:false,
-          lo:ladder[0].i, hi:ladder[ladder.length-1].i};
+/* ── Capacity at an arbitrary rate ─────────────────────────────────────────
+   A half-cell measurement gives capacity at a handful of currents. To say
+   anything about a rate in between — or beyond — those points we have to model
+   the trend. Over the range these materials are measured in, capacity falls
+   close to linearly against log(current), so that is the fit used: interpolate
+   between bracketing points, and extend the end slope outwards for a bounded
+   distance past the data.
+
+   Where the data cannot support that, the honest answer is no answer. One
+   measured point defines a value, not a trend; and a decade beyond the last
+   point the fit is guesswork. Both cases return `unknown` with a reason rather
+   than a number, unless the user has explicitly said to hold capacity constant
+   out there. */
+const RR_STD_RATES=[0.05,0.1,0.2,0.5,1,2,5];   // C/20, C/10, C/5, C/2, 1C, 2C, 5C
+const RR_EXTRAP_DECADES=1;                     // how far past the data we will extend
+
+function _rrCapAt(side, cycle, i_mAg, capTyped, assumeOn){
+  const asAssumed=(why,below)=>{
+    if(!assumeOn) return {c:null, state:"unknown", reason:why};
+    const v=_rrAssumed(side,cycle,!!below);
+    return (Number.isFinite(v)&&v>0) ? {c:v, state:"assumed", reason:""}
+                                     : {c:null, state:"unknown", reason:why};
+  };
+  if(!(i_mAg>0)) return asAssumed("no current to evaluate",false);
+  const L=_simRateLadder(side, cycle)||[];
+  if(L.length===0){
+    // No ladder at all: the typed capacity is a single value at an unknown rate.
+    return asAssumed("no measured rate data for this material",false);
+  }
+  if(L.length===1){
+    return asAssumed("only one measured rate — not enough to see a trend",i_mAg<L[0].i);
+  }
+  const lo=L[0], hi=L[L.length-1];
+  if(i_mAg>=lo.i && i_mAg<=hi.i){
+    return {c:_simRateCapAt(L, i_mAg).c, state:"measured", reason:""};
+  }
+  // Outside the measured range: extend the slope of the nearest end pair.
+  const below=(i_mAg<lo.i);
+  const a=below?L[0]:L[L.length-2], b=below?L[1]:L[L.length-1];
+  const end=below?lo:hi;
+  const dist=Math.abs(Math.log10(i_mAg)-Math.log10(end.i));
+  if(dist>RR_EXTRAP_DECADES)
+    return asAssumed("more than "+RR_EXTRAP_DECADES+"× a decade beyond the measured range",below);
+  const dL=Math.log10(b.i)-Math.log10(a.i);
+  if(Math.abs(dL)<1e-12) return asAssumed("measured points share one current",below);
+  const slope=(b.c-a.c)/dL;
+  const c=a.c+slope*(Math.log10(i_mAg)-Math.log10(a.i));
+  if(!(c>0)) return asAssumed("the trend reaches zero capacity before this rate",below);
+  return {c, state:"extrapolated", reason:""};
 }
 
+/* Build the whole rate-response dataset for one cycle ("1st" | "Nth").
+   Returns null when there is nothing solved to describe. */
 function buildRateResponse(cycle){
   const r=window.lastR, inp=window.lastInp;
   if(!r||!inp||!r.sane) return null;
@@ -7024,29 +7087,31 @@ function buildRateResponse(cycle){
   const mCatAM=r.mAC, mAnAM=r.mAn*wA, mS=r.mS||0;
   if(!(mCatAM>0)||!(mAnAM>0)) return null;
 
+  const cyc=isFirst?"c1":"cN";
   const capC=isFirst?inp.cat.ac.c1:inp.cat.ac.cN;
   const capA=isFirst?inp.an.c1:inp.an.cN;
   const capS=isFirst?inp.cat.salt.c1:inp.cat.salt.cN;
   const target=isFirst?(r.target1||r.target||npTarget):(r.target||npTarget);
   const designRate=isFirst?cellRate1st:cellRateNth;
 
-  // Deliverable capacity the design point was built around — the yardstick the
-  // percentages are measured against.
   const Qc_design=isFirst?r.Qc1:r.QcN, Qa_design=isFirst?r.Qa1:r.QaN;
   const Q_design=Math.min(Qc_design,Qa_design);
   if(!(Q_design>0)) return null;
 
-  // ── Rate grid: a standard ladder, the design rate, and the cell rate implied
-  //    by every measured library point on either electrode. Deduped in log
-  //    space so near-identical rates do not stack up.
-  const grid=[0.05,0.1,0.2,0.5,1,2,5];
+  // ── Which rates to show ──
+  // The standard ladder plus the design rate, so the table reads the same way
+  // for every cell. The measured points are opt-in: they are what the fit is
+  // built from, not what the user is designing at.
+  const grid=RR_STD_RATES.slice();
   grid.push(designRate);
+  const measuredRates=[];
   [["cat",mCatAM],["an",mAnAM]].forEach(([side,mAM])=>{
-    (_simRateLadder(side,isFirst?"c1":"cN")||[]).forEach(pt=>{
-      const I=pt.i*mAM;                 // mA/g · mg = µA
-      if(I>0) grid.push(I/Q_design);    // µA / µAh = 1/h = C
+    (_simRateLadder(side,cyc)||[]).forEach(pt=>{
+      const rr=(pt.i*mAM)/Q_design;               // mA/g·mg = µA ; µA/µAh = C
+      if(rr>0) measuredRates.push(rr);
     });
   });
+  if(rrShowMeasured) grid.push(...measuredRates);
   const rates=[];
   grid.filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).forEach(x=>{
     if(!rates.length || Math.abs(Math.log(x/rates[rates.length-1]))>0.02) rates.push(x);
@@ -7055,31 +7120,44 @@ function buildRateResponse(cycle){
   const vopC=Math.abs(inp.cat.Vop[0]-inp.cat.Vop[1]);
   const vopA=Math.abs(inp.an.Vop[0]-inp.an.Vop[1]);
   const stC=inp.cat.ac.st, stA=inp.an.st;
+  const asOn=!!rrAssumeFlat;
 
   const rows=rates.map(rate=>{
-    const I=rate*Q_design;                       // µA
-    const i_cat=I/mCatAM, i_an=I/mAnAM;          // mA/g on each AM
-    const cc=_rrCapAt("cat",isFirst?"c1":"cN",i_cat,capC);
-    const ca=_rrCapAt("an", isFirst?"c1":"cN",i_an, capA);
+    const I=rate*Q_design;
+    const i_cat=I/mCatAM, i_an=I/mAnAM;
+    const cc=_rrCapAt("cat",cyc,i_cat,capC,asOn);
+    const ca=_rrCapAt("an", cyc,i_an, capA,asOn);
+    const isMeasuredRate=measuredRates.some(x=>Math.abs(Math.log(rate/x))<0.02);
+    const base={rate,I,i_cat,i_an,
+                isDesign:Math.abs(Math.log(rate/designRate))<0.02,
+                isMeasured:isMeasuredRate,
+                state:(cc.state==="unknown"||ca.state==="unknown")?"unknown"
+                     :(cc.state==="assumed"||ca.state==="assumed")?"assumed"
+                     :(cc.state==="extrapolated"||ca.state==="extrapolated")?"extrapolated":"measured"};
+
+    if(base.state==="unknown"){
+      // Say which electrode is missing and why, rather than inventing a number.
+      const why=[];
+      if(cc.state==="unknown") why.push("cathode: "+cc.reason);
+      if(ca.state==="unknown") why.push("anode: "+ca.reason);
+      return Object.assign(base,{Qc:null,Qa:null,Q:null,np:null,pct:null,
+                                 status:"none",limiting:null,shiftV:null,unused:null,
+                                 idleSide:null,consequence:"",why:why.join(" · ")});
+    }
+
     let Qc=mCatAM*cc.c;
-    if(isFirst && saltOn && mS>0 && capS>0) Qc+=mS*capS;   // salt fires on cycle 1 only
+    if(isFirst && saltOn && mS>0 && capS>0) Qc+=mS*capS;
     const Qa=mAnAM*ca.c;
     const Q=Math.min(Qc,Qa);
     const np=Qc>0?Qa/Qc:0;
     const spread=(Q>0)?Math.abs(Qa-Qc)/Math.max(Qa,Qc):0;
     const limiting=(spread<0.005)?"balanced":((Qa<Qc)?"anode":"cathode");
-
-    // How far the balance has drifted, graded on the same scale as the
-    // capacity pills so a colour means one thing across the whole tool.
     const off=(np>0&&target>0)?Math.abs(Math.log(np/target)):Infinity;
     const status=(off<=Math.log(1.25))?"ok":(off<=Math.log(2.5))?"warn":"bad";
 
-    // The electrode that is NOT limiting only sweeps part of its own capacity;
-    // the rest of its window is never reached, so its potential sits away from
-    // where it was designed to end up.
     const Qown=(limiting==="anode")?Qc:(limiting==="cathode"?Qa:Q);
     const f=(Qown>0)?Q/Qown:1;
-    const idleSide=(limiting==="anode")?"cathode":"anode";   // who is left part-swept
+    const idleSide=(limiting==="anode")?"cathode":"anode";
     const idleSt=(idleSide==="cathode")?stC:stA;
     const idleVop=(idleSide==="cathode")?vopC:vopA;
     const unused=Math.max(0,1-f);
@@ -7093,15 +7171,18 @@ function buildRateResponse(cycle){
         ? "Anode exhausts first — it is driven to the end of its window on charge; plating and fade risk."
         : "";
     }
-    return {rate,I,i_cat,i_an,Qc,Qa,Q,np,status,limiting,
-            pct:Q/Q_design, unused, shiftV, idleSide, consequence,
-            extrapolated:cc.extrapolated||ca.extrapolated,
-            flat:cc.flat&&ca.flat,
-            isDesign:Math.abs(Math.log(rate/designRate))<0.02};
-  }).filter(row=>!(row.extrapolated&&row.pct<0.02));   // drop meaningless far tails
+    return Object.assign(base,{Qc,Qa,Q,np,status,limiting,pct:Q/Q_design,
+                               unused,shiftV,idleSide,consequence,why:""});
+  });
 
+  const known=rows.filter(x=>x.state!=="unknown");
   return {cycle,rows,target,designRate,Q_design,mCatAM,mAnAM,
-          singleRate:rows.length?rows.every(x=>x.flat):true,
+          anyUnknown:rows.some(x=>x.state==="unknown"),
+          anyExtrapolated:rows.some(x=>x.state==="extrapolated"),
+          anyAssumed:rows.some(x=>x.state==="assumed"),
+          nMeasuredCat:(_simRateLadder("cat",cyc)||[]).length,
+          nMeasuredAn:(_simRateLadder("an", cyc)||[]).length,
+          known:known.length,
           dual:!!r.dualAnode};
 }
 
@@ -7109,6 +7190,57 @@ function buildRateResponse(cycle){
 /* View state for the rate-response section. Both are display-only: which cycle
    is described, and which current the x-axis / first column reports. */
 let ratePhase="Nth", rateXUnit="C";
+/* Opt-ins for the rate table. Measured points are hidden by default: they are
+   what the fit is built from, not what anyone designs at. The constant-capacity
+   assumption is off by default because it is an assertion about the material,
+   and it should be the user making it, not the tool. */
+let rrShowMeasured=false, rrAssumeFlat=false;
+let rrAssumeCat=null, rrAssumeAn=null;      // mAh/g the user asserts out of range
+
+/* The capacity to hold constant outside the measured range.
+
+   Default is the value at the edge being extended — the slowest measured point
+   below the range, the fastest above — because holding the fast-end capacity
+   across the slow end would understate the cell, and vice versa. A value typed
+   by the user overrides both. */
+function _rrAssumed(side,cycle,below){
+  const v=(side==="cat")?rrAssumeCat:rrAssumeAn;
+  if(Number.isFinite(v)&&v>0) return v;
+  const L=_simRateLadder(side,cycle)||[];
+  if(L.length) return below?L[0].c:L[L.length-1].c;
+  const typed=(side==="cat")
+    ? (cycle==="c1"?N("cat-ac-c1"):N("cat-ac-cN"))
+    : (cycle==="c1"?N("an-c1"):N("an-cN"));
+  return typed>0?typed:null;
+}
+function rrRefresh(){
+  // These change the numbers in this section only, so a re-render is enough —
+  // unless something upstream is pending, in which case solve first.
+  if(calcDirty) refreshResults(); else renderRateResponse();
+}
+function setRrShowMeasured(v){ rrShowMeasured=!!v; rrRefresh(); }
+function setRrAssumeFlat(v){
+  rrAssumeFlat=!!v;
+  const box=$("rrAssumeBox"); if(box) box.style.display=rrAssumeFlat?"":"none";
+  if(rrAssumeFlat){
+    // Left blank, each end holds its own nearest measured value — the right
+    // default. The placeholder shows what that is so it is not a mystery.
+    const cyc=(ratePhase==="1st")?"c1":"cN";
+    const ph=(side)=>{
+      const L=_simRateLadder(side,cyc)||[];
+      return L.length?("auto: "+Math.round(L[0].c)+"–"+Math.round(L[L.length-1].c)):"mAh/g";
+    };
+    const a=$("rrAssumeCat"), b=$("rrAssumeAn");
+    if(a) a.placeholder=ph("cat");
+    if(b) b.placeholder=ph("an");
+  }
+  rrRefresh();
+}
+function onRrAssumeEdit(){
+  rrAssumeCat=parseFloat($("rrAssumeCat")?.value)||null;
+  rrAssumeAn =parseFloat($("rrAssumeAn")?.value)||null;
+  rrRefresh();
+}
 function setRatePhase(ph){
   ratePhase=(ph==="1st")?"1st":"Nth";
   const t=$("rrTog");
@@ -7156,9 +7288,26 @@ function renderRateResponse(){
       '<span class="rr-chip">Designed for <strong>'+fCrate(d.designRate)+'</strong> <span class="rr-sub">'+fRateTime(d.designRate)+'</span></span>'+
       '<span class="rr-chip">Deliverable <strong>'+d.Q_design.toPrecision(3)+' µAh</strong></span>'+
       '<span class="rr-chip">Target N/P <strong>'+d.target.toFixed(2)+'</strong></span>'+
-      '<span class="rr-chip rr-cycle">'+(d.cycle==="1st"?"formation (1st) cycle":"reversible (N<sup>th</sup>) cycle")+'</span>';
+      '<span class="rr-chip rr-cycle">'+(d.cycle==="1st"?"formation (1st) cycle":"reversible (N<sup>th</sup>) cycle")+'</span>'+
+      (design && design.state==="unknown"
+        ? '<span class="rr-chip rr-warnchip">⚠ no rate data covers your design rate — the balance rests on capacities measured elsewhere</span>'
+        : design && design.state!=="measured"
+        ? '<span class="rr-chip rr-warnchip">⚠ your design rate is '+(design.state==="assumed"?"an assumption":"an estimate")+', not a measurement</span>'
+        : '');
   }
+  const tag={measured:"", extrapolated:'<span class="rr-tag rr-t-ex">est.</span>',
+             assumed:'<span class="rr-tag rr-t-as">assumed</span>',
+             unknown:""}
   const cells=d.rows.map((row,i)=>{
+    const first='<td class="rr-rate">'+(row.isDesign?'<span class="rr-badge">design</span> ':"")+
+      (row.isMeasured&&!row.isDesign?'<span class="rr-badge rr-b-m">measured</span> ':"")+
+      _rrXText(row)+'<span class="rr-sub"> '+fRateTime(row.rate)+'</span>'+(tag[row.state]||"")+'</td>';
+    if(row.state==="unknown"){
+      // No number is better than an invented one — say what is missing instead.
+      return '<tr class="rr-row rr-unknown'+(row.isDesign?" rr-design-row":"")+'" data-i="'+i+'">'+
+        first+'<td colspan="7" class="rr-whycell">Not enough data to extrapolate — '+esc(row.why)+
+        '.<span class="rr-hint"> Tick “assume capacity is constant” above to fill this region in.</span></td></tr>';
+    }
     const dev=(row.np-d.target)*100;
     const shift=(row.shiftV!=null)
       ? (row.shiftV>0.005 ? "±"+row.shiftV.toFixed(2)+" V" : "—")
@@ -7167,8 +7316,7 @@ function renderRateResponse(){
       ' data-i="'+i+'" onclick="rateRowToSim('+i+')"'+
       ' onmouseenter="rateRowHover('+i+',true)" onmouseleave="rateRowHover('+i+',false)"'+
       ' title="'+(row.consequence||"On target — the cell behaves as designed at this rate.")+'">'+
-      '<td class="rr-rate">'+(row.isDesign?'<span class="rr-badge">design</span> ':"")+_rrXText(row)+
-        '<span class="rr-sub"> '+fRateTime(row.rate)+'</span></td>'+
+      first+
       '<td>'+row.Qc.toPrecision(3)+'</td>'+
       '<td>'+row.Qa.toPrecision(3)+'</td>'+
       '<td><strong>'+row.Q.toPrecision(3)+'</strong> <span class="rr-sub">'+(row.pct*100).toFixed(0)+'%</span></td>'+
@@ -7185,12 +7333,15 @@ function renderRateResponse(){
   }
   if(note){
     const bits=[];
-    if(d.singleRate) bits.push('Both materials have a single measured rate, so capacity cannot fade with current here — add their rate ladders in the library to see the real response.');
-    if(d.rows.some(x=>x.extrapolated)) bits.push('Muted rows sit outside the measured rate range and are extrapolated.');
+    bits.push('Capacity between measured points is interpolated against log(current); <strong>est.</strong> marks values extended up to a decade past the data.');
+    if(d.anyAssumed) bits.push('<strong>assumed</strong> marks rows using the constant capacity you supplied.');
+    if(d.anyUnknown) bits.push('Rows without numbers are outside what the measurements can support.');
+    bits.push('Measured points on file: cathode '+d.nMeasuredCat+', anode '+d.nMeasuredAn+'.');
     if(d.dual) bits.push('Known-cathode mode: the anode mass balancing the reversible cycle is used.');
-    note.innerHTML=bits.length?('<span class="rr-muted">'+bits.join(" ")+'</span>'):"";
+    note.innerHTML='<span class="rr-muted">'+bits.join(" ")+'</span>';
   }
-  d.rows.forEach((row,i)=>{ if(row.extrapolated){const tr=tbl&&tbl.querySelector('tr[data-i="'+i+'"]'); if(tr) tr.classList.add("rr-extrap");} });
+  d.rows.forEach((row,i)=>{ if(row.state==="extrapolated"||row.state==="assumed"){
+    const tr=tbl&&tbl.querySelector('tr[data-i="'+i+'"]'); if(tr) tr.classList.add("rr-extrap");} });
   window._rrData=d;
   renderRateChart(d);
 }
@@ -7228,18 +7379,23 @@ function renderRateChart(d){
     return;
   }
   if(note) note.textContent="";
-  const xs=d.rows.map(_rrX), pct=d.rows.map(r=>r.pct*100), np=d.rows.map(r=>r.np);
-  const solid=d.rows.map(r=>r.extrapolated?0.35:1);
-  const hov=d.rows.map(r=>
+  // Only rows the data can support are drawn; gaps are gaps, not guesses.
+  const pts=d.rows.filter(r=>r.state!=="unknown");
+  if(!pts.length){ host.innerHTML=""; if(note) note.textContent="No rate in this range can be estimated from the measured points."; return; }
+  const xs=pts.map(_rrX), pct=pts.map(r=>r.pct*100), np=pts.map(r=>r.np);
+  const solid=pts.map(r=>(r.state==="measured")?1:0.45);
+  const hov=pts.map(r=>
     "<b>"+fCrate(r.rate)+"</b> · "+fRateTime(r.rate)+"<br>"+
     "cathode "+r.i_cat.toPrecision(3)+" mA/g · anode "+(r.i_an/1000).toPrecision(3)+" A/g<br>"+
     "Q꜀ "+r.Qc.toPrecision(3)+" · Qₐ "+r.Qa.toPrecision(3)+" µAh<br>"+
     "deliverable <b>"+r.Q.toPrecision(3)+" µAh</b> ("+(r.pct*100).toFixed(0)+"% of design)<br>"+
+    (r.state!=="measured"?"<i>"+(r.state==="assumed"?"assumed constant":"extrapolated")+"</i><br>":"")+
     "N/P "+r.np.toFixed(3)+" — "+(r.status==="ok"?"on target":r.status==="warn"?"drifting":"off design")+
     ", "+r.limiting+"-limited"+
     (r.shiftV!=null&&r.shiftV>0.005?"<br>"+r.idleSide+" potential shifts ≈"+r.shiftV.toFixed(2)+" V":"")+
     (r.consequence?"<br><i>"+r.consequence+"</i>":""));
   const col=r=>r.status==="ok"?"#1A8A6E":r.status==="warn"?"#D4881A":"#C43C3C";
+  const dsg=pts.find(r=>r.isDesign)||pts[0];
 
   const xmin=Math.min(...xs), xmax=Math.max(...xs);
   const bandOf=f=>({type:"rect",xref:"x",yref:"y2",x0:xmin,x1:xmax,
@@ -7249,14 +7405,13 @@ function renderRateChart(d){
     Object.assign(bandOf(1.25),{fillcolor:"rgba(26,138,110,.12)"}),
     {type:"line",xref:"x",yref:"y2",x0:xmin,x1:xmax,y0:d.target,y1:d.target,
      line:{color:"#1A8A6E",width:1.4,dash:"dot"}},
-    {type:"line",xref:"x",yref:"paper",x0:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),
-     x1:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),y0:0,y1:1,
+    {type:"line",xref:"x",yref:"paper",x0:_rrX(dsg),x1:_rrX(dsg),y0:0,y1:1,
      line:{color:"#0F1B2D",width:1.6,dash:"dash"}}
   ];
   const traces=[
     {x:xs,y:np,name:"Q<sub>a</sub>/Q<sub>c</sub>",yaxis:"y2",mode:"lines+markers",type:"scatter",
      line:{color:"#2D7AB6",width:2.4},
-     marker:{size:9,color:d.rows.map(col),line:{width:1.5,color:"#fff"},opacity:solid},
+     marker:{size:9,color:pts.map(col),line:{width:1.5,color:"#fff"},opacity:solid},
      text:hov,hovertemplate:"%{text}<extra></extra>"},
     {x:xs,y:pct,name:"deliverable capacity",mode:"lines+markers",type:"scatter",
      line:{color:"#1A8A6E",width:2.2,dash:"solid"},marker:{size:6,opacity:solid},
@@ -7273,7 +7428,7 @@ function renderRateChart(d){
     yaxis2:{title:{text:"Q<sub>a</sub>/Q<sub>c</sub>",font:{size:11.5}},
             overlaying:"y",side:"right",showgrid:false,showline:true,linecolor:"#D0D8E0"},
     shapes,
-    annotations:[{x:_rrX(d.rows.find(r=>r.isDesign)||d.rows[0]),y:1,yref:"paper",
+    annotations:[{x:_rrX(dsg),y:1,yref:"paper",
                   text:"designed here",showarrow:false,yanchor:"bottom",
                   font:{size:10.5,color:"#0F1B2D"},bgcolor:"rgba(255,255,255,.85)"}],
     legend:{orientation:"h",x:0,y:1.12,font:{size:11}},

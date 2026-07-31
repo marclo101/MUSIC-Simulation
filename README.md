@@ -30,7 +30,11 @@ By default the target N/P applies to every cycle. Enabling **Different 1st cycle
 
 ### Rate response
 
-The **Diagnostics** tab ends with a chart and table showing what happens if the cell is cycled away from the rate it was designed for. Each electrode fades at its own pace as the current rises, so the balance Q<sub>a</sub>/Q<sub>c</sub> drifts off target: one electrode runs out first, the other is left part-swept and its potential shifts to compensate. The table reports, per rate, the cell C-rate and each electrode's mass-normalized current, both electrode capacities, the deliverable capacity as a percentage of the design point, the drifting N/P, the potential shift of the part-swept electrode, and which electrode is limiting — colour-graded on the same green/amber/red scale used elsewhere. Clicking a row simulates the cell at that rate.
+The **Diagnostics** tab ends with a chart and table showing what happens if the cell is cycled away from the rate it was designed for. Capacity at each rate is **extrapolated from the material's measured half-cell points**: the library's (rate, capacity) pairs are fitted against log(current), interpolated between points and extended up to a decade beyond them. The table reports a fixed ladder — C/20, C/10, C/5, C/2, 1C, 2C, 5C — plus your design rate, with each value marked *measured*, *est.* or *assumed*. A checkbox adds the measured points themselves as extra rows.
+
+Where the data cannot support an estimate — a single measured rate, no rate data at all, or a rate far beyond the ladder — the tool **says so instead of inventing a number**. A second checkbox, *assume capacity is constant outside the measured range*, fills those regions in: by default each end holds its own nearest measured value, and you can type a capacity per electrode to override it.
+
+For every rate the table gives the cell C-rate and each electrode's mass-normalized current, both electrode capacities, the deliverable capacity as a percentage of the design point, the drifting N/P, the potential shift of the part-swept electrode, and which electrode is limiting — colour-graded on the same green/amber/red scale used elsewhere. Clicking a row simulates the cell at that rate.
 
 ### The Simulation tab
 
