@@ -1,6 +1,6 @@
 # MUSIC Electrode Balance
 
-A single-page web tool for sizing and balancing the cathode and anode of a Li/Na-ion full cell. Open the HTML in any modern browser — no install, no server needed.
+A single-page web tool for sizing and balancing the positive and negative electrodes of a Li/Na-ion full cell. Open the HTML in any modern browser — no install, no server needed.
 
 ## Files in this folder
 
@@ -18,15 +18,54 @@ Only the small library file is read at startup — the figures and the plotting 
 
 ## What the program does
 
-Given a cathode active material, an optional sacrificial salt, and an anode, it computes the electrode masses, mass loadings, N/P (Q<sub>a</sub>/Q<sub>c</sub>) ratios, C/10 cell currents, and rate-dependent current densities required to balance the cell at a chosen target N/P. It supports faradaic, capacitive, and pseudocapacitive storage types, and exports the results as TXT, Word, Excel, or PDF.
+Given a positive-electrode active material, an optional sacrificial salt, and a negative-electrode material, it computes the electrode masses, mass loadings, electrode mass ratios, N/P (Q<sub>a</sub>/Q<sub>c</sub>) ratios, C/10 cell currents, and rate-dependent current densities required to balance the cell at a chosen target N/P. It supports faradaic, capacitive, and pseudocapacitive storage types, and exports the results as TXT, Word, Excel, or PDF.
 
-**Start with Cell parameters.** The tool opens on a full-width *Cell parameters* card: the target N/P ratio (Q<sub>a</sub>/Q<sub>c</sub>) the solver must hit, and the C-rates you intend to cycle at for the formation (1st) and reversible (Nth) cycles. Capacities are rate-dependent, so a cell balanced at one rate is not balanced at another — these rates also set the currents the simulation applies and highlight the matching rows in the Rates tab.
+**Start with Cell parameters.** The tool opens on a full-width *Cell parameters* card: the target N/P ratio (Q<sub>a</sub>/Q<sub>c</sub>) the solver must hit, and the C-rates you intend to cycle at for the formation (1st) and reversible (Nth) cycles. Capacities are rate-dependent, so a cell balanced at one rate is not balanced at another — these rates also set the currents the simulation applies and highlight the matching rows in the Rates tab. Rates run from C/1000 to 1000C, entered either as a multiplier or as a divisor; a value outside that range is refused with a message rather than silently ignored.
 
-By default the target N/P applies to every cycle. Enabling **Different 1st cycle** exposes a separate formation-cycle target: the sacrificial salt is then sized so the **1st cycle** lands on its own N/P while the electrode masses hold the **reversible (Nth) cycle** at the main target.
+**The 1st-cycle target** is its own decision, with three settings:
 
-**Already-prepared electrodes.** If your cathode is mixed to a fixed recipe, enter the **Known salt content (% of electrode mass)** in the sacrificial-additive panel. The AM / salt / carbon / binder split is then held fixed, and — with the cathode mass pinned — the tool sizes the **anode mass** to balance it. Because a fixed cathode leaves the anode mass as the only knob, it reports **two masses**: one balancing the reversible (Nth) cycle and one balancing the formation (1st) cycle. Leave the field blank to have the solver choose the salt amount as before.
+| Setting | What the solver does |
+|---|---|
+| **Same as N<sup>th</sup>** (default) | Spends sacrificial salt to drag the formation cycle onto the reversible target. |
+| **Custom** | Gives formation its own Q<sub>a</sub>/Q<sub>c</sub> target. |
+| **Unconstrained** | Does not target formation at all. Sizes the salt to replace exactly the working ion the anode loses irreversibly on the first cycle (m<sub>S</sub>·C<sub>s,1</sub> = Q<sub>a1</sub> − Q<sub>aN</sub>) and reports the resulting ratio as a **result**, uncoloured. This is usually what you want when reproducing a cell you have actually measured. |
+
+Only the sacrificial salt can move the 1st-cycle ratio independently of the N<sup>th</sup>. Where that freedom is absent — no salt at all, or a fixed **Known salt content** with both masses pinned — the control is disabled and says why, instead of accepting a target it cannot honour.
+
+**Already-prepared electrodes.** If your cathode is mixed to a fixed recipe, enter the **Known salt content (% of electrode mass)** in the sacrificial-additive panel. The AM / salt / carbon / binder split is then held fixed, and the tool sizes whichever electrode you did *not* pin. A fixed recipe leaves that one mass as the only knob, and a single mass can satisfy only one cycle — so the tool reports **two masses** on the solved side: one balancing the reversible (Nth) cycle and one balancing the formation (1st) cycle. This holds in both directions: pin the cathode and you get two anode masses, pin the anode and you get two cathode masses. Leave the field blank to have the solver choose the salt amount as before.
+
+### Reading the result
+
+The status chip names the direction of any imbalance; the line under it says what that direction **costs**, because the two directions are not equally serious:
+
+- **Anode overcapacitive** (r > target) — the negative electrode is never fully charged. The surplus capacity is unused mass and costs energy density. It is a fixed offset, not a drift: it does not compound over cycles, and there is no plating risk.
+- **Cathode overcapacitive** (r < target) — more working ion arrives than the negative electrode can absorb, so it plates as metal. This is a hazard, and on the N<sup>th</sup> cycle it *does* compound: plated metal leaves the inventory every cycle.
+
+Results also report the **electrode mass ratio** on both bases — total film (what you weigh, and what most papers quote) and AM₁ alone (salt excluded). The two are usually different numbers, which is why a bare "1:1.6" in a paper is so often hard to reproduce.
+
+**Naming.** Because anode and cathode swap roles between charge and discharge, the tool labels the electrodes **positive / negative** by default — consistent with the N/P ratio it has always reported. A switch in the header restores cathode/anode wording. It is display only: nothing in the calculation, the saved library, or the exports changes.
+
+**Mechanical stability.** Each electrode takes an optional **Max areal loading** (mg/cm²) — the limit your AM/binder pair will hold on the foil — and an optional coating density, which turns the loading into an estimated thickness. Exceeding the limit raises a warning. It is purely advisory: it never constrains the solver or alters a computed mass. Library entries may carry `maxLoading` and `density` fields to seed it; entries without them simply leave the check off.
+
+**Planning an experiment.** **⤓ Blank data sheet** (next to *Export results*) downloads a table of every input the tool consumes — field, symbol, unit, normalisation basis, required or optional, and how it is measured — so you can collect the data away from the tool. Anything already entered is carried across, and the sheet states the capacity conventions in full.
 
 **First time here?** The app offers a guided tour every time it loads — dismiss it with one click, or replay it any time from the **Tutorial** button in the header. The tour lights up one section at a time, leaving it fully usable so you can try each input as it is explained, and it ends at the material library.
+
+### Capacity conventions
+
+Every specific capacity the tool asks for is a **half-cell value, per gram of that component alone**:
+
+| Field | Basis | Which stroke |
+|---|---|---|
+| Cathode AM `C₁ₛₜ` | mAh g⁻¹ of active material — salt excluded | first **charge** (de-sodiation / de-lithiation) |
+| Cathode AM `Cₙₜₕ` | mAh g⁻¹ of active material | **discharge** of a settled cycle |
+| Salt `C₁ₛₜ` | mAh g⁻¹ **of salt** | first oxidation (irreversible) |
+| Anode `C₁ₛₜ` | mAh g⁻¹ of active material | first **discharge** (sodiation / lithiation — includes the SEI loss) |
+| Anode `Cₙₜₕ` | mAh g⁻¹ of active material | **discharge** of a settled cycle |
+
+The active-material capacity and the salt capacity are added separately (`Qc1 = m_AM·C₁ + m_salt·C_s1`), so never fold the salt into the AM figure. Record the rate alongside every capacity — capacity is rate-dependent, which is the whole reason the design rate is asked for up front.
+
+One exception is worth knowing: the Simulation tab's capacity axis can be normalised **per total cell mass**, which counts *both* whole electrode films including carbon and binder. That number is not comparable with a half-cell mAh/g figure. The axis pill spells out the active basis, and per-cathode-AM and per-anode-AM options are available alongside it.
 
 ### Rate response
 
@@ -47,7 +86,9 @@ The **Simulation** tab draws the galvanostatic charge–discharge (GCD) curves �
 - The **sacrificial salt** adds one-shot oxidation-only plateaus at V<sub>redox</sub> from a global reservoir (m<sub>S</sub>·C<sub>s,1</sub>) that is consumed across cycles and never refilled.
 - The very first stroke is the **formation** half-cycle: anchored at the as-assembled OCV and sized by C<sub>1st</sub>; every later stroke uses C<sub>Nth</sub>, with the irreversible loss carried across the switch.
 - **Deliverable capacity is rate-dependent**: when the material's library entry has a multi-rate ladder, the simulated capacity is scaled by φ = c(i<sub>app</sub>)/c(i<sub>ref</sub>), interpolated in log current, where i<sub>app</sub> comes from the currents picked in the Rates tab and the solved electrode masses.
-- Both electrodes pass the same charge; a stroke ends when either electrode exhausts its capacity or one of six always-on stop constraints (Cathode/Anode/Cell × V<sub>max</sub>/V<sub>min</sub>, defaulting to the V<sub>op</sub> windows) is crossed — including the IR drop from the R<sub>eq</sub> input on the cell voltage.
+- Both electrodes pass the same charge; a stroke ends when either electrode exhausts its capacity or one of six stop constraints (Cathode/Anode/Cell × V<sub>max</sub>/V<sub>min</sub>, defaulting to the V<sub>op</sub> windows) is crossed — including the IR drop from the R<sub>eq</sub> input on the cell voltage.
+- **Any constraint can be switched off entirely**, which is not the same as leaving it blank: blank falls back to the V<sub>op</sub> default, off removes the bound. **Cell cut-offs only** switches the four electrode bounds off in one click, reproducing a real two-electrode cell where nothing controls the individual electrode potentials and they go wherever the balance sends them.
+- Under the plot, a **headroom report** names what ended the last stroke and how much of each electrode's own V<sub>op</sub> window was left unswept. A stroke that ends on a *cell* bound while an electrode still has headroom to its own limit is the signature of the electrode potentials walking away from their design window; the report flags the first stroke where that appears and says whether the gap is widening (a progressive drift) or holding steady (a fixed offset).
 
 Not modeled (no data for them in the library): reaction kinetics (Butler–Volmer), diffusion limitation, hysteresis beyond ohmic IR, and temperature effects.
 
@@ -56,7 +97,7 @@ Not modeled (no data for them in the library): reaction kinetics (Butler–Volme
 1. On load, the HTML executes `materials-library.js`, which assigns the library to `window.MUSIC_LIBRARY`.
 2. The app reads `window.MUSIC_LIBRARY` and uses it to populate the cathode/anode/salt presets and the **Benchmark material library** panel at the bottom of the page.
 3. If `materials-library.js` is missing or malformed, the app falls back to (a) a copy stored in the browser's `localStorage`, and (b) a small set of hard-coded defaults bundled inside the HTML.
-4. Picking a preset auto-fills the V<sub>th</sub> window, OCV, storage type, and rate-paired C₁/C<sub>N</sub> capacities. Because capacity is rate-dependent, the tool selects the **measurement taken closest to your design C-rate** — the reversible capacity from the row nearest the operating rate, the first-cycle capacity from the row nearest the formation rate — and re-selects automatically if you change either rate later. A capacity you type by hand is never overwritten. All other inputs (composition, target N/P, masses or loadings) are entered manually.
+4. Picking a preset auto-fills the V<sub>th</sub> window, OCV, storage type, and rate-paired C₁/C<sub>N</sub> capacities (plus `maxLoading` / `density` if the entry carries them). Because capacity is rate-dependent, the tool selects the **measurement taken closest to your design C-rate** — the reversible capacity from the row nearest the operating rate, the first-cycle capacity from the row nearest the formation rate — and re-selects automatically if you change either rate later. A capacity you type by hand is never overwritten. All other inputs (composition, target N/P, masses or loadings) are entered manually.
    - This is why a library entry is most useful with **every rate you measured**, one row per rate, rather than a single number.
 5. For **capacitive and pseudocapacitive** electrodes, if the library has no measured 1st-cycle value, C₁ is derived from the as-assembled OCV: since a capacitor's capacity scales with voltage span, C₁ = C<sub>rev</sub> · (V<sub>op,hi</sub> − OCV)/(V<sub>th,hi</sub> − V<sub>th,lo</sub>) for the cathode (mirrored for the anode), using the reversible capacity at the slowest available rate. Formation is always a charge (a cell is assembled discharged), so the cathode sweeps OCV→V<sub>op,hi</sub> and the anode OCV→V<sub>op,lo</sub>. Editing the OCV or the windows re-derives it automatically; typing a C₁ by hand locks it. Faradaic materials keep their library C₁.
 
