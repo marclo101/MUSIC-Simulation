@@ -90,6 +90,11 @@ global.$ = id => (id in inputs)
   : null;
 global.N = id => parseFloat(inputs[id]);
 global.saltOn = true;
+// Per-constraint "switched off" state. Off is distinct from blank: blank falls
+// back to the V_op default, off removes the bound entirely (the crossing search
+// skips any non-finite bound). All six live by default.
+global.simConsOff = { catMax: false, catMin: false, anoMax: false, anoMin: false,
+                      cellMax: false, cellMin: false };
 global.simRateSel = { '1st': { I_uA: 10 }, 'Nth': { I_uA: 10 } };
 global.document = { querySelectorAll: () => [] };
 // Anode (100 µAh) is smaller than cathode 1st-cycle total (50 AM + 150 salt),

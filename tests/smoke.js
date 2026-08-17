@@ -1081,6 +1081,206 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     XP.footnoted === true && XP.countsPoints === true, JSON.stringify(XP));
   check("the exported rate table stays column-aligned", XP.aligned === true, JSON.stringify(XP));
 
+  // ══ Feedback fixes — AH, 11.08.2026 ══════════════════════════════════════
+  // Each block below pins one behaviour the returned notes found missing or
+  // wrong. They are grouped here rather than woven into the sections above so
+  // the origin of each assertion stays traceable.
+
+  // ── C-rate ceiling: 60C (a 1-minute cycle) must be enterable, and an entry
+  //    outside the range must announce itself instead of silently reverting.
+  const CR = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    g("cell-rate-nth").value = "60"; onCellRateChange();
+    out.accepted60 = cellRateNth === 60;
+    out.eq = g("cell-rate-nth-eq").textContent;
+    out.mirrored = Math.abs(parseFloat(g("cell-rate-nth-div").value) - 1 / 60) < 1e-4;
+    out.quietWhenValid = g("cell-rate-nth-err").style.display === "none";
+    g("cell-rate-nth").value = "5000"; onCellRateChange();
+    out.heldOnReject = cellRateNth === 60;               // state must not move
+    out.announced = g("cell-rate-nth-err").style.display !== "none";
+    out.marked = g("cell-rate-nth").classList.contains("bad");
+    g("cell-rate-nth").value = "0.1"; onCellRateChange();
+    out.recovered = g("cell-rate-nth-err").style.display === "none";
+    return out;
+  });
+  check("60C is accepted and reads back as a 1-minute cycle",
+    CR.accepted60 === true && /1\s*min/.test(CR.eq) && CR.mirrored === true, JSON.stringify(CR));
+  check("an out-of-range C-rate is announced, not silently discarded",
+    CR.heldOnReject === true && CR.announced === true && CR.marked === true &&
+    CR.quietWhenValid === true && CR.recovered === true, JSON.stringify(CR));
+
+  // ── Formation target: it must never be inert without saying so, and with a
+  //    fixed salt content the pinned-anode branch must report a second mass.
+  const FT = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const out = {};
+    if (saltOn) tgSalt();
+    recalcNow();
+    const seg = document.getElementById("np1stSeg");
+    out.customOffNoSalt = seg.querySelector('[data-m="custom"]').disabled === true;
+    out.freeOffNoSalt = seg.querySelector('[data-m="free"]').disabled === true;
+    out.sameStaysOn = seg.querySelector('[data-m="same"]').disabled === false;
+    out.reasonGiven = document.getElementById("np1stNote").style.display !== "none";
+
+    // Salt on, solver free to size it → "unconstrained" sizes the salt to the
+    // anode's irreversible loss and reports r1 as a result.
+    tgSalt();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("an-st").value = "faradaic"; onStorageTypeChange("an");
+    g("cat-ac-c1").value = "70"; g("cat-ac-cN").value = "60";
+    g("an-c1").value = "350"; g("an-cN").value = "250";
+    g("cat-s-c1").value = "290"; g("cat-s-cN").value = "";
+    g("cat-s-frac").value = "";
+    g("cat-wAM").value = "90"; g("cat-wC").value = "5"; g("cat-wB").value = "5";
+    g("an-wAM").value = "90"; g("an-wC").value = "5"; g("an-wB").value = "5";
+    g("np-target").value = "1.00"; onNpTargetChange();
+    mCatOverride = null; mAnOverride = null;
+    sMM("an", "d", document.querySelector("#an-mmb .mmb:nth-child(1)"));
+    g("an-mass").value = "2.152"; g("cat-mass").value = "";
+    recalcNow();
+    setNp1stMode("free"); recalcNow();
+    const r = window.lastR, inp = window.lastInp;
+    out.saltCoversLoss = Math.abs(r.mS * inp.cat.salt.c1 - r.mAn * inp.an.wAM * (inp.an.c1 - inp.an.cN))
+                         / Math.max(r.mAn * inp.an.wAM * (inp.an.c1 - inp.an.cN), 1e-9) < 1e-6;
+    out.nthStillOnTarget = Math.abs(r.rN - 1.0) < 1e-3;
+    out.r1IsResult = r.r1Targeted === false;
+    out.heroPlain = document.getElementById("r-r1pct").className.includes("nt");
+
+    // Fixed salt content + pinned anode → a second cathode mass for the 1st cycle.
+    setNp1stMode("same");
+    g("cat-s-frac").value = "30";
+    recalcNow();
+    out.mode = window.lastMode;
+    out.dualCathode = window.lastR.dualCathode === true && window.lastR.mCat1st > 0;
+    out.massesDiffer = Math.abs(window.lastR.mCat - window.lastR.mCat1st) > 1e-6;
+    return out;
+  });
+  check("with no salt the formation target is disabled and says why",
+    FT.customOffNoSalt === true && FT.freeOffNoSalt === true &&
+    FT.sameStaysOn === true && FT.reasonGiven === true, JSON.stringify(FT));
+  check("unconstrained formation sizes the salt to the anode's 1st-cycle loss",
+    FT.saltCoversLoss === true && FT.nthStillOnTarget === true, JSON.stringify(FT));
+  check("an untargeted 1st-cycle ratio is reported as a result, not colour-graded",
+    FT.r1IsResult === true && FT.heroPlain === true, JSON.stringify(FT));
+  check("fixed salt content with a pinned anode reports both cathode masses",
+    FT.mode === "cathode" && FT.dualCathode === true && FT.massesDiffer === true, JSON.stringify(FT));
+
+  // ── The status chip must say what the imbalance costs, and must not grade
+  //    the safe direction as harshly as the plating one.
+  const CN = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    g("cat-s-frac").value = ""; if (saltOn) tgSalt();
+    g("np-target").value = "1.00"; onNpTargetChange();
+    g("cat-mass").value = "5"; g("an-mass").value = "1"; recalcNow();
+    const plating = { rN: window.lastR.rN, html: document.getElementById("stsNote").innerHTML,
+                      risk: document.getElementById("stsNote").classList.contains("risk") };
+    g("cat-mass").value = "1"; g("an-mass").value = "5"; recalcNow();
+    const safe = { rN: window.lastR.rN, html: document.getElementById("stsNote").innerHTML,
+                   risk: document.getElementById("stsNote").classList.contains("risk") };
+    return { plating, safe };
+  });
+  check("cathode-overcapacitive is named as a plating risk",
+    CN.plating.rN < 1 && /plating/i.test(CN.plating.html) && CN.plating.risk === true, JSON.stringify(CN.plating));
+  check("anode-overcapacitive is explained as unused mass, not flagged as a hazard",
+    CN.safe.rN > 1 && /unused|not a plating risk/i.test(CN.safe.html) && CN.safe.risk === false,
+    JSON.stringify(CN.safe));
+
+  // ── Mass ratio: the number papers quote, on both bases.
+  const MR = await page.evaluate(() => {
+    recalcNow();
+    const r = window.lastR, inp = window.lastInp;
+    const expTot = r.mCat / r.mAn;
+    const expAM = (r.mAC + (r.mS || 0)) / (r.mAn * inp.an.wAM);
+    const rd = t => parseFloat(String(t).replace(/[^\d.]/g, "").replace(/^1/, "")) || null;
+    return { tot: document.getElementById("r-mrTot").textContent.trim(),
+             am: document.getElementById("r-mrAM").textContent.trim(),
+             expTot, expAM,
+             totOk: Math.abs(rd(document.getElementById("r-mrTot").textContent) - expTot) < 0.02,
+             amOk: Math.abs(rd(document.getElementById("r-mrAM").textContent) - expAM) < 0.02 };
+  });
+  check("both mass ratios are reported and match the solved masses",
+    MR.totOk === true && MR.amOk === true, JSON.stringify(MR));
+
+  // ── Simulation constraints can be switched off entirely (blank ≠ off).
+  const SC = await page.evaluate(() => {
+    const out = {};
+    out.allLive = Object.values(_simReadConstraints()).every(c => Number.isFinite(c.V));
+    toggleSimCons("catMax");
+    out.offIsNaN = Number.isNaN(_simReadConstraints().catMax.V);
+    out.inputDisabled = document.getElementById("simCons_catMax_v").disabled === true;
+    toggleSimCons("catMax");
+    simConsCellOnly();
+    const c = _simReadConstraints();
+    out.electrodesOff = [c.catMax, c.catMin, c.anoMax, c.anoMin].every(x => Number.isNaN(x.V));
+    out.cellLive = Number.isFinite(c.cellMax.V) && Number.isFinite(c.cellMin.V);
+    simConsCellOnly();
+    out.restored = Number.isFinite(_simReadConstraints().catMax.V);
+    return out;
+  });
+  check("a constraint can be switched off, distinct from being left blank",
+    SC.allLive === true && SC.offIsNaN === true && SC.inputDisabled === true, JSON.stringify(SC));
+  check('"cell cut-offs only" drops the four electrode bounds and restores them',
+    SC.electrodesOff === true && SC.cellLive === true && SC.restored === true, JSON.stringify(SC));
+
+  // ── Terminology switch is display-only and reversible.
+  const TM = await page.evaluate(() => {
+    setTerminology("pn");
+    const pn = document.querySelector(".card-h.ch .ct").textContent.trim();
+    setTerminology("ac");
+    const ac = document.querySelector(".card-h.ch .ct").textContent.trim();
+    setTerminology("pn"); setTerminology("ac"); setTerminology("pn");
+    const again = document.querySelector(".card-h.ch .ct").textContent.trim();
+    return { pn, ac, again,
+             idsIntact: !!(document.getElementById("cat-ac-c1") && document.getElementById("an-mass")),
+             libSkipped: document.getElementById("lib").hasAttribute("data-noterm") };
+  });
+  check("terminology switch renames the electrodes without touching the DOM ids",
+    /Positive/.test(TM.pn) && /Cathode/.test(TM.ac) && TM.idsIntact === true, JSON.stringify(TM));
+  check("toggling terminology repeatedly stays lossless",
+    TM.again === TM.pn && TM.libSkipped === true, JSON.stringify(TM));
+
+  // ── Blank data sheet: an input template, not a results dump.
+  const DS = await page.evaluate(() => {
+    let cap = null;
+    const orig = window._saveBlob;
+    window._saveBlob = (content, mime, fname) => { cap = { content, mime, fname }; };
+    try { exportDataSheet(); } finally { window._saveBlob = orig; }
+    if (!cap) return { ok: false };
+    return { ok: true, fname: cap.fname,
+             statesBasis: /per gram of that component alone/.test(cap.content),
+             namesCharge: /First CHARGE/.test(cap.content) && /First DISCHARGE/.test(cap.content),
+             hasUnits: /mAh g⁻¹\(AM\)/.test(cap.content) && /mAh g⁻¹\(salt\)/.test(cap.content),
+             hasRequired: /required/.test(cap.content) && /optional/.test(cap.content) };
+  });
+  check("a blank input data sheet can be exported before any calculation",
+    DS.ok === true && /music-data-sheet-.*\.xls$/.test(DS.fname || ""), JSON.stringify(DS));
+  check("the data sheet states the capacity conventions and normalisation bases",
+    DS.statesBasis === true && DS.namesCharge === true && DS.hasUnits === true &&
+    DS.hasRequired === true, JSON.stringify(DS));
+
+  // ── Mechanical-stability advisory warns but never changes the solve.
+  const ML = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    g("an-ar").value = "1.131";
+    g("an-ldmax").value = "0.5"; g("an-ldmax").dataset.userSet = "1";
+    g("an-dens").value = "1.5";
+    recalcNow();
+    const before = { mCat: window.lastR.mCat, mAn: window.lastR.mAn };
+    const box = g("an-mech");
+    const warned = box.style.display !== "none" && /er|wn/.test(box.className);
+    const thickness = /µm/.test(box.innerHTML);
+    g("an-ldmax").value = ""; g("an-ldmax").dataset.userSet = "";
+    recalcNow();
+    const after = { mCat: window.lastR.mCat, mAn: window.lastR.mAn };
+    return { warned, thickness,
+             unchanged: before.mCat === after.mCat && before.mAn === after.mAn };
+  });
+  check("an over-limit coating is flagged, with a thickness estimate when density is known",
+    ML.warned === true && ML.thickness === true, JSON.stringify(ML));
+  check("the mechanical advisory never changes a computed mass",
+    ML.unchanged === true, JSON.stringify(ML));
+
   check("no uncaught JS errors", jsErrors.length === 0, jsErrors.join(" | "));
 
   await browser.close();
