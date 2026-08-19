@@ -184,17 +184,7 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-fld input:focus{outline:none;border-color:var(--cp);box-shadow:0 0 0 3px rgba(45,139,158,.16)}
 .sm-fld>span{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--ink2);background:var(--bone);border:1px solid var(--ruleS);border-radius:5px;padding:4px 8px;white-space:nowrap}
 .sm-note{font-size:10.5px;line-height:1.5;color:var(--ink3);margin-top:14px}
-/* Detaching the salt is an option, not a step, so its cell stays quiet until
-   taken — dashed and shadowless against the two solid electrode cards. */
-.sm-ghost{border-style:dashed;box-shadow:none;background:transparent;padding:0;display:flex}
-.sm-detach{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:18px 20px;background:transparent;border-radius:var(--r);text-align:left;color:var(--ink2);transition:background .12s,color .12s}
-.sm-detach:hover{background:var(--bone);color:var(--ink)}
-.sm-detach-ic{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;font-family:var(--fm);font-size:13px;font-weight:700;color:#fff;background:var(--ink3);flex-shrink:0}
-.sm-detach:hover .sm-detach-ic{background:var(--sp)}
-.sm-detach-t{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
-.sm-detach-s{font-size:10.5px;line-height:1.5;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0}
-.sm-attach{margin-left:auto;width:20px;height:20px;border-radius:4px;font-size:14px;line-height:1;color:var(--ink3);background:transparent;transition:background .12s,color .12s}
-.sm-attach:hover{background:var(--bone);color:var(--ink)}
+
 
 .sm-result{display:flex;flex-direction:column;align-items:center;padding-bottom:34px}
 .sm-result svg{display:block}
@@ -863,18 +853,17 @@ body.ui-simple .lib{margin-top:0}
 <div class="mast-r"><div class="ui-tog" id="uiTog" title="Simple asks for five capacities and answers with one number. Advanced is the full tool — masses, loadings, rates, simulation and export."><button class="act" data-ui="simple" onclick="setUiMode('simple')">Simple</button><button data-ui="advanced" onclick="setUiMode('advanced')">Advanced</button></div><button class="btn-rst adv-only" onclick="startTour()" title="Take a short guided tour of the tool">Tutorial</button><button class="btn-rst" onclick="resetAll()">Reset all</button><div class="ver-badge" id="verBadge" title="Version of this file. If this does not match the latest release, you are running an older copy — re-download the HTML.">v—</div><div class="mast-meta"><div id="stamp">2026.05.04 18:48</div></div></div></header>
 
 <!-- ══ SIMPLE MODE ══
-     Four capacities in, one number out: how much of the positive electrode's
+     Five capacities in, one number out: how much of the positive electrode's
      active mass has to be sacrificial salt. Nothing else is asked for, because
      nothing else is needed — the answer is a ratio, so every absolute mass,
      loading, rate and voltage window cancels out of it.
 
      Each electrode is described the way a half cell is actually reported: the
-     1st-cycle capacity first, then the reversible one it settles to. On the
-     positive side the 1st-cycle figure is per gram of the WHOLE active zone
-     (AM + salt), which is what you weigh out of a composite electrode — so the
-     salt content is inferred rather than asked for. Detaching the salt swaps
-     that basis to AM alone and takes the salt's own capacity separately, which
-     is the mode for designing from a theoretical salt figure. -->
+     1st-cycle capacity first, then the reversible one it settles to. EVERY
+     capacity is per gram of the material it belongs to — the two active
+     materials per gram of themselves, the salt per gram of salt — so all five
+     are measurable before the electrode exists, which is what makes this a
+     design calculation rather than a description of one already made. -->
 <div id="simpleMode">
   <div class="sm-wrap">
     <h2 class="sm-h">How much sacrificial salt?</h2>
@@ -884,7 +873,7 @@ body.ui-simple .lib{margin-top:0}
       <div class="sm-card sm-pos">
         <h3><span class="sm-ic">+</span> Positive electrode</h3>
         <label for="sm-pos-c1">1<sup>st</sup> cycle</label>
-        <div class="sm-fld"><input type="number" id="sm-pos-c1" min="0" step="1" placeholder="0" oninput="recalcSimple()"><span id="sm-pos-c1-u">mAh/g<sub>AM+salt</sub></span></div>
+        <div class="sm-fld"><input type="number" id="sm-pos-c1" min="0" step="1" placeholder="0" oninput="recalcSimple()"><span>mAh/g<sub>AM</sub></span></div>
         <p class="sm-hint" id="sm-pos-c1-hint" style="display:none">Consider actual operating window starting from OCV</p>
         <label for="sm-pos-cn">N<sup>th</sup> cycle <span class="sm-lbl-alt">(reversible)</span></label>
         <div class="sm-fld"><input type="number" id="sm-pos-cn" min="0" step="1" placeholder="0" oninput="recalcSimple()"><span>mAh/g<sub>AM</sub></span></div>
@@ -896,18 +885,8 @@ body.ui-simple .lib{margin-top:0}
         <label for="sm-neg-cn">N<sup>th</sup> cycle <span class="sm-lbl-alt">(reversible)</span></label>
         <div class="sm-fld"><input type="number" id="sm-neg-cn" min="0" step="1" placeholder="0" oninput="recalcSimple()"><span>mAh/g<sub>AM</sub></span></div>
       </div>
-      <!-- The third cell holds either the invitation or the salt box, so the
-           row keeps its shape when the option is taken. -->
-      <div class="sm-card sm-ghost" id="sm-salt-off">
-        <button type="button" class="sm-detach" onclick="setSaltDetached(true)">
-          <span class="sm-detach-ic">+</span>
-          <span class="sm-detach-t">Enter salt capacity separately</span>
-          <span class="sm-detach-s">Give the salt its own (theoretical) capacity. The positive 1<sup>st</sup>-cycle value then counts per gram of AM alone.</span>
-        </button>
-      </div>
-      <div class="sm-card sm-salt" id="sm-salt-on" style="display:none">
-        <h3><span class="sm-ic">S</span> Sacrificial salt
-          <button type="button" class="sm-attach" onclick="setSaltDetached(false)" title="Fold the salt back into the positive electrode's 1st-cycle capacity" aria-label="Fold the salt back into the positive electrode">×</button></h3>
+      <div class="sm-card sm-salt">
+        <h3><span class="sm-ic">S</span> Sacrificial salt</h3>
         <label for="sm-salt-c1">1<sup>st</sup> cycle</label>
         <div class="sm-fld"><input type="number" id="sm-salt-c1" min="0" step="1" placeholder="0" oninput="recalcSimple()"><span>mAh/g<sub>salt</sub></span></div>
         <p class="sm-note">Formation only — the salt is spent on the first charge and carries nothing afterwards, so it has no N<sup>th</sup>-cycle value.</p>
@@ -1803,7 +1782,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v12.7";
+const APP_VERSION="v12.8";
 const APP_BUILD="2026-08-19";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -7018,11 +6997,8 @@ function resetAll(opts){
   _cellRateChrome();
   npTarget1=1.00;
   {const f=$("np-target-1st");if(f)f.value="1.00";}
-  ["sm-pos-c1","sm-pos-cn","sm-neg-c1","sm-neg-cn","sm-salt-c1"]
-    .forEach(id=>{const f=$(id);if(f)f.value=""});
-  // Reset returns the salt to the folded-in default along with the values.
-  if(typeof setSaltDetached==="function") setSaltDetached(false);
-  else if(typeof recalcSimple==="function") recalcSimple();
+  if(typeof SM_FIELDS!=="undefined") SM_FIELDS.forEach(id=>{const f=$(id);if(f)f.value=""});
+  if(typeof recalcSimple==="function") recalcSimple();
   $("resPanel").style.display="none";$("calcBtn").textContent="Calculate";recalc();if(!silent)toast("Cleared")}
 
 
@@ -7031,49 +7007,37 @@ function resetAll(opts){
    fraction of the positive electrode's active mass has to be sacrificial salt?
 
    Write m_A and m_S for the AM and salt masses inside the positive electrode's
-   active zone, M = m_A + m_S, and x = m_S/M for the answer. Balance both cycles
-   at N/P = 1 against a negative electrode of mass m_n:
+   active zone, M = m_A + m_S, and x = m_S/M for the answer. Every capacity is
+   per gram of the material it belongs to, so the positive side reads
 
-     m_n·C⁻_N = Q_c,N          (reversible)
-     m_n·C⁻_1 = Q_c,1          (formation)
+     Q_c,1 = m_A·C⁺_1 + m_S·C_s     Q_c,N = m_A·C⁺_N
 
-   Only the positive side's bookkeeping differs between the two input modes, and
-   dividing the two conditions cancels m_n and M alike — which is why no mass is
-   ever asked for.
+   the salt carrying nothing reversibly. Balance both cycles at N/P = 1 against
+   a negative electrode of mass m_n,
 
-   COMBINED (four capacities). C⁺_1 is measured per gram of the whole active
-   zone, the way a composite electrode comes off the balance, so it already has
-   the salt folded into it: Q_c,1 = M·C⁺_1, and Q_c,N = m_A·C⁺_N = (1−x)M·C⁺_N,
-   the salt carrying nothing reversibly. Dividing,
+     m_n·C⁻_N = Q_c,N     m_n·C⁻_1 = Q_c,1
 
-     x = 1 − (C⁺_1·C⁻_N) / (C⁻_1·C⁺_N)
-
-   so the salt content is INFERRED from the measurement rather than designed.
-
-   DETACHED (five capacities). C⁺_1 now counts per gram of AM alone and the salt
-   brings its own C_s: Q_c,1 = M[(1−x)C⁺_1 + x·C_s]. Dividing and solving for
-   the salt-to-AM mass ratio,
+   and dividing the two cancels m_n and M alike, leaving the salt-to-AM ratio:
 
      m_S/m_A = (C⁺_N·C⁻_1/C⁻_N − C⁺_1) / C_s
 
-   whose numerator is the working ion the negative electrode loses at formation
-   that the positive AM does not itself replace. Where it is ≤ 0 there is nothing
-   left for a salt to do. This is the branch the full solver runs with both
-   targets at 1.00 — the regression suite pins the two together. */
+   The numerator is the working ion the negative electrode loses at formation
+   that the positive AM does not itself replace; where it is ≤ 0 there is
+   nothing left for a salt to do. This is the branch the full solver runs with
+   both targets at 1.00 — the regression suite pins the two together.
+
+   Note what is NOT offered: folding the salt into the positive electrode's
+   1st-cycle capacity, i.e. entering it per gram of AM + salt. That basis makes
+   the input depend on the unknown — you cannot measure mAh per gram of the
+   composite until you have already fixed the salt fraction — and it silently
+   drops the positive AM's own first-cycle loss from the arithmetic entirely.
+   It inferred a salt content instead of designing one, and read as if it had
+   designed one. Every capacity here is measurable before the electrode
+   exists. */
 function solveSimple(v){
-  const {posC1,posCN,negC1,negCN,saltC1,saltDetached}=v;
-  if(!(posC1>0)||!(posCN>0)||!(negC1>0)||!(negCN>0)) return {ok:false};
-  let ratio;   // grams of salt per gram of positive AM
-  if(saltDetached){
-    if(!(saltC1>0)) return {ok:false};
-    ratio=Math.max(0,(posCN*negC1/negCN-posC1)/saltC1);
-  }else{
-    // x = 1 − AM share; convert to the same salt-per-AM ratio the other branch
-    // reports so everything downstream is written once.
-    const amShare=(posC1*negCN)/(negC1*posCN);
-    if(!(amShare>0)) return {ok:false};
-    ratio=Math.max(0,(1-amShare)/amShare);
-  }
+  const {posC1,posCN,negC1,negCN,saltC1}=v;
+  if(!(posC1>0)||!(posCN>0)||!(negC1>0)||!(negCN>0)||!(saltC1>0)) return {ok:false};
+  const ratio=Math.max(0,(posCN*negC1/negCN-posC1)/saltC1);   // g of salt per g of positive AM
   const fAM=1/(1+ratio);
   /* Positive active mass against negative active mass. The reversible balance
      fixes m_n·C⁻_N = m_A·C⁺_N, and the positive's whole active zone is
@@ -7093,36 +7057,19 @@ function _smVal(id){
 }
 
 const SM_AM_COLOR="var(--cp)", SM_SALT_COLOR="var(--sp)";
-/* Off: the positive 1st-cycle capacity is per gram of AM + salt and the salt
-   content falls out of it. On: it is per gram of AM, and the salt is entered. */
-let saltDetached=false;
-
-function setSaltDetached(on){
-  saltDetached=!!on;
-  const off=$("sm-salt-off"),onCard=$("sm-salt-on"),unit=$("sm-pos-c1-u");
-  if(off) off.style.display=saltDetached?"none":"";
-  if(onCard) onCard.style.display=saltDetached?"":"none";
-  // The basis of the positive 1st-cycle figure changes with the mode, so the
-  // unit beside it has to say which one is being asked for.
-  if(unit) unit.innerHTML=saltDetached?"mAh/g<sub>AM</sub>":"mAh/g<sub>AM+salt</sub>";
-  if(saltDetached){const f=$("sm-salt-c1"); if(f) f.focus({preventScroll:true});}
-  recalcSimple();
-}
+const SM_FIELDS=["sm-pos-c1","sm-pos-cn","sm-neg-c1","sm-neg-cn","sm-salt-c1"];
 
 function recalcSimple(){
   const v={posC1:_smVal("sm-pos-c1"),posCN:_smVal("sm-pos-cn"),
            negC1:_smVal("sm-neg-c1"),negCN:_smVal("sm-neg-cn"),
-           saltC1:saltDetached?_smVal("sm-salt-c1"):null,
-           saltDetached};
-  const needed=["posC1","posCN","negC1","negCN"].concat(saltDetached?["saltC1"]:[]);
-  const missing=needed.filter(k=>v[k]===null).length;
+           saltC1:_smVal("sm-salt-c1")};
+  const missing=Object.values(v).filter(x=>x===null).length;
   const msg=$("sm-msg"),mid=$("sm-mid"),leg=$("sm-legend");
   _smOcvHint(v);
   if(missing>0){
     _smDrawPie(null); _smDrawRatio(null);
     mid.innerHTML=""; leg.innerHTML="";
-    msg.textContent=missing===needed.length
-      ? "Fill in the "+(saltDetached?"five":"four")+" capacities above."
+    msg.textContent=missing===5 ? "Fill in the five capacities above."
       : missing+(missing===1?" value":" values")+" still to go.";
     msg.style.display="";
     return null;
@@ -7147,14 +7094,22 @@ function recalcSimple(){
   // Silence in the ordinary case; speak only where the answer would otherwise
   // look broken.
   if(r.needsNone){
-    msg.textContent=saltDetached
-      ? "No salt needed: the positive electrode's own 1st cycle already covers what the negative electrode keeps."
-      : "No salt implied: that 1st-cycle capacity is what the active material alone would give against this negative electrode.";
+    msg.textContent="No salt needed: the positive electrode's own 1st cycle already covers what the negative electrode keeps.";
     msg.style.display="";
   } else {
     msg.style.display="none";
   }
   return r;
+}
+
+/* The positive electrode's 1st-cycle and reversible capacities are both per
+   gram of AM, and a capacitive positive that reports them as equal has almost
+   certainly been measured over the full window rather than from the OCV the
+   full cell actually starts at. Say so once, under the field it concerns. */
+function _smOcvHint(v){
+  const el=$("sm-pos-c1-hint"); if(!el) return;
+  const show = v.posC1!==null && v.posCN!==null && Math.abs(v.posC1-v.posCN)<1e-9;
+  el.style.display=show?"":"none";
 }
 
 /* Electrode mass ratio, written so it can be reproduced from the page alone.
@@ -7205,17 +7160,6 @@ function _smDrawPie(r){
   const start=-Math.PI/2, split=start+r.fAM*2*Math.PI;
   ring(SM_AM_COLOR,start,split);
   ring(SM_SALT_COLOR,split,start+2*Math.PI);
-}
-
-/* With the salt detached, the positive 1st-cycle and reversible capacities are
-   both per gram of AM — and a capacitive positive that reports them as equal has
-   almost certainly been measured over the full window rather than from the OCV
-   the full cell actually starts at. Say so once, under the field it concerns. */
-function _smOcvHint(v){
-  const el=$("sm-pos-c1-hint"); if(!el) return;
-  const show = saltDetached && v.posC1!==null && v.posCN!==null &&
-               Math.abs(v.posC1-v.posCN)<1e-9;
-  el.style.display=show?"":"none";
 }
 
 /* ══ UI MODE ══

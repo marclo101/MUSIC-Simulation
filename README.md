@@ -20,19 +20,25 @@ Only the small library file is read at startup — the figures and the plotting 
 
 The masthead carries one switch, and it is the first thing to decide.
 
-**Simple** is where the tool opens. It asks for four capacities — for each electrode, the **1st-cycle** value and the **Nth (reversible)** value it settles to, in that order, exactly as a half cell reports them — and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it.
+**Simple** is where the tool opens. It asks for five capacities and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it.
 
-Everything is per gram of the active material itself, with one deliberate exception: the **positive electrode's 1st-cycle capacity counts the whole active zone, AM + salt** — what a composite electrode actually weighs. That is what lets the salt content be *inferred* from four numbers rather than asked for:
+Each electrode is described the way a half cell actually reports it — the **1st-cycle** value first, then the **Nth (reversible)** value it settles to — plus the salt's own 1st-cycle capacity:
 
-> x = 1 − (C⁺<sub>1</sub>·C⁻<sub>N</sub>) / (C⁻<sub>1</sub>·C⁺<sub>N</sub>)          *(x = salt mass fraction of the active zone)*
+| | 1st cycle | Nth cycle (reversible) |
+|---|---|---|
+| Positive AM | mAh/g<sub>AM</sub> | mAh/g<sub>AM</sub> |
+| Negative AM | mAh/g<sub>AM</sub> | mAh/g<sub>AM</sub> |
+| Sacrificial salt | mAh/g<sub>salt</sub> | — *(spent at formation)* |
 
-**Detaching the salt.** A button beside the two electrodes opens a fifth box for the salt's own capacity — a theoretical figure, say, when you are designing rather than reproducing. The positive 1st-cycle value then counts **per gram of AM alone**, and the split is designed instead of inferred:
+Balancing the reversible and formation cycles together at N/P = 1 cancels every absolute mass and leaves
 
 > m<sub>salt</sub> / m<sub>AM</sub> = (C⁺<sub>N</sub>·C⁻<sub>1</sub> / C⁻<sub>N</sub> − C⁺<sub>1</sub>) / C<sub>salt</sub>
 
-whose numerator is the working ion the negative electrode loses at formation that the positive AM does not itself replace; where it is ≤ 0, no salt is needed and the tool says so. The unit beside the field changes with the mode, so which basis is being asked for is always on screen. This detached branch is the same physics the full solver applies with both N/P targets at 1.00 — the regression suite pins the two together, and also checks that one cell described both ways gives the same split.
+whose numerator is the working ion the negative electrode loses at formation that the positive AM does not itself replace; where it is ≤ 0, no salt is needed and the tool says so. This is the same physics the full solver applies with both N/P targets at 1.00 — the regression suite pins the two together.
 
-With the salt detached, a positive electrode whose 1st-cycle and reversible capacities are *equal* draws a quiet prompt under the field: **"Consider actual operating window starting from OCV."** A full cell starts its first charge from the OCV, not from the bottom of the half-cell window, so those two numbers are rarely the same in practice.
+**Every capacity is per gram of the material it belongs to**, and that is deliberate. An earlier version let the positive electrode's 1st-cycle capacity be entered per gram of the composite (AM + salt), which looked like it saved an input. It does not: you cannot measure mAh per gram of a composite until you have already fixed the salt fraction being solved for, and that basis drops the positive AM's own first-cycle loss out of the arithmetic entirely. It inferred a salt content while reading as though it had designed one, and a user entering their AM's own half-cell capacity into that box got an answer roughly 3× too high with no warning. All five inputs here are measurable before the electrode exists.
+
+A positive electrode whose 1st-cycle and reversible capacities are *equal* draws a quiet prompt under the field: **"Consider actual operating window starting from OCV."** A full cell starts its first charge from the OCV, not from the bottom of the half-cell window, so those two numbers are rarely the same in practice.
 
 **Two answers, side by side.** The pie says what the positive electrode is made of; beside it, the **electrode mass ratio** says how much of it you need:
 
