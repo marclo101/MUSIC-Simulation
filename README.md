@@ -22,15 +22,9 @@ Given a positive-electrode active material, an optional sacrificial salt, and a 
 
 **Start with Cell parameters.** The tool opens on a full-width *Cell parameters* card: the target N/P ratio (Q<sub>a</sub>/Q<sub>c</sub>) the solver must hit, and the C-rates you intend to cycle at for the formation (1st) and reversible (Nth) cycles. Capacities are rate-dependent, so a cell balanced at one rate is not balanced at another — these rates also set the currents the simulation applies and highlight the matching rows in the Rates tab. Rates run from C/1000 to 1000C, entered either as a multiplier or as a divisor; a value outside that range is refused with a message rather than silently ignored.
 
-**The 1st-cycle target** is its own decision, with three settings:
+**Two targets, one per cycle.** *Target N/P · N<sup>th</sup> cycle* and *Target N/P · 1<sup>st</sup> cycle* sit side by side, both plain always-open fields and both **1.00** unless you change them — so out of the box the solver balances formation and the reversible cycle alike, and the two only diverge because you typed a difference. Both are **capacity** ratios (Q<sub>a</sub>/Q<sub>c</sub>), not mass ratios; the labels say so, since that is the number papers most often confuse.
 
-| Setting | What the solver does |
-|---|---|
-| **Same as N<sup>th</sup>** (default) | Spends sacrificial salt to drag the formation cycle onto the reversible target. |
-| **Custom** | Gives formation its own Q<sub>a</sub>/Q<sub>c</sub> target. |
-| **Unconstrained** | Does not target formation at all. Sizes the salt to replace exactly the working ion the anode loses irreversibly on the first cycle (m<sub>S</sub>·C<sub>s,1</sub> = Q<sub>a1</sub> − Q<sub>aN</sub>) and reports the resulting ratio as a **result**, uncoloured. This is usually what you want when reproducing a cell you have actually measured. |
-
-Only the sacrificial salt can move the 1st-cycle ratio independently of the N<sup>th</sup>. Where that freedom is absent — no salt at all, or a fixed **Known salt content** with both masses pinned — the control is disabled and says why, instead of accepting a target it cannot honour.
+Only the sacrificial salt can move the 1st-cycle ratio independently of the N<sup>th</sup> — it is the one input that adds first-cycle capacity without adding reversible capacity. With a salt the solver hits both targets at once, sizing the salt for formation and the active-material mass for the reversible cycle. Without one, the first cycle follows from the capacities you entered: the 1st-cycle target then measures that distance rather than closing it, and the note under the status chip says as much.
 
 **Already-prepared electrodes.** If your cathode is mixed to a fixed recipe, enter the **Known salt content (% of electrode mass)** in the sacrificial-additive panel. The AM / salt / carbon / binder split is then held fixed, and the tool sizes whichever electrode you did *not* pin. A fixed recipe leaves that one mass as the only knob, and a single mass can satisfy only one cycle — so the tool reports **two masses** on the solved side: one balancing the reversible (Nth) cycle and one balancing the formation (1st) cycle. This holds in both directions: pin the cathode and you get two anode masses, pin the anode and you get two cathode masses. Leave the field blank to have the solver choose the salt amount as before.
 
@@ -43,7 +37,7 @@ The status chip names the direction of any imbalance; the line under it says wha
 
 Results also report the **electrode mass ratio** on both bases — total film (what you weigh, and what most papers quote) and AM₁ alone (salt excluded). The two are usually different numbers, which is why a bare "1:1.6" in a paper is so often hard to reproduce.
 
-**Naming.** Because anode and cathode swap roles between charge and discharge, the tool labels the electrodes **positive / negative** by default — consistent with the N/P ratio it has always reported. A switch in the header restores cathode/anode wording. It is display only: nothing in the calculation, the saved library, or the exports changes.
+**Naming.** Because anode and cathode swap roles between charge and discharge, those names are only well-defined for a single stroke. The tool therefore labels the electrodes **positive / negative** throughout — consistent with the N/P ratio it has always reported — and there is no switch back. This is a display layer only: element ids, solver keys, the saved library and the export payloads are untouched.
 
 **Mechanical stability.** Each electrode takes an optional **Max areal loading** (mg/cm²) — the limit your AM/binder pair will hold on the foil — and an optional coating density, which turns the loading into an estimated thickness. Exceeding the limit raises a warning. It is purely advisory: it never constrains the solver or alters a computed mass. Library entries may carry `maxLoading` and `density` fields to seed it; entries without them simply leave the check off.
 
