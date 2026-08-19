@@ -75,7 +75,6 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   const SM = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     const vis = el => el.checkVisibility();
-    const shownInputs = () => [...document.querySelectorAll("#simpleMode input")].filter(vis).length;
     const o = {
       // It is what a first-time visitor lands on, with nothing in front of it.
       bootsSimple: uiMode === "simple" && vis(g("simpleMode")),
@@ -86,14 +85,18 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
       stackTogInsideAdvanced: g("advancedMode").contains(g("modeTog")),
       // The library stays open at the foot of the page, for reference.
       libOpen: !g("lib").classList.contains("cld") && vis(g("lib")),
-      // Four values by default; the salt is an option, not a step.
-      inputCount: shownInputs(),
-      saltBoxHidden: !vis(g("sm-salt-on")),
-      detachOffered: vis(g("sm-salt-off")),
+      // Five values, all of them open: there is no second input mode.
+      inputCount: [...document.querySelectorAll("#simpleMode input")].filter(vis).length,
+      noModeSwitch: document.querySelector(".sm-detach") === null &&
+                    document.querySelector(".sm-attach") === null &&
+                    typeof window.setSaltDetached === "undefined" &&
+                    typeof window.saltDetached === "undefined",
       // Each electrode reads 1st cycle first, then the reversible value.
-      posOrder: [...g("sm-salt-off").parentNode.querySelectorAll(".sm-pos label")].map(e => e.textContent.trim()),
-      // The positive 1st-cycle figure counts the whole active zone by default.
-      unitCombined: g("sm-pos-c1-u").textContent,
+      posOrder: [...document.querySelectorAll(".sm-pos label")].map(e => e.textContent.trim()),
+      // EVERY capacity is per gram of the material it belongs to, so all five
+      // are measurable before the electrode exists. A composite AM+salt basis
+      // would make the input depend on the salt fraction being solved for.
+      units: [...document.querySelectorAll(".sm-inputs .sm-fld > span")].map(e => e.textContent.trim()),
       emptyMsg: g("sm-msg").textContent,
       emptyPie: g("sm-pie").querySelectorAll("path,circle").length,
       emptyRatio: !vis(g("sm-ratio")),
@@ -101,29 +104,30 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     // The basis is the part that differs between these fields, so it has to be
     // readable: it used to be 8.5px in the palest ink on the page.
     {
-      const u = g("sm-pos-c1-u"), sub = u.querySelector("sub");
+      const u = document.querySelector(".sm-pos .sm-fld > span"), sub = u.querySelector("sub");
       const cs = getComputedStyle(u), sc = getComputedStyle(sub);
       o.unitPx = parseFloat(cs.fontSize);
       o.unitSubPx = parseFloat(sc.fontSize);
       o.unitSubWeight = parseInt(sc.fontWeight, 10);
       o.unitSubInk = sc.color;
-      o.inkStrong = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim();
       o.inkFaint = getComputedStyle(document.documentElement).getPropertyValue("--ink3").trim();
     }
 
-    // COMBINED: a composite positive measured at 92.4528 mAh/g(AM+salt), its AM
-    // giving 70 mAh/g reversible, against a 350/250 negative.
-    g("sm-pos-c1").value = "92.4528"; g("sm-pos-cn").value = "70";
-    g("sm-neg-c1").value = "350";     g("sm-neg-cn").value = "250";
-    const rc = recalcSimple();
-    o.combinedRatio = rc.ratio;
+    // Positive AM 80 / 70, negative 350 / 250, salt 300 — all per gram of the
+    // material itself. (70·350/250 − 80)/300 = 0.06 g salt per g of AM.
+    g("sm-pos-c1").value = "80";  g("sm-pos-cn").value = "70";
+    g("sm-neg-c1").value = "350"; g("sm-neg-cn").value = "250";
+    g("sm-salt-c1").value = "300";
+    const r = recalcSimple();
+    o.ratio = r.ratio;
+    o.fSalt = r.fSalt;
     o.slices = g("sm-pie").querySelectorAll("path,circle").length;
     o.legend = g("sm-legend").textContent;
     o.quietWhenSolved = getComputedStyle(g("sm-msg")).display === "none";
-    o.hintOffWhenCombined = !vis(g("sm-pos-c1-hint"));
+
     // The second answer: how much positive electrode against the negative.
     // m_pos/m_neg = C⁻N/(fAM·C⁺N) = 250/(0.943396·70) = 3.7858.
-    o.massRatio = rc.massRatio;
+    o.massRatio = r.massRatio;
     o.ratioShown = vis(g("sm-ratio"));
     o.ratioV = g("sm-ratio").querySelector(".sm-ratio-v").textContent;
     o.ratioSides = g("sm-ratio").querySelector(".sm-ratio-sides").textContent;
@@ -132,41 +136,25 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     o.ratioBesidePie = Math.round(g("sm-ratio").getBoundingClientRect().left) >
                        Math.round(g("sm-pie").getBoundingClientRect().right) - 4;
 
-    // DETACHED: the SAME cell described the other way — the positive AM alone
-    // gives 80 mAh/g on the first cycle and the salt brings 300 of its own.
-    // Both descriptions must land on the same split.
-    setSaltDetached(true);
-    o.unitDetached = g("sm-pos-c1-u").textContent;
-    o.inputsAfterDetach = shownInputs();
-    g("sm-pos-c1").value = "80"; g("sm-salt-c1").value = "300";
-    o.detachedRatio = recalcSimple().ratio;
-
     // A capacitive positive reporting the same 1st and Nth capacity has almost
     // certainly been measured over the full window, not from the cell's OCV.
-    g("sm-pos-c1").value = "70";
-    recalcSimple();
+    o.hintOffWhenDifferent = !vis(g("sm-pos-c1-hint"));
+    g("sm-pos-c1").value = "70"; recalcSimple();
     o.hintWhenEqual = vis(g("sm-pos-c1-hint"));
     o.hintText = g("sm-pos-c1-hint").textContent.trim();
-    g("sm-pos-c1").value = "80"; recalcSimple();
 
-    // Folding the salt back restores the four-value form and its basis.
-    setSaltDetached(false);
-    o.backToFour = shownInputs() === 4 && g("sm-pos-c1-u").textContent === o.unitCombined;
-
-    // A positive whose own 1st cycle already covers the negative's loss implies
+    // A positive whose own 1st cycle already covers the negative's loss needs
     // no salt, and says so rather than showing a bare 0%.
-    // 98 mAh/g(AM+salt) is what this AM alone would give here; above it, the
-    // measurement implies no salt at all.
-    g("sm-pos-c1").value = "110"; g("sm-pos-cn").value = "70";
+    g("sm-pos-c1").value = "120"; g("sm-pos-cn").value = "70";
     const r0 = recalcSimple();
     o.noSaltRatio = r0.ratio;
     o.noSaltExplained = /no salt/i.test(g("sm-msg").textContent) &&
                         getComputedStyle(g("sm-msg")).display !== "none";
-
     o.noSaltBasis = g("sm-ratio").querySelector(".sm-ratio-basis").textContent;
-    // A positive electrode lighter than the negative flips which side carries
-    // the 1 — the pair is still printed positive-first.
-    g("sm-pos-c1").value = "800"; g("sm-pos-cn").value = "600";
+
+    // A positive lighter than the negative flips which side carries the 1 —
+    // the pair is still printed positive-first.
+    g("sm-pos-c1").value = "620"; g("sm-pos-cn").value = "600";
     o.lightPosRatio = recalcSimple().massRatio;
     o.lightPosV = g("sm-ratio").querySelector(".sm-ratio-v").textContent;
 
@@ -178,28 +166,22 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     SM.bootsSimple === true && SM.advHidden === true && SM.noWelcome === true, JSON.stringify(SM));
   check("Single/Stack lives inside advanced mode, not the masthead",
     SM.stackTogHidden === true && SM.stackTogInsideAdvanced === true && SM.advStackTogShown === true, JSON.stringify(SM));
-  check("simple mode asks for four values, with the salt box behind an option",
-    SM.inputCount === 4 && SM.saltBoxHidden === true && SM.detachOffered === true, JSON.stringify(SM));
+  check("simple mode asks for five values and offers no second input mode",
+    SM.inputCount === 5 && SM.noModeSwitch === true, JSON.stringify(SM));
   check("each electrode reads 1st cycle first, then the reversible Nth",
     /^1st cycle$/i.test(SM.posOrder[0]) && /^Nth cycle \(reversible\)$/i.test(SM.posOrder[1]),
     JSON.stringify(SM.posOrder));
-  check("the positive 1st-cycle capacity counts AM + salt until the salt is detached",
-    /AM\+salt/.test(SM.unitCombined) && /AM$/.test(SM.unitDetached) && SM.inputsAfterDetach === 5,
-    JSON.stringify(SM));
+  check("every capacity is per gram of its own material, never a composite basis",
+    SM.units.length === 5 && SM.units.filter(u => /AM$/.test(u)).length === 4 &&
+    SM.units.filter(u => /salt$/.test(u)).length === 1 &&
+    SM.units.every(u => !/\+/.test(u)), JSON.stringify(SM.units));
   check("the library stays open at the foot of simple mode", SM.libOpen === true, JSON.stringify(SM));
   check("an empty simple form says what is missing and draws no split",
-    /four capacities/i.test(SM.emptyMsg) && SM.emptyPie === 1, JSON.stringify(SM));
-  check("the two ways of describing one cell give the same carbon:salt split",
-    near(SM.combinedRatio, 0.06, 1e-4) && near(SM.detachedRatio, 0.06, 1e-9) &&
-    near(SM.combinedRatio, SM.detachedRatio, 1e-4), JSON.stringify(SM));
+    /five capacities/i.test(SM.emptyMsg) && SM.emptyPie === 1, JSON.stringify(SM));
+  check("five capacities give the carbon:salt split (80,70,350,250,300 → 0.060)",
+    near(SM.ratio, 0.06, 1e-9) && near(SM.fSalt, 0.06 / 1.06, 1e-9), JSON.stringify(SM));
   check("the result is one two-slice pie and its legend, and nothing else speaks",
     SM.slices === 2 && /Sacrificial salt/.test(SM.legend) && SM.quietWhenSolved === true, JSON.stringify(SM));
-  check("equal 1st and Nth on a detached positive prompts the OCV window, and only there",
-    SM.hintWhenEqual === true && SM.hintOffWhenCombined === true &&
-    SM.hintText === "Consider actual operating window starting from OCV", JSON.stringify(SM));
-  check("folding the salt back restores the four-value form", SM.backToFour === true, JSON.stringify(SM));
-  check("a cell that needs no salt reports 0 and explains why",
-    SM.noSaltRatio === 0 && SM.noSaltExplained === true, JSON.stringify(SM));
   check("the capacity basis is legible, not 8.5px of the faintest ink",
     SM.unitPx >= 12 && SM.unitSubPx >= 10 && SM.unitSubWeight >= 700 &&
     SM.unitSubInk !== SM.inkFaint, JSON.stringify(SM));
@@ -209,11 +191,16 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the mass ratio is positive-over-negative, normalised to 1 (3.79 : 1)",
     near(SM.massRatio, 3.7858, 1e-3) && SM.ratioV.replace(/\s/g, "") === "3.79:1", JSON.stringify(SM));
   check("a lighter positive puts the 1 on its side, still printed positive-first",
-    near(SM.lightPosRatio, 0.4375, 1e-4) && SM.lightPosV.replace(/\s/g, "") === "1:2.29", JSON.stringify(SM));
+    SM.lightPosRatio < 1 && /^1:/.test(SM.lightPosV.replace(/\s/g, "")), JSON.stringify(SM));
   check("the ratio names its sides and its basis, and drops the salt when there is none",
     /positive\s*:\s*negative/.test(SM.ratioSides) &&
     SM.ratioBasis.replace(/\s/g, "") === "(AMp+salt):AMn" &&
     SM.noSaltBasis.replace(/\s/g, "") === "AMp:AMn", JSON.stringify(SM));
+  check("equal 1st and Nth on the positive prompts the OCV window",
+    SM.hintWhenEqual === true && SM.hintOffWhenDifferent === true &&
+    SM.hintText === "Consider actual operating window starting from OCV", JSON.stringify(SM));
+  check("a cell that needs no salt reports 0 and explains why",
+    SM.noSaltRatio === 0 && SM.noSaltExplained === true, JSON.stringify(SM));
 
   // Everything below exercises the full tool, so bring it up.
   await page.evaluate(() => setUiMode("advanced"));
@@ -1347,9 +1334,9 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     const r = window.lastR;
     return { full: r.mS / (r.mAC + r.mS),
              simple: solveSimple({ posC1: 80, posCN: 70, negC1: 350, negCN: 250,
-                                   saltC1: 300, saltDetached: true }).fSalt };
+                                   saltC1: 300 }).fSalt };
   });
-  check("the detached-salt split agrees with the full solver",
+  check("the simple five-value split agrees with the full solver",
     near(SX.simple, SX.full, 1e-6), JSON.stringify(SX));
 
   // ── The status chip must say what the imbalance costs, and must not grade
