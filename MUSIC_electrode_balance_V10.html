@@ -173,7 +173,7 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-pos .sm-ic{background:var(--cp)}.sm-neg .sm-ic{background:var(--ap)}.sm-salt .sm-ic{background:var(--sp)}
 .sm-card label{display:block;font-size:12px;color:var(--ink2);margin-bottom:5px;font-weight:500}
 .sm-lbl-alt{color:var(--ink3);font-weight:400}
-.sm-fld>span sub{font-size:8.5px}
+.sm-fld>span sub{font-size:10.5px;font-weight:700;color:var(--ink);vertical-align:-.18em}
 /* The OCV prompt is a nudge, not a warning: it appears under one field, in the
    quietest ink on the page, and never blocks a result. */
 .sm-hint{font-size:10.5px;line-height:1.45;color:var(--ink3);font-style:italic;margin:-9px 0 14px;padding-left:2px;border-left:2px solid var(--ruleS);padding-left:7px}
@@ -182,7 +182,7 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-fld input{flex:1;min-width:0;font-family:var(--fm);font-size:22px;font-weight:500;padding:9px 12px;border:1px solid var(--ruleS);border-radius:6px;background:var(--paper);color:var(--ink);transition:border-color .12s,box-shadow .12s}
 .sm-fld input:hover{border-color:var(--cp)}
 .sm-fld input:focus{outline:none;border-color:var(--cp);box-shadow:0 0 0 3px rgba(45,139,158,.16)}
-.sm-fld>span{font-family:var(--fm);font-size:11px;color:var(--ink3);white-space:nowrap}
+.sm-fld>span{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--ink2);background:var(--bone);border:1px solid var(--ruleS);border-radius:5px;padding:4px 8px;white-space:nowrap}
 .sm-note{font-size:10.5px;line-height:1.5;color:var(--ink3);margin-top:14px}
 /* Detaching the salt is an option, not a step, so its cell stays quiet until
    taken — dashed and shadowless against the two solid electrode cards. */
@@ -196,18 +196,37 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-attach{margin-left:auto;width:20px;height:20px;border-radius:4px;font-size:14px;line-height:1;color:var(--ink3);background:transparent;transition:background .12s,color .12s}
 .sm-attach:hover{background:var(--bone);color:var(--ink)}
 
-.sm-result{position:relative;display:flex;flex-direction:column;align-items:center;padding-bottom:34px}
+.sm-result{display:flex;flex-direction:column;align-items:center;padding-bottom:34px}
 .sm-result svg{display:block}
+.sm-result-row{display:flex;align-items:center;justify-content:center;gap:44px;flex-wrap:wrap}
+@media(max-width:820px){.sm-result-row{gap:24px}}
+.sm-pie-box{position:relative;flex:0 0 auto}
 /* The donut's hole carries the headline number, so it is positioned against
    the SVG rather than stacked under it. */
-.sm-mid{position:absolute;top:0;left:50%;width:300px;height:300px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.sm-mid{position:absolute;top:0;left:0;width:300px;height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .sm-mid .sm-mid-v{font-family:var(--fm);font-size:42px;font-weight:500;color:var(--sp);line-height:1}
 .sm-mid .sm-mid-l{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-top:7px}
-.sm-legend{display:flex;gap:26px;margin-top:22px;flex-wrap:wrap;justify-content:center}
+.sm-legend{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;justify-content:center}
 .sm-legend .sm-li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
 .sm-legend .sm-sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .sm-legend .sm-pv{font-family:var(--fm);font-weight:500;color:var(--ink)}
-.sm-msg{font-size:12.5px;line-height:1.6;color:var(--ink3);margin-top:18px;max-width:560px}
+
+/* ── Electrode mass ratio ──
+   The second answer, and the one people write down. It carries its own basis
+   line because a bare "3.8 : 1" is unreproducible: it says nothing about which
+   side leads, nor whether the masses are active or whole-electrode. */
+.sm-ratio{flex:0 0 auto;max-width:320px;text-align:left;display:none}
+.sm-ratio.on{display:block}
+.sm-ratio-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);font-weight:600;margin-bottom:10px}
+.sm-ratio-v{display:block;font-family:var(--fm);font-size:46px;font-weight:500;color:var(--ink);line-height:1.05;letter-spacing:-.02em}
+.sm-ratio-v .sm-ratio-sep{color:var(--ink3);margin:0 6px;font-weight:400}
+.sm-ratio-sides{display:block;font-size:14px;font-weight:600;margin-top:12px}
+.sm-ratio-sides .p{color:var(--cp)}.sm-ratio-sides .n{color:var(--ap)}
+.sm-ratio-sides .s{color:var(--ink3);font-weight:400;margin:0 5px}
+.sm-ratio-basis{display:block;font-family:var(--fm);font-size:12.5px;font-weight:500;color:var(--ink);background:var(--bone);border:1px solid var(--ruleS);border-radius:5px;padding:5px 9px;margin-top:10px}
+.sm-ratio-basis sub{font-size:10.5px;font-weight:700;vertical-align:-.18em}
+.sm-ratio-note{display:block;font-size:11px;line-height:1.5;color:var(--ink3);margin-top:10px}
+.sm-msg{font-size:12.5px;line-height:1.6;color:var(--ink3);margin-top:22px;max-width:600px}
 body.ui-simple .lib{margin-top:0}
 
 .card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;box-shadow:var(--s2);display:flex;flex-direction:column}
@@ -895,10 +914,17 @@ body.ui-simple .lib{margin-top:0}
       </div>
     </div>
 
+    <!-- Two answers, side by side: what the positive electrode is made of, and
+         how much of it you need against the negative one. -->
     <div class="sm-result">
-      <svg id="sm-pie" width="300" height="300" viewBox="0 0 300 300" role="img" aria-labelledby="sm-pie-t"><title id="sm-pie-t">Positive electrode active mass: carbon against sacrificial salt</title></svg>
-      <div class="sm-mid" id="sm-mid"></div>
-      <div class="sm-legend" id="sm-legend"></div>
+      <div class="sm-result-row">
+        <div class="sm-pie-box">
+          <svg id="sm-pie" width="300" height="300" viewBox="0 0 300 300" role="img" aria-labelledby="sm-pie-t"><title id="sm-pie-t">Positive electrode active mass: carbon against sacrificial salt</title></svg>
+          <div class="sm-mid" id="sm-mid"></div>
+          <div class="sm-legend" id="sm-legend"></div>
+        </div>
+        <div class="sm-ratio" id="sm-ratio"></div>
+      </div>
       <div class="sm-msg" id="sm-msg">Fill in the four capacities above.</div>
     </div>
   </div>
@@ -1777,7 +1803,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v12.6";
+const APP_VERSION="v12.7";
 const APP_BUILD="2026-08-19";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -7048,7 +7074,14 @@ function solveSimple(v){
     if(!(amShare>0)) return {ok:false};
     ratio=Math.max(0,(1-amShare)/amShare);
   }
-  return {ok:true,ratio,fSalt:ratio/(1+ratio),fAM:1/(1+ratio),needsNone:ratio<=0};
+  const fAM=1/(1+ratio);
+  /* Positive active mass against negative active mass. The reversible balance
+     fixes m_n·C⁻_N = m_A·C⁺_N, and the positive's whole active zone is
+     M = m_A/fAM, so M/m_n = C⁻_N/(fAM·C⁺_N) — active masses only. The whole
+     electrode masses would need the binder and conductive-additive fractions,
+     which this form deliberately does not ask for. */
+  const massRatio=negCN/(fAM*posCN);
+  return {ok:true,ratio,fSalt:ratio/(1+ratio),fAM,needsNone:ratio<=0,massRatio};
 }
 
 /* A value is "given" only when the field is non-empty and non-negative — a
@@ -7086,7 +7119,7 @@ function recalcSimple(){
   const msg=$("sm-msg"),mid=$("sm-mid"),leg=$("sm-legend");
   _smOcvHint(v);
   if(missing>0){
-    _smDrawPie(null);
+    _smDrawPie(null); _smDrawRatio(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent=missing===needed.length
       ? "Fill in the "+(saltDetached?"five":"four")+" capacities above."
@@ -7096,7 +7129,7 @@ function recalcSimple(){
   }
   const r=solveSimple(v);
   if(!r.ok){
-    _smDrawPie(null);
+    _smDrawPie(null); _smDrawRatio(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent="Every capacity has to be above zero.";
     msg.style.display="";
@@ -7109,8 +7142,8 @@ function recalcSimple(){
     '<span class="sm-li"><span class="sm-sw" style="background:'+SM_AM_COLOR+'"></span>'+
       'Active material (carbon) <span class="sm-pv">'+(r.fAM*100).toFixed(1)+'%</span></span>'+
     '<span class="sm-li"><span class="sm-sw" style="background:'+SM_SALT_COLOR+'"></span>'+
-      'Sacrificial salt <span class="sm-pv">'+(r.fSalt*100).toFixed(1)+'%</span></span>'+
-    '<span class="sm-li">Mass ratio <span class="sm-pv">1 : '+r.ratio.toFixed(3)+'</span></span>';
+      'Sacrificial salt <span class="sm-pv">'+(r.fSalt*100).toFixed(1)+'%</span></span>';
+  _smDrawRatio(r);
   // Silence in the ordinary case; speak only where the answer would otherwise
   // look broken.
   if(r.needsNone){
@@ -7122,6 +7155,31 @@ function recalcSimple(){
     msg.style.display="none";
   }
   return r;
+}
+
+/* Electrode mass ratio, written so it can be reproduced from the page alone.
+   Whichever side is lighter is normalised to 1 — usually the negative, since a
+   low-capacity positive needs the most mass — but the pair is always printed
+   positive-first so the order never has to be guessed. The basis is stated
+   because it is not the obvious one: these are ACTIVE masses, and the whole
+   electrode masses cannot be had from capacities alone. */
+function _smDrawRatio(r){
+  const box=$("sm-ratio"); if(!box) return;
+  if(!r||!Number.isFinite(r.massRatio)||r.massRatio<=0){
+    box.classList.remove("on"); box.innerHTML=""; return;
+  }
+  const m=r.massRatio;                       // positive ÷ negative
+  const num=v=>v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2);
+  const pos=m>=1?num(m):"1", neg=m>=1?"1":num(1/m);
+  const posSide=r.fSalt>0?"(AM<sub>p</sub> + salt)":"AM<sub>p</sub>";
+  box.innerHTML=
+    '<span class="sm-ratio-l">Electrode mass ratio</span>'+
+    '<span class="sm-ratio-v">'+pos+'<span class="sm-ratio-sep">:</span>'+neg+'</span>'+
+    '<span class="sm-ratio-sides"><span class="p">positive</span>'+
+      '<span class="s">:</span><span class="n">negative</span></span>'+
+    '<span class="sm-ratio-basis">'+posSide+' : AM<sub>n</sub></span>'+
+    '<span class="sm-ratio-note">Active masses only. Whole-electrode masses would need the binder and conductive-additive contents, which capacities alone cannot give.</span>';
+  box.classList.add("on");
 }
 
 /* A plain two-slice donut. Deliberately not drawPie(): that one renders the

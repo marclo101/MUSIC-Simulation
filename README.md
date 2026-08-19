@@ -34,6 +34,12 @@ whose numerator is the working ion the negative electrode loses at formation tha
 
 With the salt detached, a positive electrode whose 1st-cycle and reversible capacities are *equal* draws a quiet prompt under the field: **"Consider actual operating window starting from OCV."** A full cell starts its first charge from the OCV, not from the bottom of the half-cell window, so those two numbers are rarely the same in practice.
 
+**Two answers, side by side.** The pie says what the positive electrode is made of; beside it, the **electrode mass ratio** says how much of it you need:
+
+> **3.79 : 1**  ·  positive : negative  ·  (AM<sub>p</sub> + salt) : AM<sub>n</sub>
+
+Whichever side is lighter is normalised to 1 — usually the negative, since a low-capacity positive needs the most mass — but the pair is always printed positive-first, so the order never has to be guessed. These are **active** masses: whole-electrode masses would need the binder and conductive-additive contents, and capacities alone cannot give those, so the basis is printed under the number rather than left to be assumed. Where no salt is implied the basis reads AM<sub>p</sub> : AM<sub>n</sub>.
+
 The benchmark library stays open at the foot of the page, so the numbers can be read straight off it.
 
 **Advanced** is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
