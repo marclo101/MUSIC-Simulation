@@ -8,13 +8,27 @@ A single-page web tool for sizing and balancing the positive and negative electr
 |------|---------|
 | `MUSIC_electrode_balance_V10.html` | The application. Open it in a browser. |
 | `materials-library.js` | The benchmark material library, loaded automatically when the HTML opens. |
-| `materials-library-images.js` | Reference figures for the library citations. Loaded only when you open the library. |
+| `materials-library-images.js` | Reference figures for the library citations. Loaded only when you open a citation that has one. |
 | `plotly.min.js` | Plotting engine (Plotly.js v2.35.2). Loaded the first time you open the **Simulation** tab. |
 | `plotly.LICENSE` | MIT license for the bundled Plotly.js. |
 
 All files must sit in the **same folder**. If `plotly.min.js` is absent the app still runs, but the Simulation plot will not render; if `materials-library-images.js` is absent everything works except the reference figures.
 
 Only the small library file is read at startup — the figures and the plotting engine are fetched the first time you actually open the library or the Simulation tab, so the page is usable almost immediately. An internet connection is used only for the web fonts, and that request cannot delay the page: the tool renders with system fonts and upgrades if and when the fonts arrive.
+
+## Simple and Advanced
+
+The masthead carries one switch, and it is the first thing to decide.
+
+**Simple** is where the tool opens. It asks for five capacities — reversible and irreversible for the positive and negative active materials, and the salt's irreversible (formation) capacity — and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it:
+
+> m<sub>salt</sub> / m<sub>AM</sub> = (C⁺<sub>rev</sub>·C⁻<sub>irr</sub> / C⁻<sub>rev</sub> − C⁺<sub>irr</sub>) / C<sub>salt,irr</sub>
+
+The numerator is the working ion the negative electrode loses at formation that the positive electrode's own irreversibility does not already replace; where it is ≤ 0, no salt is needed and the tool says so. This is the same physics the full solver applies with both N/P targets at 1.00 — the regression suite pins the two together. The benchmark library stays open at the foot of the page, so the five numbers can be read straight off it.
+
+**Advanced** is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
+
+The choice is remembered between visits.
 
 ## What the program does
 

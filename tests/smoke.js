@@ -71,6 +71,66 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("boot: Plotly is not paid for at startup", BOOT.plotlyDeferred === true);
   check("boot: reference figures are not paid for at startup", BOOT.figuresDeferred === true);
 
+  // ── Simple mode: the front door, and the whole of it ──
+  const SM = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    const vis = el => el.checkVisibility();
+    const o = {
+      // It is what a first-time visitor lands on, with nothing in front of it.
+      bootsSimple: uiMode === "simple" && vis(g("simpleMode")),
+      advHidden: !vis(g("advancedMode")),
+      noWelcome: !g("tourWelcome").classList.contains("on"),
+      // Single/Stack belongs to the advanced layout, not the masthead.
+      stackTogHidden: !vis(g("modeTog")),
+      stackTogInsideAdvanced: g("advancedMode").contains(g("modeTog")),
+      // The library stays open at the foot of the page, for reference.
+      libOpen: !g("lib").classList.contains("cld") && vis(g("lib")),
+      // Exactly five inputs are asked for.
+      inputCount: document.querySelectorAll("#simpleMode input").length,
+      emptyMsg: g("sm-msg").textContent,
+      emptyPie: g("sm-pie").querySelectorAll("path,circle").length,
+    };
+    // Five capacities in, one split out.
+    g("sm-pos-rev").value = "70";  g("sm-pos-irr").value = "10";
+    g("sm-neg-rev").value = "250"; g("sm-neg-irr").value = "100";
+    g("sm-salt-irr").value = "300";
+    const r = recalcSimple();
+    // (70·100/250 − 10)/300 = 0.06 g of salt per g of positive AM.
+    o.ratio = r.ratio;
+    o.fSalt = r.fSalt;
+    o.slices = g("sm-pie").querySelectorAll("path,circle").length;
+    o.legend = g("sm-legend").textContent;
+    o.quietWhenSolved = getComputedStyle(g("sm-msg")).display === "none";
+    // A positive electrode that already loses more than the negative keeps
+    // needs no salt at all, and says so rather than showing a bare 0%.
+    g("sm-pos-irr").value = "400";
+    const r0 = recalcSimple();
+    o.noSaltRatio = r0.ratio;
+    o.noSaltExplained = /no salt needed/i.test(g("sm-msg").textContent) &&
+                        getComputedStyle(g("sm-msg")).display !== "none";
+    g("sm-pos-irr").value = "10"; recalcSimple();
+    o.advStackTogShown = (setUiMode("advanced"), g("modeTog").checkVisibility());
+    setUiMode("simple");
+    return o;
+  });
+  check("simple mode is the front door, with no dialog over it",
+    SM.bootsSimple === true && SM.advHidden === true && SM.noWelcome === true, JSON.stringify(SM));
+  check("Single/Stack lives inside advanced mode, not the masthead",
+    SM.stackTogHidden === true && SM.stackTogInsideAdvanced === true && SM.advStackTogShown === true, JSON.stringify(SM));
+  check("simple mode asks for exactly five values", SM.inputCount === 5, "inputs=" + SM.inputCount);
+  check("the library stays open at the foot of simple mode", SM.libOpen === true, JSON.stringify(SM));
+  check("an empty simple form says what is missing and draws no split",
+    /five capacities/i.test(SM.emptyMsg) && SM.emptyPie === 1, JSON.stringify(SM));
+  check("five capacities give the carbon:salt split (70,10,250,100,300 → 0.060)",
+    near(SM.ratio, 0.06, 1e-9) && near(SM.fSalt, 0.06 / 1.06, 1e-9), JSON.stringify(SM));
+  check("the result is one two-slice pie and its legend, and nothing else speaks",
+    SM.slices === 2 && /Sacrificial salt/.test(SM.legend) && SM.quietWhenSolved === true, JSON.stringify(SM));
+  check("a cell that needs no salt reports 0 and explains why",
+    SM.noSaltRatio === 0 && SM.noSaltExplained === true, JSON.stringify(SM));
+
+  // Everything below exercises the full tool, so bring it up.
+  await page.evaluate(() => setUiMode("advanced"));
+
   // The app ships an empty form — materials are always chosen by the user — so
   // the suite seeds its own known scenario here rather than relying on any
   // prefill baked into the product.
@@ -1174,6 +1234,33 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     FT.defaultsAgree === true, JSON.stringify(FT));
   check("fixed salt content with a pinned anode reports both cathode masses",
     FT.mode === "cathode" && FT.dualCathode === true && FT.massesDiffer === true, JSON.stringify(FT));
+
+  // ── The simple form is a shortcut through the same physics, not a second
+  //    opinion: the full solver, with both targets at 1.00 and the salt free to
+  //    size, must land on the split solveSimple() reports for the same numbers.
+  const SX = await page.evaluate(() => {
+    const g = id => document.getElementById(id);
+    if (!saltOn) tgSalt();
+    g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
+    g("an-st").value = "faradaic"; onStorageTypeChange("an");
+    g("cat-ac-cN").value = "70";  g("cat-ac-c1").value = "80";     // rev, rev+irr
+    g("an-cN").value = "250";     g("an-c1").value = "350";
+    g("cat-s-c1").value = "300";  g("cat-s-cN").value = "";
+    g("cat-s-frac").value = "";
+    g("cat-wAM").value = "100"; g("cat-wC").value = "0"; g("cat-wB").value = "0";
+    g("an-wAM").value = "100";  g("an-wC").value = "0"; g("an-wB").value = "0";
+    g("np-target").value = "1.00"; onNpTargetChange();
+    g("np-target-1st").value = "1.00"; onNp1stChange();
+    mCatOverride = null; mAnOverride = null; compCatOverride = null; compAnOverride = null;
+    sMM("an", "d", document.querySelector("#an-mmb .mmb:nth-child(1)"));
+    g("an-mass").value = "10"; g("cat-mass").value = "";
+    recalcNow();
+    const r = window.lastR;
+    return { full: r.mS / (r.mAC + r.mS),
+             simple: solveSimple({ posRev: 70, posIrr: 10, negRev: 250, negIrr: 100, saltIrr: 300 }).fSalt };
+  });
+  check("the simple five-value split agrees with the full solver",
+    near(SX.simple, SX.full, 1e-6), JSON.stringify(SX));
 
   // ── The status chip must say what the imbalance costs, and must not grade
   //    the safe direction as harshly as the plating one.
