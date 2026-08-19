@@ -101,23 +101,25 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   });
   await page.waitForFunction(() => typeof window.lastR !== "undefined", { timeout: 30000 });
 
-  // ── Feature 1: "Different 1st cycle" target (and the salt-mode N/P symmetry fix) ──
+  // ── Feature 1: one always-open N/P target per cycle (and the salt-mode symmetry fix) ──
   const A = await page.evaluate(() => {
     const R = () => ({ r1: window.lastR.r1, rN: window.lastR.rN, mode: window.lastMode });
     if (!saltOn) tgSalt();
     document.getElementById("cat-s-c1").value = "300";
     document.getElementById("np-target").value = "1.2"; onNpTargetChange();
+    document.getElementById("np-target-1st").value = "1.2"; onNp1stChange();
     recalcNow();                                       // manual-recalc mode: edits only mark stale
-    const off = R();                                   // toggle off → r1 == rN == 1.2 (fix)
-    if (!np1stOn) toggleNp1st();
+    const same = R();                                  // both targets 1.2 → r1 == rN == 1.2
     document.getElementById("np-target-1st").value = "1.0"; onNp1stChange();
     recalcNow();
-    const on = R();                                    // 1st=1.0, Nth=1.2
-    return { off, on, wrap: getComputedStyle(document.getElementById("np-target-1st-wrap")).display };
+    const split = R();                                 // 1st=1.0, Nth=1.2
+    return { same, split,
+             live: getComputedStyle(document.getElementById("np-target-1st")).display,
+             enabled: document.getElementById("np-target-1st").disabled === false };
   });
-  check("salt-mode N/P symmetric (toggle off, target 1.2 → r1=rN=1.2)", near(A.off.r1, 1.2) && near(A.off.rN, 1.2), JSON.stringify(A.off));
-  check("distinct 1st-cycle target (1st=1.0, Nth=1.2 → r1=1.0, rN=1.2)", near(A.on.r1, 1.0) && near(A.on.rN, 1.2), JSON.stringify(A.on));
-  check("1st-cycle input revealed by toggle", A.wrap !== "none");
+  check("salt-mode N/P symmetric (both targets 1.2 → r1=rN=1.2)", near(A.same.r1, 1.2) && near(A.same.rN, 1.2), JSON.stringify(A.same));
+  check("distinct 1st-cycle target (1st=1.0, Nth=1.2 → r1=1.0, rN=1.2)", near(A.split.r1, 1.0) && near(A.split.rN, 1.2), JSON.stringify(A.split));
+  check("1st-cycle target is always open and editable", A.live !== "none" && A.enabled === true, JSON.stringify(A));
 
   // ── Feature 2: OCV-derived C1 for capacitive / pseudocapacitive electrodes ──
   const B = await page.evaluate(() => {
@@ -192,7 +194,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   const K = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     if (!saltOn) tgSalt();
-    if (np1stOn) toggleNp1st();
+    g("np-target-1st").value = "1.00"; onNp1stChange();
     g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
     g("an-st").value = "faradaic"; onStorageTypeChange("an");
     g("cat-ac-c1").value = "100"; g("cat-ac-cN").value = "100";
@@ -1110,21 +1112,24 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     CR.heldOnReject === true && CR.announced === true && CR.marked === true &&
     CR.quietWhenValid === true && CR.recovered === true, JSON.stringify(CR));
 
-  // ── Formation target: it must never be inert without saying so, and with a
-  //    fixed salt content the pinned-anode branch must report a second mass.
+  // ── Formation target: an always-open field that the solver actually honours
+  //    when the salt gives it a lever, and that says what is missing when it
+  //    does not. With a fixed salt content the pinned-anode branch must still
+  //    report a second mass.
   const FT = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     const out = {};
     if (saltOn) tgSalt();
+    g("np-target-1st").value = "1.15"; onNp1stChange();
     recalcNow();
-    const seg = document.getElementById("np1stSeg");
-    out.customOffNoSalt = seg.querySelector('[data-m="custom"]').disabled === true;
-    out.freeOffNoSalt = seg.querySelector('[data-m="free"]').disabled === true;
-    out.sameStaysOn = seg.querySelector('[data-m="same"]').disabled === false;
-    out.reasonGiven = document.getElementById("np1stNote").style.display !== "none";
+    // No salt: nothing disables the field — but the note must name the salt as
+    // the missing lever rather than leaving the user hunting for a knob.
+    const fld = g("np-target-1st");
+    out.openWithoutSalt = fld.disabled === false && getComputedStyle(fld).display !== "none";
+    out.saltNamedAsLever = /sacrificial salt/i.test(g("stsNote").textContent) &&
+                           g("stsNote").style.display !== "none";
 
-    // Salt on, solver free to size it → "unconstrained" sizes the salt to the
-    // anode's irreversible loss and reports r1 as a result.
+    // Salt on and free to size → the solver hits BOTH targets at once.
     tgSalt();
     g("cat-ac-st").value = "faradaic"; onStorageTypeChange("cat");
     g("an-st").value = "faradaic"; onStorageTypeChange("an");
@@ -1138,17 +1143,20 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     mCatOverride = null; mAnOverride = null;
     sMM("an", "d", document.querySelector("#an-mmb .mmb:nth-child(1)"));
     g("an-mass").value = "2.152"; g("cat-mass").value = "";
+    g("np-target-1st").value = "1.10"; onNp1stChange();
     recalcNow();
-    setNp1stMode("free"); recalcNow();
-    const r = window.lastR, inp = window.lastInp;
-    out.saltCoversLoss = Math.abs(r.mS * inp.cat.salt.c1 - r.mAn * inp.an.wAM * (inp.an.c1 - inp.an.cN))
-                         / Math.max(r.mAn * inp.an.wAM * (inp.an.c1 - inp.an.cN), 1e-9) < 1e-6;
-    out.nthStillOnTarget = Math.abs(r.rN - 1.0) < 1e-3;
-    out.r1IsResult = r.r1Targeted === false;
-    out.heroPlain = document.getElementById("r-r1pct").className.includes("nt");
+    const r = window.lastR;
+    out.bothTargetsHit = Math.abs(r.r1 - 1.10) < 1e-3 && Math.abs(r.rN - 1.00) < 1e-3;
+    out.saltSized = r.mS > 0;
+    out.heroGraded = /\b(gd|ct|bd)\b/.test(g("r-r1pct").className);
+
+    // Both defaults are 1.00, so the untouched tool balances every cycle alike.
+    g("np-target-1st").value = "1.00"; onNp1stChange();
+    recalcNow();
+    out.defaultsAgree = Math.abs(window.lastR.r1 - 1.0) < 1e-3 &&
+                        Math.abs(window.lastR.rN - 1.0) < 1e-3;
 
     // Fixed salt content + pinned anode → a second cathode mass for the 1st cycle.
-    setNp1stMode("same");
     g("cat-s-frac").value = "30";
     recalcNow();
     out.mode = window.lastMode;
@@ -1156,13 +1164,14 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     out.massesDiffer = Math.abs(window.lastR.mCat - window.lastR.mCat1st) > 1e-6;
     return out;
   });
-  check("with no salt the formation target is disabled and says why",
-    FT.customOffNoSalt === true && FT.freeOffNoSalt === true &&
-    FT.sameStaysOn === true && FT.reasonGiven === true, JSON.stringify(FT));
-  check("unconstrained formation sizes the salt to the anode's 1st-cycle loss",
-    FT.saltCoversLoss === true && FT.nthStillOnTarget === true, JSON.stringify(FT));
-  check("an untargeted 1st-cycle ratio is reported as a result, not colour-graded",
-    FT.r1IsResult === true && FT.heroPlain === true, JSON.stringify(FT));
+  check("the 1st-cycle target stays open with no salt, and names the missing lever",
+    FT.openWithoutSalt === true && FT.saltNamedAsLever === true, JSON.stringify(FT));
+  check("with salt free to size, both cycle targets are hit at once (1st=1.10, Nth=1.00)",
+    FT.bothTargetsHit === true && FT.saltSized === true, JSON.stringify(FT));
+  check("the 1st-cycle result is graded against its own target",
+    FT.heroGraded === true, JSON.stringify(FT));
+  check("both targets default to 1.00, balancing every cycle alike",
+    FT.defaultsAgree === true, JSON.stringify(FT));
   check("fixed salt content with a pinned anode reports both cathode masses",
     FT.mode === "cathode" && FT.dualCathode === true && FT.massesDiffer === true, JSON.stringify(FT));
 
@@ -1223,22 +1232,26 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check('"cell cut-offs only" drops the four electrode bounds and restores them',
     SC.electrodesOff === true && SC.cellLive === true && SC.restored === true, JSON.stringify(SC));
 
-  // ── Terminology switch is display-only and reversible.
+  // ── Terminology is fixed at positive/negative: display-only, no switch.
   const TM = await page.evaluate(() => {
-    setTerminology("pn");
-    const pn = document.querySelector(".card-h.ch .ct").textContent.trim();
-    setTerminology("ac");
-    const ac = document.querySelector(".card-h.ch .ct").textContent.trim();
-    setTerminology("pn"); setTerminology("ac"); setTerminology("pn");
-    const again = document.querySelector(".card-h.ch .ct").textContent.trim();
-    return { pn, ac, again,
+    const head = () => document.querySelector(".card-h.ch .ct").textContent.trim();
+    const first = head();
+    applyTerminology(); applyTerminology();   // re-running must not compound
+    return { first, again: head(),
+             noSwitch: document.getElementById("termTog") === null &&
+                       typeof window.setTerminology === "undefined",
              idsIntact: !!(document.getElementById("cat-ac-c1") && document.getElementById("an-mass")),
-             libSkipped: document.getElementById("lib").hasAttribute("data-noterm") };
+             libSkipped: document.getElementById("lib").hasAttribute("data-noterm"),
+             libTabs: document.querySelector('[data-term-lbl="cat"]').textContent.trim() + "/" +
+                      document.querySelector('[data-term-lbl="an"]').textContent.trim(),
+             bodyClean: !/\b[Cc]athode\b|\b[Aa]node\b/.test(document.querySelector("#singleMode").textContent) };
   });
-  check("terminology switch renames the electrodes without touching the DOM ids",
-    /Positive/.test(TM.pn) && /Cathode/.test(TM.ac) && TM.idsIntact === true, JSON.stringify(TM));
-  check("toggling terminology repeatedly stays lossless",
-    TM.again === TM.pn && TM.libSkipped === true, JSON.stringify(TM));
+  check("the electrodes read positive/negative, with no switch to put them back",
+    /Positive/.test(TM.first) && TM.noSwitch === true && TM.idsIntact === true, JSON.stringify(TM));
+  check("re-applying terminology is idempotent and skips the user-data library",
+    TM.again === TM.first && TM.libSkipped === true && TM.libTabs === "Positive/Negative", JSON.stringify(TM));
+  check("no cathode/anode wording survives in the rendered single-cell view",
+    TM.bodyClean === true, JSON.stringify(TM));
 
   // ── Blank data sheet: an input template, not a results dump.
   const DS = await page.evaluate(() => {
