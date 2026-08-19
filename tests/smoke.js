@@ -75,6 +75,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   const SM = await page.evaluate(() => {
     const g = id => document.getElementById(id);
     const vis = el => el.checkVisibility();
+    const shownInputs = () => [...document.querySelectorAll("#simpleMode input")].filter(vis).length;
     const o = {
       // It is what a first-time visitor lands on, with nothing in front of it.
       bootsSimple: uiMode === "simple" && vis(g("simpleMode")),
@@ -85,30 +86,60 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
       stackTogInsideAdvanced: g("advancedMode").contains(g("modeTog")),
       // The library stays open at the foot of the page, for reference.
       libOpen: !g("lib").classList.contains("cld") && vis(g("lib")),
-      // Exactly five inputs are asked for.
-      inputCount: document.querySelectorAll("#simpleMode input").length,
+      // Four values by default; the salt is an option, not a step.
+      inputCount: shownInputs(),
+      saltBoxHidden: !vis(g("sm-salt-on")),
+      detachOffered: vis(g("sm-salt-off")),
+      // Each electrode reads 1st cycle first, then the reversible value.
+      posOrder: [...g("sm-salt-off").parentNode.querySelectorAll(".sm-pos label")].map(e => e.textContent.trim()),
+      // The positive 1st-cycle figure counts the whole active zone by default.
+      unitCombined: g("sm-pos-c1-u").textContent,
       emptyMsg: g("sm-msg").textContent,
       emptyPie: g("sm-pie").querySelectorAll("path,circle").length,
     };
-    // Five capacities in, one split out.
-    g("sm-pos-rev").value = "70";  g("sm-pos-irr").value = "10";
-    g("sm-neg-rev").value = "250"; g("sm-neg-irr").value = "100";
-    g("sm-salt-irr").value = "300";
-    const r = recalcSimple();
-    // (70·100/250 − 10)/300 = 0.06 g of salt per g of positive AM.
-    o.ratio = r.ratio;
-    o.fSalt = r.fSalt;
+
+    // COMBINED: a composite positive measured at 92.4528 mAh/g(AM+salt), its AM
+    // giving 70 mAh/g reversible, against a 350/250 negative.
+    g("sm-pos-c1").value = "92.4528"; g("sm-pos-cn").value = "70";
+    g("sm-neg-c1").value = "350";     g("sm-neg-cn").value = "250";
+    const rc = recalcSimple();
+    o.combinedRatio = rc.ratio;
     o.slices = g("sm-pie").querySelectorAll("path,circle").length;
     o.legend = g("sm-legend").textContent;
     o.quietWhenSolved = getComputedStyle(g("sm-msg")).display === "none";
-    // A positive electrode that already loses more than the negative keeps
-    // needs no salt at all, and says so rather than showing a bare 0%.
-    g("sm-pos-irr").value = "400";
+    o.hintOffWhenCombined = !vis(g("sm-pos-c1-hint"));
+
+    // DETACHED: the SAME cell described the other way — the positive AM alone
+    // gives 80 mAh/g on the first cycle and the salt brings 300 of its own.
+    // Both descriptions must land on the same split.
+    setSaltDetached(true);
+    o.unitDetached = g("sm-pos-c1-u").textContent;
+    o.inputsAfterDetach = shownInputs();
+    g("sm-pos-c1").value = "80"; g("sm-salt-c1").value = "300";
+    o.detachedRatio = recalcSimple().ratio;
+
+    // A capacitive positive reporting the same 1st and Nth capacity has almost
+    // certainly been measured over the full window, not from the cell's OCV.
+    g("sm-pos-c1").value = "70";
+    recalcSimple();
+    o.hintWhenEqual = vis(g("sm-pos-c1-hint"));
+    o.hintText = g("sm-pos-c1-hint").textContent.trim();
+    g("sm-pos-c1").value = "80"; recalcSimple();
+
+    // Folding the salt back restores the four-value form and its basis.
+    setSaltDetached(false);
+    o.backToFour = shownInputs() === 4 && g("sm-pos-c1-u").textContent === o.unitCombined;
+
+    // A positive whose own 1st cycle already covers the negative's loss implies
+    // no salt, and says so rather than showing a bare 0%.
+    // 98 mAh/g(AM+salt) is what this AM alone would give here; above it, the
+    // measurement implies no salt at all.
+    g("sm-pos-c1").value = "110"; g("sm-pos-cn").value = "70";
     const r0 = recalcSimple();
     o.noSaltRatio = r0.ratio;
-    o.noSaltExplained = /no salt needed/i.test(g("sm-msg").textContent) &&
+    o.noSaltExplained = /no salt/i.test(g("sm-msg").textContent) &&
                         getComputedStyle(g("sm-msg")).display !== "none";
-    g("sm-pos-irr").value = "10"; recalcSimple();
+
     o.advStackTogShown = (setUiMode("advanced"), g("modeTog").checkVisibility());
     setUiMode("simple");
     return o;
@@ -117,14 +148,26 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     SM.bootsSimple === true && SM.advHidden === true && SM.noWelcome === true, JSON.stringify(SM));
   check("Single/Stack lives inside advanced mode, not the masthead",
     SM.stackTogHidden === true && SM.stackTogInsideAdvanced === true && SM.advStackTogShown === true, JSON.stringify(SM));
-  check("simple mode asks for exactly five values", SM.inputCount === 5, "inputs=" + SM.inputCount);
+  check("simple mode asks for four values, with the salt box behind an option",
+    SM.inputCount === 4 && SM.saltBoxHidden === true && SM.detachOffered === true, JSON.stringify(SM));
+  check("each electrode reads 1st cycle first, then the reversible Nth",
+    /^1st cycle$/i.test(SM.posOrder[0]) && /^Nth cycle \(reversible\)$/i.test(SM.posOrder[1]),
+    JSON.stringify(SM.posOrder));
+  check("the positive 1st-cycle capacity counts AM + salt until the salt is detached",
+    /AM\+salt/.test(SM.unitCombined) && /AM$/.test(SM.unitDetached) && SM.inputsAfterDetach === 5,
+    JSON.stringify(SM));
   check("the library stays open at the foot of simple mode", SM.libOpen === true, JSON.stringify(SM));
   check("an empty simple form says what is missing and draws no split",
-    /five capacities/i.test(SM.emptyMsg) && SM.emptyPie === 1, JSON.stringify(SM));
-  check("five capacities give the carbon:salt split (70,10,250,100,300 → 0.060)",
-    near(SM.ratio, 0.06, 1e-9) && near(SM.fSalt, 0.06 / 1.06, 1e-9), JSON.stringify(SM));
+    /four capacities/i.test(SM.emptyMsg) && SM.emptyPie === 1, JSON.stringify(SM));
+  check("the two ways of describing one cell give the same carbon:salt split",
+    near(SM.combinedRatio, 0.06, 1e-4) && near(SM.detachedRatio, 0.06, 1e-9) &&
+    near(SM.combinedRatio, SM.detachedRatio, 1e-4), JSON.stringify(SM));
   check("the result is one two-slice pie and its legend, and nothing else speaks",
     SM.slices === 2 && /Sacrificial salt/.test(SM.legend) && SM.quietWhenSolved === true, JSON.stringify(SM));
+  check("equal 1st and Nth on a detached positive prompts the OCV window, and only there",
+    SM.hintWhenEqual === true && SM.hintOffWhenCombined === true &&
+    SM.hintText === "Consider actual operating window starting from OCV", JSON.stringify(SM));
+  check("folding the salt back restores the four-value form", SM.backToFour === true, JSON.stringify(SM));
   check("a cell that needs no salt reports 0 and explains why",
     SM.noSaltRatio === 0 && SM.noSaltExplained === true, JSON.stringify(SM));
 
@@ -1257,9 +1300,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     recalcNow();
     const r = window.lastR;
     return { full: r.mS / (r.mAC + r.mS),
-             simple: solveSimple({ posRev: 70, posIrr: 10, negRev: 250, negIrr: 100, saltIrr: 300 }).fSalt };
+             simple: solveSimple({ posC1: 80, posCN: 70, negC1: 350, negCN: 250,
+                                   saltC1: 300, saltDetached: true }).fSalt };
   });
-  check("the simple five-value split agrees with the full solver",
+  check("the detached-salt split agrees with the full solver",
     near(SX.simple, SX.full, 1e-6), JSON.stringify(SX));
 
   // ── The status chip must say what the imbalance costs, and must not grade
