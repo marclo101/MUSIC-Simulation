@@ -20,11 +20,21 @@ Only the small library file is read at startup — the figures and the plotting 
 
 The masthead carries one switch, and it is the first thing to decide.
 
-**Simple** is where the tool opens. It asks for five capacities — reversible and irreversible for the positive and negative active materials, and the salt's irreversible (formation) capacity — and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it:
+**Simple** is where the tool opens. It asks for four capacities — for each electrode, the **1st-cycle** value and the **Nth (reversible)** value it settles to, in that order, exactly as a half cell reports them — and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it.
 
-> m<sub>salt</sub> / m<sub>AM</sub> = (C⁺<sub>rev</sub>·C⁻<sub>irr</sub> / C⁻<sub>rev</sub> − C⁺<sub>irr</sub>) / C<sub>salt,irr</sub>
+Everything is per gram of the active material itself, with one deliberate exception: the **positive electrode's 1st-cycle capacity counts the whole active zone, AM + salt** — what a composite electrode actually weighs. That is what lets the salt content be *inferred* from four numbers rather than asked for:
 
-The numerator is the working ion the negative electrode loses at formation that the positive electrode's own irreversibility does not already replace; where it is ≤ 0, no salt is needed and the tool says so. This is the same physics the full solver applies with both N/P targets at 1.00 — the regression suite pins the two together. The benchmark library stays open at the foot of the page, so the five numbers can be read straight off it.
+> x = 1 − (C⁺<sub>1</sub>·C⁻<sub>N</sub>) / (C⁻<sub>1</sub>·C⁺<sub>N</sub>)          *(x = salt mass fraction of the active zone)*
+
+**Detaching the salt.** A button beside the two electrodes opens a fifth box for the salt's own capacity — a theoretical figure, say, when you are designing rather than reproducing. The positive 1st-cycle value then counts **per gram of AM alone**, and the split is designed instead of inferred:
+
+> m<sub>salt</sub> / m<sub>AM</sub> = (C⁺<sub>N</sub>·C⁻<sub>1</sub> / C⁻<sub>N</sub> − C⁺<sub>1</sub>) / C<sub>salt</sub>
+
+whose numerator is the working ion the negative electrode loses at formation that the positive AM does not itself replace; where it is ≤ 0, no salt is needed and the tool says so. The unit beside the field changes with the mode, so which basis is being asked for is always on screen. This detached branch is the same physics the full solver applies with both N/P targets at 1.00 — the regression suite pins the two together, and also checks that one cell described both ways gives the same split.
+
+With the salt detached, a positive electrode whose 1st-cycle and reversible capacities are *equal* draws a quiet prompt under the field: **"Consider actual operating window starting from OCV."** A full cell starts its first charge from the OCV, not from the bottom of the half-cell window, so those two numbers are rarely the same in practice.
+
+The benchmark library stays open at the foot of the page, so the numbers can be read straight off it.
 
 **Advanced** is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
 
