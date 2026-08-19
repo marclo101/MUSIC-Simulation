@@ -96,7 +96,20 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
       unitCombined: g("sm-pos-c1-u").textContent,
       emptyMsg: g("sm-msg").textContent,
       emptyPie: g("sm-pie").querySelectorAll("path,circle").length,
+      emptyRatio: !vis(g("sm-ratio")),
     };
+    // The basis is the part that differs between these fields, so it has to be
+    // readable: it used to be 8.5px in the palest ink on the page.
+    {
+      const u = g("sm-pos-c1-u"), sub = u.querySelector("sub");
+      const cs = getComputedStyle(u), sc = getComputedStyle(sub);
+      o.unitPx = parseFloat(cs.fontSize);
+      o.unitSubPx = parseFloat(sc.fontSize);
+      o.unitSubWeight = parseInt(sc.fontWeight, 10);
+      o.unitSubInk = sc.color;
+      o.inkStrong = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim();
+      o.inkFaint = getComputedStyle(document.documentElement).getPropertyValue("--ink3").trim();
+    }
 
     // COMBINED: a composite positive measured at 92.4528 mAh/g(AM+salt), its AM
     // giving 70 mAh/g reversible, against a 350/250 negative.
@@ -108,6 +121,16 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     o.legend = g("sm-legend").textContent;
     o.quietWhenSolved = getComputedStyle(g("sm-msg")).display === "none";
     o.hintOffWhenCombined = !vis(g("sm-pos-c1-hint"));
+    // The second answer: how much positive electrode against the negative.
+    // m_pos/m_neg = C⁻N/(fAM·C⁺N) = 250/(0.943396·70) = 3.7858.
+    o.massRatio = rc.massRatio;
+    o.ratioShown = vis(g("sm-ratio"));
+    o.ratioV = g("sm-ratio").querySelector(".sm-ratio-v").textContent;
+    o.ratioSides = g("sm-ratio").querySelector(".sm-ratio-sides").textContent;
+    o.ratioBasis = g("sm-ratio").querySelector(".sm-ratio-basis").textContent;
+    o.ratioPx = parseFloat(getComputedStyle(g("sm-ratio").querySelector(".sm-ratio-v")).fontSize);
+    o.ratioBesidePie = Math.round(g("sm-ratio").getBoundingClientRect().left) >
+                       Math.round(g("sm-pie").getBoundingClientRect().right) - 4;
 
     // DETACHED: the SAME cell described the other way — the positive AM alone
     // gives 80 mAh/g on the first cycle and the salt brings 300 of its own.
@@ -140,6 +163,13 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     o.noSaltExplained = /no salt/i.test(g("sm-msg").textContent) &&
                         getComputedStyle(g("sm-msg")).display !== "none";
 
+    o.noSaltBasis = g("sm-ratio").querySelector(".sm-ratio-basis").textContent;
+    // A positive electrode lighter than the negative flips which side carries
+    // the 1 — the pair is still printed positive-first.
+    g("sm-pos-c1").value = "800"; g("sm-pos-cn").value = "600";
+    o.lightPosRatio = recalcSimple().massRatio;
+    o.lightPosV = g("sm-ratio").querySelector(".sm-ratio-v").textContent;
+
     o.advStackTogShown = (setUiMode("advanced"), g("modeTog").checkVisibility());
     setUiMode("simple");
     return o;
@@ -170,6 +200,20 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("folding the salt back restores the four-value form", SM.backToFour === true, JSON.stringify(SM));
   check("a cell that needs no salt reports 0 and explains why",
     SM.noSaltRatio === 0 && SM.noSaltExplained === true, JSON.stringify(SM));
+  check("the capacity basis is legible, not 8.5px of the faintest ink",
+    SM.unitPx >= 12 && SM.unitSubPx >= 10 && SM.unitSubWeight >= 700 &&
+    SM.unitSubInk !== SM.inkFaint, JSON.stringify(SM));
+  check("the electrode mass ratio sits beside the pie, at headline size",
+    SM.ratioShown === true && SM.ratioBesidePie === true && SM.ratioPx >= 40 &&
+    SM.emptyRatio === true, JSON.stringify(SM));
+  check("the mass ratio is positive-over-negative, normalised to 1 (3.79 : 1)",
+    near(SM.massRatio, 3.7858, 1e-3) && SM.ratioV.replace(/\s/g, "") === "3.79:1", JSON.stringify(SM));
+  check("a lighter positive puts the 1 on its side, still printed positive-first",
+    near(SM.lightPosRatio, 0.4375, 1e-4) && SM.lightPosV.replace(/\s/g, "") === "1:2.29", JSON.stringify(SM));
+  check("the ratio names its sides and its basis, and drops the salt when there is none",
+    /positive\s*:\s*negative/.test(SM.ratioSides) &&
+    SM.ratioBasis.replace(/\s/g, "") === "(AMp+salt):AMn" &&
+    SM.noSaltBasis.replace(/\s/g, "") === "AMp:AMn", JSON.stringify(SM));
 
   // Everything below exercises the full tool, so bring it up.
   await page.evaluate(() => setUiMode("advanced"));
@@ -649,14 +693,16 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     !/Sacrificial salt/.test(LG.nthTxt), LG.nthTxt);
 
   // ── Spotlight: the zone is lit and usable, everything else is dimmed ──
+  await page.evaluate(() => startTour());
+  // The tour scrolls to its own target smoothly. Let that finish BEFORE parking
+  // the zone, or the smooth scroll lands after our instant one and the probe
+  // measures a zone that has since moved off-screen.
+  await page.waitForTimeout(800);
   await page.evaluate(() => {
-    startTour();
-    // Park the lit zone in view instantly; the tour's own scroll is smooth and
-    // would otherwise leave it half off-screen while we probe.
     const z = document.querySelector(".tour-hi");
-    if (z) z.scrollIntoView({ block: "center" });
+    if (z) z.scrollIntoView({ block: "center", behavior: "instant" });
   });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(250);
   const SP = await page.evaluate(() => {
     _tourSpotlight();                                    // re-frame after the scroll
     const blocked = (x, y) => document.elementsFromPoint(x, y)
