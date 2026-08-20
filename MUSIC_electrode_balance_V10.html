@@ -162,10 +162,10 @@ body.ui-simple #simpleMode{display:block}
 body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .adv-modebar{display:flex;justify-content:flex-end;margin-bottom:14px}
 
-.sm-wrap{max-width:940px;margin:0 auto;padding:26px 0 8px;text-align:center}
+.sm-wrap{max-width:1160px;margin:0 auto;padding:26px 0 8px;text-align:center}
 .sm-h{font-family:var(--fd);font-size:30px;font-weight:500;color:var(--ink);letter-spacing:-.01em}
 .sm-sub{font-size:13.5px;line-height:1.6;color:var(--ink2);max-width:600px;margin:10px auto 30px}
-.sm-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:left;margin-bottom:34px}
+.sm-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:left;max-width:940px;margin:0 auto 34px}
 @media(max-width:820px){.sm-inputs{grid-template-columns:1fr}}
 .sm-card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--s2);padding:18px 20px 20px}
 .sm-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--ink2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
@@ -188,12 +188,21 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 
 .sm-result{display:flex;flex-direction:column;align-items:center;padding-bottom:34px}
 .sm-result svg{display:block}
-.sm-result-row{display:flex;align-items:center;justify-content:center;gap:44px;flex-wrap:wrap}
+.sm-result-row{display:flex;align-items:flex-start;justify-content:center;gap:34px;flex-wrap:wrap}
 @media(max-width:820px){.sm-result-row{gap:24px}}
-.sm-pie-box{position:relative;flex:0 0 auto}
+.sm-panel{flex:0 0 auto}
+.sm-pie-wrap{position:relative;width:300px;height:300px}
+/* Panel captions share one voice across the row. */
+.sm-panel-l,.sm-ratio-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);font-weight:600}
+.sm-panel-l{margin-bottom:6px}
+.sm-bars-u{display:block;font-family:var(--fm);font-size:10.5px;color:var(--ink3);margin-top:2px}
+#sm-bars text{font-family:var(--fm)}
+#sm-bars .sm-bar-v{font-size:11.5px;font-weight:700;fill:var(--ink)}
+#sm-bars .sm-bar-s{font-size:9.5px;font-weight:700;letter-spacing:.04em}
+#sm-bars .sm-bar-g{font-size:11.5px;font-weight:600;fill:var(--ink2)}
 /* The donut's hole carries the headline number, so it is positioned against
    the SVG rather than stacked under it. */
-.sm-mid{position:absolute;top:0;left:0;width:300px;height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.sm-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .sm-mid .sm-mid-v{font-family:var(--fm);font-size:42px;font-weight:500;color:var(--sp);line-height:1}
 .sm-mid .sm-mid-l{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-top:7px}
 .sm-legend{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;justify-content:center}
@@ -205,9 +214,9 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
    The second answer, and the one people write down. It carries its own basis
    line because a bare "3.8 : 1" is unreproducible: it says nothing about which
    side leads, nor whether the masses are active or whole-electrode. */
-.sm-ratio{flex:0 0 auto;max-width:320px;text-align:left;display:none}
+.sm-ratio{flex:0 0 auto;max-width:290px;text-align:left;display:none;align-self:center}
 .sm-ratio.on{display:block}
-.sm-ratio-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);font-weight:600;margin-bottom:10px}
+.sm-ratio-l{margin-bottom:10px}
 .sm-ratio-v{display:block;font-family:var(--fm);font-size:46px;font-weight:500;color:var(--ink);line-height:1.05;letter-spacing:-.02em}
 .sm-ratio-v .sm-ratio-sep{color:var(--ink3);margin:0 6px;font-weight:400}
 .sm-ratio-sides{display:block;font-size:14px;font-weight:600;margin-top:12px}
@@ -897,10 +906,18 @@ body.ui-simple .lib{margin-top:0}
          how much of it you need against the negative one. -->
     <div class="sm-result">
       <div class="sm-result-row">
-        <div class="sm-pie-box">
-          <svg id="sm-pie" width="300" height="300" viewBox="0 0 300 300" role="img" aria-labelledby="sm-pie-t"><title id="sm-pie-t">Positive electrode active mass: carbon against sacrificial salt</title></svg>
-          <div class="sm-mid" id="sm-mid"></div>
+        <div class="sm-panel sm-pie-box">
+          <span class="sm-panel-l">Positive electrode mix</span>
+          <div class="sm-pie-wrap">
+            <svg id="sm-pie" width="300" height="300" viewBox="0 0 300 300" role="img" aria-labelledby="sm-pie-t"><title id="sm-pie-t">Positive electrode active mass: carbon against sacrificial salt</title></svg>
+            <div class="sm-mid" id="sm-mid"></div>
+          </div>
           <div class="sm-legend" id="sm-legend"></div>
+        </div>
+        <div class="sm-panel sm-bars-box" id="sm-bars-box">
+          <span class="sm-panel-l">Where the charge comes from</span>
+          <svg id="sm-bars" width="340" height="300" viewBox="0 0 340 300" role="img" aria-labelledby="sm-bars-t"><title id="sm-bars-t">Charge delivered by each electrode on the 1st and Nth cycles</title></svg>
+          <span class="sm-bars-u" id="sm-bars-u"></span>
         </div>
         <div class="sm-ratio" id="sm-ratio"></div>
       </div>
@@ -1782,7 +1799,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v12.8";
+const APP_VERSION="v12.9";
 const APP_BUILD="2026-08-19";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -7045,7 +7062,17 @@ function solveSimple(v){
      electrode masses would need the binder and conductive-additive fractions,
      which this form deliberately does not ask for. */
   const massRatio=negCN/(fAM*posCN);
-  return {ok:true,ratio,fSalt:ratio/(1+ratio),fAM,needsNone:ratio<=0,massRatio};
+  /* Charge each side delivers, per gram of positive AM (m_A = 1, so m_S = ratio
+     and m_n = C⁺_N/C⁻_N). The salt is spent at formation, so it appears on the
+     1st-cycle positive bar and nowhere else. Both cycles come out matched by
+     construction — that is what the solve just imposed — and drawing them is
+     the clearest way to show it. */
+  const mN=posCN/negCN;
+  const charges={
+    pos1AM:posC1, pos1Salt:ratio*saltC1, pos1:posC1+ratio*saltC1,
+    neg1:mN*negC1, posN:posCN, negN:mN*negCN
+  };
+  return {ok:true,ratio,fSalt:ratio/(1+ratio),fAM,needsNone:ratio<=0,massRatio,charges};
 }
 
 /* A value is "given" only when the field is non-empty and non-negative — a
@@ -7067,7 +7094,7 @@ function recalcSimple(){
   const msg=$("sm-msg"),mid=$("sm-mid"),leg=$("sm-legend");
   _smOcvHint(v);
   if(missing>0){
-    _smDrawPie(null); _smDrawRatio(null);
+    _smDrawPie(null); _smDrawRatio(null); _smDrawBars(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent=missing===5 ? "Fill in the five capacities above."
       : missing+(missing===1?" value":" values")+" still to go.";
@@ -7076,7 +7103,7 @@ function recalcSimple(){
   }
   const r=solveSimple(v);
   if(!r.ok){
-    _smDrawPie(null); _smDrawRatio(null);
+    _smDrawPie(null); _smDrawRatio(null); _smDrawBars(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent="Every capacity has to be above zero.";
     msg.style.display="";
@@ -7090,7 +7117,7 @@ function recalcSimple(){
       'Active material (carbon) <span class="sm-pv">'+(r.fAM*100).toFixed(1)+'%</span></span>'+
     '<span class="sm-li"><span class="sm-sw" style="background:'+SM_SALT_COLOR+'"></span>'+
       'Sacrificial salt <span class="sm-pv">'+(r.fSalt*100).toFixed(1)+'%</span></span>';
-  _smDrawRatio(r);
+  _smDrawRatio(r); _smDrawBars(r);
   // Silence in the ordinary case; speak only where the answer would otherwise
   // look broken.
   if(r.needsNone){
@@ -7110,6 +7137,67 @@ function _smOcvHint(v){
   const el=$("sm-pos-c1-hint"); if(!el) return;
   const show = v.posC1!==null && v.posCN!==null && Math.abs(v.posC1-v.posCN)<1e-9;
   el.style.display=show?"":"none";
+}
+
+/* ── Where the charge comes from ──
+   Four bars: positive and negative, on the 1st cycle and on the Nth. The point
+   the numbers make but the pie cannot is that BOTH pairs meet at the same
+   height — that is what balancing to N/P = 1 on both cycles means. On the first
+   cycle the positive AM alone falls short and the sacrificial salt (same colour
+   as its pie slice) tops it up to exactly the negative's level; by the Nth cycle
+   the salt is spent and the two match on active material alone.
+
+   One shared vertical scale across all four, so the formation cycle's larger
+   charge stays visible as a real difference rather than being normalised away.
+   Every bar is labelled, so a short bar is still readable. */
+const SM_NEG_COLOR="var(--ap)";
+function _smDrawBars(r){
+  const svg=$("sm-bars"), cap=$("sm-bars-u"); if(!svg) return;
+  const ns="http://www.w3.org/2000/svg";
+  while(svg.lastChild && svg.lastChild.nodeName!=="title") svg.removeChild(svg.lastChild);
+  if(cap) cap.textContent="";
+  if(!r||!r.charges) return;
+  const c=r.charges;
+  const W=340,padT=34,padB=50,plotH=300-padT-padB,base=padT+plotH;
+  const barW=44,inner=18,groupGap=48,pairW=barW*2+inner;
+  const x0=(W-(pairW*2+groupGap))/2;
+  const maxQ=Math.max(c.pos1,c.neg1,c.posN,c.negN,1e-9);
+  const h=q=>Math.max(0,q/maxQ*plotH);
+  const mk=(n,a)=>{const e=document.createElementNS(ns,n);for(const k in a)e.setAttribute(k,a[k]);return e};
+  const bar=(x,y,hh,fill)=>{ if(hh<=0.5) return; svg.appendChild(mk("rect",{x,y,width:barW,height:hh,fill,rx:2})); };
+  const txt=(x,y,str,cls,fill,anchor)=>{const t=mk("text",{x,y,"text-anchor":anchor||"middle","class":cls});
+    if(fill) t.setAttribute("fill",fill); t.textContent=str; svg.appendChild(t)};
+  /* SVG has no <sup>, so an ordinal is drawn as a raised, smaller tspan and the
+     baseline is put back for whatever follows it. */
+  const ordinal=(x,y,n,sup,rest,cls)=>{
+    const t=mk("text",{x,y,"text-anchor":"middle","class":cls});
+    t.appendChild(mk("tspan",{})).textContent=n;
+    const up=mk("tspan",{dy:"-4","font-size":"8.5"}); up.textContent=sup; t.appendChild(up);
+    const back=mk("tspan",{dy:"4"}); back.textContent=rest; t.appendChild(back);
+    svg.appendChild(t);
+  };
+  const num=v=>v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2);
+
+  svg.appendChild(mk("line",{x1:x0-16,y1:base,x2:x0+pairW*2+groupGap+16,y2:base,
+                             stroke:"var(--rule)","stroke-width":1}));
+  [{x:x0,n:"1",sup:"st",am:c.pos1AM,salt:c.pos1Salt,pos:c.pos1,neg:c.neg1},
+   {x:x0+pairW+groupGap,n:"N",sup:"th",am:c.posN,salt:0,pos:c.posN,neg:c.negN}
+  ].forEach(g=>{
+    // The level both sides are balanced to. Drawn from the negative, which is
+    // the side the salt is sized against, so any overshoot stays visible.
+    const yLvl=base-h(g.neg);
+    svg.appendChild(mk("line",{x1:g.x-12,y1:yLvl,x2:g.x+pairW+12,y2:yLvl,
+      stroke:"var(--ink3)","stroke-width":1.5,"stroke-dasharray":"5 4"}));
+    txt(g.x+pairW+12,yLvl-8,num(g.neg),"sm-bar-v",null,"end");
+    const hAM=h(g.am),hS=h(g.salt);
+    bar(g.x,base-hAM,hAM,SM_AM_COLOR);
+    bar(g.x,base-hAM-hS,hS,SM_SALT_COLOR);
+    bar(g.x+barW+inner,base-h(g.neg),h(g.neg),SM_NEG_COLOR);
+    txt(g.x+barW/2,base+16,"positive","sm-bar-s",SM_AM_COLOR);
+    txt(g.x+barW+inner+barW/2,base+16,"negative","sm-bar-s",SM_NEG_COLOR);
+    ordinal(g.x+pairW/2,base+36,g.n,g.sup," cycle","sm-bar-g");
+  });
+  if(cap) cap.textContent="mAh per gram of positive AM";
 }
 
 /* Electrode mass ratio, written so it can be reproduced from the page alone.
