@@ -1799,7 +1799,7 @@ function saveFile(){
 
 /* Bump this on every change that ships. It is rendered in the masthead so a
    stale copy of the file is obvious without diffing anything. */
-const APP_VERSION="v12.9";
+const APP_VERSION="v13.0";
 const APP_BUILD="2026-08-19";
 const $=id=>document.getElementById(id),qsa=s=>[...document.querySelectorAll(s)];
 function N(id){const el=$(id);if(!el)return 0;const v=parseFloat(el.value);return Number.isFinite(v)?v:0}
@@ -7062,15 +7062,22 @@ function solveSimple(v){
      electrode masses would need the binder and conductive-additive fractions,
      which this form deliberately does not ask for. */
   const massRatio=negCN/(fAM*posCN);
-  /* Charge each side delivers, per gram of positive AM (m_A = 1, so m_S = ratio
-     and m_n = C⁺_N/C⁻_N). The salt is spent at formation, so it appears on the
-     1st-cycle positive bar and nowhere else. Both cycles come out matched by
-     construction — that is what the solve just imposed — and drawing them is
-     the clearest way to show it. */
-  const mN=posCN/negCN;
+  /* Charge each side delivers, per gram of NEGATIVE active material (m_n = 1).
+     The negative is the reference the salt is sized against, and on this basis
+     the two balanced levels come out as the negative's own entered capacities —
+     C⁻_1 on the first cycle and C⁻_N on the reversible one — so the chart's
+     labels are numbers the user typed rather than a derived scale they have to
+     take on trust.
+
+     One gram of negative AM is balanced by k = C⁻_N/C⁺_N grams of positive AM,
+     carrying k·ratio grams of salt. The salt is spent at formation, so it
+     appears on the 1st-cycle positive bar and nowhere else. Both cycles come
+     out matched by construction — that is what the solve just imposed — and
+     drawing them is the clearest way to show it. */
+  const k=negCN/posCN;
   const charges={
-    pos1AM:posC1, pos1Salt:ratio*saltC1, pos1:posC1+ratio*saltC1,
-    neg1:mN*negC1, posN:posCN, negN:mN*negCN
+    pos1AM:k*posC1, pos1Salt:k*ratio*saltC1, pos1:k*(posC1+ratio*saltC1),
+    neg1:negC1, posN:k*posCN, negN:negCN
   };
   return {ok:true,ratio,fSalt:ratio/(1+ratio),fAM,needsNone:ratio<=0,massRatio,charges};
 }
@@ -7149,7 +7156,9 @@ function _smOcvHint(v){
 
    One shared vertical scale across all four, so the formation cycle's larger
    charge stays visible as a real difference rather than being normalised away.
-   Every bar is labelled, so a short bar is still readable. */
+   Every bar is labelled, so a short bar is still readable. Charge is counted
+   per gram of negative active material, which puts the two level lines at the
+   negative's own entered capacities. */
 const SM_NEG_COLOR="var(--ap)";
 function _smDrawBars(r){
   const svg=$("sm-bars"), cap=$("sm-bars-u"); if(!svg) return;
@@ -7197,7 +7206,7 @@ function _smDrawBars(r){
     txt(g.x+barW+inner+barW/2,base+16,"negative","sm-bar-s",SM_NEG_COLOR);
     ordinal(g.x+pairW/2,base+36,g.n,g.sup," cycle","sm-bar-g");
   });
-  if(cap) cap.textContent="mAh per gram of positive AM";
+  if(cap) cap.textContent="mAh per gram of negative AM";
 }
 
 /* Electrode mass ratio, written so it can be reproduced from the page alone.
