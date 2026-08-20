@@ -215,6 +215,13 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     near(SM.chg.pos1, SM.chg.neg1, 1e-9) && near(SM.chg.posN, SM.chg.negN, 1e-9) &&
     near(SM.pos1Drawn, SM.neg1Drawn, 0.5) && near(SM.posNDrawn, SM.negNDrawn, 0.5),
     JSON.stringify(SM));
+  // Counted per gram of NEGATIVE active material, the two balanced levels come
+  // out as the negative's own entered capacities (350 and 250 here) rather than
+  // a derived scale — so the chart is labelled with numbers the user typed.
+  check("charge is counted per gram of negative AM, so the levels are its own capacities",
+    near(SM.chg.neg1, 350, 1e-9) && near(SM.chg.negN, 250, 1e-9) &&
+    near(SM.chg.pos1AM + SM.chg.pos1Salt, 350, 1e-9) &&
+    /per gram of negative AM/.test(SM.barsUnit), JSON.stringify(SM.chg));
   check("the 1st-cycle positive bar is active material topped up by salt",
     SM.barCount === 5 && near(SM.chg.pos1AM + SM.chg.pos1Salt, SM.chg.pos1, 1e-9) &&
     SM.chg.pos1Salt > 0, JSON.stringify(SM));
@@ -224,8 +231,7 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     JSON.stringify({ bars: SM.barFills, pie: SM.pieFills }));
   check("each cycle carries a matched-level line and positive/negative labels",
     SM.levelLines === 2 && /positive/.test(SM.barText) && /negative/.test(SM.barText) &&
-    /1st cycle/.test(SM.barText) && /Nth cycle/.test(SM.barText) &&
-    /per gram of positive AM/.test(SM.barsUnit), JSON.stringify(SM.barText));
+    /1st cycle/.test(SM.barText) && /Nth cycle/.test(SM.barText), JSON.stringify(SM.barText));
   check("the bar chart sits between the pie and the ratio",
     SM.barsBesidePie === true, JSON.stringify(SM));
   check("the electrode mass ratio sits beside the pie, at headline size",
