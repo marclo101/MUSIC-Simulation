@@ -50,7 +50,7 @@ Whichever side is lighter is normalised to 1 — usually the negative, since a l
 
 The benchmark library stays open at the foot of the page, so the numbers can be read straight off it.
 
-**Advanced** is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
+**Advanced** *(beta)* is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. It is still being reworked, and the switch says so. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
 
 The choice is remembered between visits.
 

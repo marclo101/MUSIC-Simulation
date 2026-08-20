@@ -83,6 +83,10 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
       // Single/Stack belongs to the advanced layout, not the masthead.
       stackTogHidden: !vis(g("modeTog")),
       stackTogInsideAdvanced: g("advancedMode").contains(g("modeTog")),
+      // Advanced is still being reworked, and says so on the switch itself.
+      advLabel: document.querySelector('.ui-tog button[data-ui="advanced"]').textContent,
+      simpleLabel: document.querySelector('.ui-tog button[data-ui="simple"]').textContent,
+      betaCase: getComputedStyle(document.querySelector(".ui-tog .ui-beta")).textTransform,
       // The library stays open at the foot of the page, for reference.
       libOpen: !g("lib").classList.contains("cld") && vis(g("lib")),
       // Five values, all of them open: there is no second input mode.
@@ -192,6 +196,9 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     SM.bootsSimple === true && SM.advHidden === true && SM.noWelcome === true, JSON.stringify(SM));
   check("Single/Stack lives inside advanced mode, not the masthead",
     SM.stackTogHidden === true && SM.stackTogInsideAdvanced === true && SM.advStackTogShown === true, JSON.stringify(SM));
+  check("the advanced switch is marked beta, and simple is not",
+    /\(beta\)/i.test(SM.advLabel) && !/beta/i.test(SM.simpleLabel) &&
+    SM.betaCase === "none", JSON.stringify({ adv: SM.advLabel, simple: SM.simpleLabel, case: SM.betaCase }));
   check("simple mode asks for five values and offers no second input mode",
     SM.inputCount === 5 && SM.noModeSwitch === true, JSON.stringify(SM));
   check("each electrode reads 1st cycle first, then the reversible Nth",
