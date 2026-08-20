@@ -40,7 +40,9 @@ whose numerator is the working ion the negative electrode loses at formation tha
 
 A positive electrode whose 1st-cycle and reversible capacities are *equal* draws a quiet prompt under the field: **"Consider actual operating window starting from OCV."** A full cell starts its first charge from the OCV, not from the bottom of the half-cell window, so those two numbers are rarely the same in practice.
 
-**Two answers, side by side.** The pie says what the positive electrode is made of; beside it, the **electrode mass ratio** says how much of it you need:
+**Three panels, side by side.** The pie says what the positive electrode is made of. Beside it, **Where the charge comes from** puts the two electrodes against each other on both cycles — four bars in the same colours as the pie, with a dashed line marking the level each pair is balanced to. On the 1st cycle the positive active material alone falls short and the sacrificial salt tops it up to exactly the negative's level; by the N<sup>th</sup> cycle the salt is spent and the two match on active material alone. One shared vertical scale across all four, so the formation cycle's larger charge shows as a real difference rather than being normalised away, and every level is labelled so a short bar stays readable. Where no salt is needed the positive bar simply overshoots the line, which is the honest picture of an over-capacitive positive.
+
+Third, the **electrode mass ratio** says how much of it you need:
 
 > **3.79 : 1**  ·  positive : negative  ·  (AM<sub>p</sub> + salt) : AM<sub>n</sub>
 

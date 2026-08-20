@@ -136,6 +136,32 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
     o.ratioBesidePie = Math.round(g("sm-ratio").getBoundingClientRect().left) >
                        Math.round(g("sm-pie").getBoundingClientRect().right) - 4;
 
+    // ── Where the charge comes from ──
+    // Both cycles are balanced by construction; the bars are how that is shown.
+    o.chg = r.charges;
+    {
+      const bars = g("sm-bars");
+      const rects = [...bars.querySelectorAll("rect")];
+      o.barCount = rects.length;
+      o.barFills = rects.map(e => e.getAttribute("fill"));
+      // Same colour code as the pie: the salt slice and the salt bar segment
+      // must be the same ink, and the positive AM likewise.
+      const slices = [...g("sm-pie").querySelectorAll("path,circle")];
+      o.pieFills = slices.map(e => e.getAttribute("stroke"));
+      o.levelLines = bars.querySelectorAll("line[stroke-dasharray]").length;
+      o.barText = [...bars.querySelectorAll("text")].map(t => t.textContent).join("|");
+      o.barsUnit = g("sm-bars-u").textContent;
+      o.barsBesidePie = Math.round(bars.getBoundingClientRect().left) >
+                        Math.round(g("sm-pie").getBoundingClientRect().right) - 4;
+      // The two 1st-cycle bars must be drawn to the same height, and likewise
+      // the two Nth-cycle ones — that is the whole point of the picture.
+      const h = i => parseFloat(rects[i].getAttribute("height"));
+      o.pos1Drawn = h(0) + h(1);      // AM segment + salt segment
+      o.neg1Drawn = h(2);
+      o.posNDrawn = h(3);
+      o.negNDrawn = h(4);
+    }
+
     // A capacitive positive reporting the same 1st and Nth capacity has almost
     // certainly been measured over the full window, not from the cell's OCV.
     o.hintOffWhenDifferent = !vis(g("sm-pos-c1-hint"));
@@ -185,6 +211,23 @@ const check = (name, pass, detail = "") => { checks.push({ name, pass, detail })
   check("the capacity basis is legible, not 8.5px of the faintest ink",
     SM.unitPx >= 12 && SM.unitSubPx >= 10 && SM.unitSubWeight >= 700 &&
     SM.unitSubInk !== SM.inkFaint, JSON.stringify(SM));
+  check("both cycles are balanced, and the bars are drawn to matching heights",
+    near(SM.chg.pos1, SM.chg.neg1, 1e-9) && near(SM.chg.posN, SM.chg.negN, 1e-9) &&
+    near(SM.pos1Drawn, SM.neg1Drawn, 0.5) && near(SM.posNDrawn, SM.negNDrawn, 0.5),
+    JSON.stringify(SM));
+  check("the 1st-cycle positive bar is active material topped up by salt",
+    SM.barCount === 5 && near(SM.chg.pos1AM + SM.chg.pos1Salt, SM.chg.pos1, 1e-9) &&
+    SM.chg.pos1Salt > 0, JSON.stringify(SM));
+  check("the bars reuse the pie's colour code, and add the negative electrode",
+    SM.barFills[0] === SM.pieFills[0] && SM.barFills[1] === SM.pieFills[1] &&
+    SM.barFills[2] === "var(--ap)" && SM.barFills[2] !== SM.barFills[0],
+    JSON.stringify({ bars: SM.barFills, pie: SM.pieFills }));
+  check("each cycle carries a matched-level line and positive/negative labels",
+    SM.levelLines === 2 && /positive/.test(SM.barText) && /negative/.test(SM.barText) &&
+    /1st cycle/.test(SM.barText) && /Nth cycle/.test(SM.barText) &&
+    /per gram of positive AM/.test(SM.barsUnit), JSON.stringify(SM.barText));
+  check("the bar chart sits between the pie and the ratio",
+    SM.barsBesidePie === true, JSON.stringify(SM));
   check("the electrode mass ratio sits beside the pie, at headline size",
     SM.ratioShown === true && SM.ratioBesidePie === true && SM.ratioPx >= 40 &&
     SM.emptyRatio === true, JSON.stringify(SM));
