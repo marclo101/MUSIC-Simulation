@@ -163,9 +163,7 @@ body.ui-simple #simpleMode{display:block}
 body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .adv-modebar{display:flex;justify-content:flex-end;margin-bottom:14px}
 
-.sm-wrap{max-width:1160px;margin:0 auto;padding:26px 0 8px;text-align:center}
-.sm-h{font-family:var(--fd);font-size:30px;font-weight:500;color:var(--ink);letter-spacing:-.01em}
-.sm-sub{font-size:13.5px;line-height:1.6;color:var(--ink2);max-width:600px;margin:10px auto 30px}
+.sm-wrap{max-width:1160px;margin:0 auto;padding:38px 0 8px;text-align:center}
 .sm-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:left;max-width:940px;margin:0 auto 34px}
 @media(max-width:820px){.sm-inputs{grid-template-columns:1fr}}
 .sm-card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--s2);padding:18px 20px 20px}
@@ -187,7 +185,10 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-note{font-size:10.5px;line-height:1.5;color:var(--ink3);margin-top:14px}
 
 
-.sm-result{display:flex;flex-direction:column;align-items:center;padding-bottom:34px}
+.sm-result{display:none;flex-direction:column;align-items:center;padding-bottom:34px}
+.sm-result.on{display:flex;animation:sm-rise .3s ease both}
+@keyframes sm-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.sm-result.on{animation:none}}
 .sm-result svg{display:block}
 .sm-result-row{display:flex;align-items:flex-start;justify-content:center;gap:34px;flex-wrap:wrap}
 @media(max-width:820px){.sm-result-row{gap:24px}}
@@ -226,7 +227,7 @@ body.ui-simple #advancedMode,body.ui-simple .adv-only{display:none}
 .sm-ratio-basis{display:block;font-family:var(--fm);font-size:12.5px;font-weight:500;color:var(--ink);background:var(--bone);border:1px solid var(--ruleS);border-radius:5px;padding:5px 9px;margin-top:10px}
 .sm-ratio-basis sub{font-size:10.5px;font-weight:700;vertical-align:-.18em}
 .sm-ratio-note{display:block;font-size:11px;line-height:1.5;color:var(--ink3);margin-top:10px}
-.sm-msg{font-size:12.5px;line-height:1.6;color:var(--ink3);margin-top:22px;max-width:600px}
+.sm-msg{font-size:12.5px;line-height:1.6;color:var(--ink3);margin:0 auto 34px;max-width:600px;text-align:center}
 body.ui-simple .lib{margin-top:0}
 
 .card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;box-shadow:var(--s2);display:flex;flex-direction:column}
@@ -876,9 +877,6 @@ body.ui-simple .lib{margin-top:0}
      design calculation rather than a description of one already made. -->
 <div id="simpleMode">
   <div class="sm-wrap">
-    <h2 class="sm-h">How much sacrificial salt?</h2>
-    <p class="sm-sub">Capacities in mAh per gram, as measured in a half cell: the 1<sup>st</sup> cycle, then the reversible value it settles to.</p>
-
     <div class="sm-inputs">
       <div class="sm-card sm-pos">
         <h3><span class="sm-ic">+</span> Positive electrode</h3>
@@ -922,8 +920,8 @@ body.ui-simple .lib{margin-top:0}
         </div>
         <div class="sm-ratio" id="sm-ratio"></div>
       </div>
-      <div class="sm-msg" id="sm-msg">Fill in the four capacities above.</div>
     </div>
+    <div class="sm-msg" id="sm-msg">Fill in the five capacities above.</div>
   </div>
 </div>
 
@@ -7100,8 +7098,13 @@ function recalcSimple(){
            saltC1:_smVal("sm-salt-c1")};
   const missing=Object.values(v).filter(x=>x===null).length;
   const msg=$("sm-msg"),mid=$("sm-mid"),leg=$("sm-legend");
+  // The result block is the answer itself: it stays out of the page until the
+  // five capacities are in, rather than sitting there as empty scaffolding.
+  const res=document.querySelector("#simpleMode .sm-result");
+  const showRes=on=>{ if(res) res.classList.toggle("on",on); };
   _smOcvHint(v);
   if(missing>0){
+    showRes(false);
     _smDrawPie(null); _smDrawRatio(null); _smDrawBars(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent=missing===5 ? "Fill in the five capacities above."
@@ -7111,12 +7114,14 @@ function recalcSimple(){
   }
   const r=solveSimple(v);
   if(!r.ok){
+    showRes(false);
     _smDrawPie(null); _smDrawRatio(null); _smDrawBars(null);
     mid.innerHTML=""; leg.innerHTML="";
     msg.textContent="Every capacity has to be above zero.";
     msg.style.display="";
     return null;
   }
+  showRes(true);
   _smDrawPie(r);
   mid.innerHTML='<span class="sm-mid-v">'+(r.fSalt*100).toFixed(1)+'%</span>'+
                 '<span class="sm-mid-l">sacrificial salt</span>';
