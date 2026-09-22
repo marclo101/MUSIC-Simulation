@@ -942,7 +942,7 @@ body.ui-simple .lib{margin-top:0}
   </div>
   <div class="cb"><div class="sb cellp-grid">
     <div class="cellp-fld">
-      <label for="np-target" data-help="The Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; the solver will hit on the reversible (N&lt;sup&gt;th&lt;/sup&gt;) cycle. This is a &lt;strong&gt;capacity&lt;/strong&gt; ratio, not a mass ratio: 1.00 = balanced; &gt;1 = negative-overcapacitive (a plating safety margin); &lt;1 = positive-overcapacitive. Status colours and the &quot;%&quot; deviations on the results are measured against this target rather than against 1.00." data-help-key="fld_np_target">Target N/P · N<sup>th</sup> cycle <span class="su">capacity ratio Q<sub>a</sub>/Q<sub>c</sub> · not a mass ratio</span></label>
+      <label for="np-target" data-help="The Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; the solver will hit on the reversible (N&lt;sup&gt;th&lt;/sup&gt;) cycle. This is a &lt;strong&gt;capacity&lt;/strong&gt; ratio, not a mass ratio: 1.00 = balanced; &gt;1 = negative-overcapacitive (a plating safety margin); &lt;1 = positive-overcapacitive. Status colours and the &quot;%&quot; deviations on the results are measured against this target rather than against 1.00." data-help-key="fld_np_target">Target N/P · N<sup>th</sup> cycle <span class="su">capacity ratio Q<sub>a</sub>/Q<sub>c</sub> </span></label>
       <div class="cellp-inline">
         <div class="fld" style="flex:0 0 92px"><input type="number" id="np-target" step="0.01" min="0.5" max="3" value="1.00" oninput="onNpTargetChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
         <button class="rst-btn" id="np-target-rst" onclick="resetNpTarget()" title="Reset to 1.00" style="width:20px;height:20px;font-size:11px">↻</button>
@@ -954,7 +954,7 @@ body.ui-simple .lib{margin-top:0}
          the pair reads as what it is — two capacity ratios, both 1.00 until the
          user says otherwise. -->
     <div class="cellp-fld" id="np1st-block">
-      <label for="np-target-1st" data-help="The Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; the solver aims at on the formation (1&lt;sup&gt;st&lt;/sup&gt;) cycle — again a &lt;strong&gt;capacity&lt;/strong&gt; ratio, not a mass ratio. It defaults to 1.00, the same as the N&lt;sup&gt;th&lt;/sup&gt;-cycle target, so leaving both alone balances every cycle alike. Give formation its own number when the two cycles should differ — typically when a sacrificial salt is compensating the negative electrode's first-cycle loss. The salt is the degree of freedom that moves this ratio independently of the N&lt;sup&gt;th&lt;/sup&gt;; without one the first cycle lands where the capacities put it and this target only scores the distance." data-help-key="fld_np_target_1st">Target N/P · 1<sup>st</sup> cycle <span class="su">capacity ratio Q<sub>a</sub>/Q<sub>c</sub> · not a mass ratio</span></label>
+      <label for="np-target-1st" data-help="The Q&lt;sub&gt;a&lt;/sub&gt;/Q&lt;sub&gt;c&lt;/sub&gt; the solver aims at on the formation (1&lt;sup&gt;st&lt;/sup&gt;) cycle — again a &lt;strong&gt;capacity&lt;/strong&gt; ratio, not a mass ratio. It defaults to 1.00, the same as the N&lt;sup&gt;th&lt;/sup&gt;-cycle target, so leaving both alone balances every cycle alike. Give formation its own number when the two cycles should differ — typically when a sacrificial salt is compensating the negative electrode's first-cycle loss. The salt is the degree of freedom that moves this ratio independently of the N&lt;sup&gt;th&lt;/sup&gt;; without one the first cycle lands where the capacities put it and this target only scores the distance." data-help-key="fld_np_target_1st">Target N/P · 1<sup>st</sup> cycle <span class="su">capacity ratio Q<sub>a</sub>/Q<sub>c</sub> </span></label>
       <div class="cellp-inline">
         <div class="fld" style="flex:0 0 92px"><input type="number" id="np-target-1st" step="0.01" min="0.5" max="3" value="1.00" oninput="onNp1stChange()"><span class="u" style="font-family:var(--fm)">N/P</span></div>
         <button class="rst-btn" id="np-target-1st-rst" onclick="resetNpTarget1st()" title="Reset to 1.00" style="width:20px;height:20px;font-size:11px">↻</button>
@@ -8904,8 +8904,8 @@ const _hideRes=()=>{const el=$("resPanel");
 
 const TOUR_STEPS=[
  /* ── Cell parameters ── */
- {sec:'.cellp-card', h:"Start with the cell you want",
-  b:"Before picking any material, decide what the finished cell should do. Set your target N/P — the anode-to-cathode capacity ratio — and the rates you intend to cycle at. Everything below serves this target. Go ahead and change these now if you like; the tour will wait."},
+ {sec:'.cellp-card', h:"Cell Design",
+  b:"Set your target N/P ratio for formation and reversible cycles, as well as the rates you intend to cycle both at."},
  {sec:'.cellp-card', at:'#np-target', h:"Target N/P ratio",
   b:"These are the two numbers the solver will hit: N/P = Q<sub>a</sub>/Q<sub>c</sub>, a <strong>capacity</strong> ratio and not a mass ratio, one for the reversible (N<sup>th</sup>) cycle and one for formation. 1.00 is exactly matched; a little above 1.00 gives the anode a safety margin against metal plating. Both start at 1.00, so leaving them alone balances every cycle alike — give formation its own number when the two should differ, which is what a sacrificial salt compensating the anode's formation loss is for."},
  {sec:'.cellp-card', at:'#cell-rate-nth', h:"Operating rates — and why they matter here",
