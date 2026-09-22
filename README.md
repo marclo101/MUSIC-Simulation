@@ -16,11 +16,11 @@ All files must sit in the **same folder**. If `plotly.min.js` is absent the app 
 
 Only the small library file is read at startup — the figures and the plotting engine are fetched the first time you actually open the library or the Simulation tab, so the page is usable almost immediately. An internet connection is used only for the web fonts, and that request cannot delay the page: the tool renders with system fonts and upgrades if and when the fonts arrive.
 
-## Simple and Advanced
+## Standard and Advanced
 
 The masthead carries one switch, and it is the first thing to decide.
 
-**Simple** is where the tool opens. It asks for five capacities and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it.
+**Standard** is where the tool opens. It asks for five capacities and answers with one number: how much of the positive electrode's active mass has to be sacrificial salt, drawn as a two-slice pie. No masses, no loadings, no rates, no voltage windows, because the answer is a *ratio* and every one of those cancels out of it.
 
 Each electrode is described the way a half cell actually reports it — the **1st-cycle** value first, then the **Nth (reversible)** value it settles to — plus the salt's own 1st-cycle capacity:
 
@@ -50,7 +50,7 @@ Whichever side is lighter is normalised to 1 — usually the negative, since a l
 
 The benchmark library stays open at the foot of the page, so the numbers can be read straight off it.
 
-**Advanced** *(beta)* is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. It is still being reworked, and the switch says so. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there.
+**Advanced** *(beta)* is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. It is still being reworked, and the switch says so. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there — and switching there starts it: crossing into Advanced opens the tour by itself, once per visit, with the **Tutorial** button there for a second look.
 
 The choice is remembered between visits.
 
