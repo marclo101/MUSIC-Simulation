@@ -52,7 +52,7 @@ The benchmark library stays open at the foot of the page, so the numbers can be 
 
 **Advanced** *(beta)* is the full tool described in the rest of this file — masses, loadings, compositions, rates, the simulation and the exports. It is still being reworked, and the switch says so. **Single** and **Stack** are modes *within* it, not a top-level choice. The guided tour walks the advanced layout, so starting it switches there — and switching there starts it: crossing into Advanced opens the tour by itself, once per visit, with the **Tutorial** button there for a second look.
 
-The choice is remembered between visits.
+The app always opens in Standard, including after a refresh.
 
 ## What the program does
 
