@@ -7270,8 +7270,7 @@ function _smDrawPie(r){
 
 /* ══ UI MODE ══
    Standard is the default: most visits are one question, and the full tool is one
-   click away. The choice is remembered, because it says how someone works. */
-const UI_KEY="music_ui_mode";
+   click away. Every page load opens in Standard; the choice is not persisted. */
 let uiMode="simple";
 function setUiMode(m){
   uiMode=(m==="advanced")?"advanced":"simple";
@@ -7279,7 +7278,6 @@ function setUiMode(m){
   document.body.classList.toggle("ui-advanced",uiMode==="advanced");
   const tog=$("uiTog");
   if(tog) tog.querySelectorAll("button[data-ui]").forEach(b=>b.classList.toggle("act",b.dataset.ui===uiMode));
-  try{localStorage.setItem(UI_KEY,uiMode)}catch(e){}
   // The library is reference material for the five capacities, so Standard mode
   // leaves it open at the foot of the page rather than collapsed.
   const lib=$("lib");
@@ -7293,13 +7291,11 @@ function setUiMode(m){
   if(uiMode==="advanced" && _uiModeReady && !_tourAutoSpent &&
      typeof startTour==="function" && _tourIdx<0) startTour();
 }
-// Boot restores the remembered mode before anything is on screen; that is not
-// the user walking in, so it must not trigger the automatic tour.
+// Boot always starts in Standard; that is not the user walking in, so it must
+// not trigger the automatic tour.
 let _uiModeReady=false, _tourAutoSpent=false;
 function initUiMode(){
-  let saved=null;
-  try{saved=localStorage.getItem(UI_KEY)}catch(e){}
-  setUiMode(saved==="advanced"?"advanced":"simple");
+  setUiMode("simple");
   _uiModeReady=true;
 }
 
